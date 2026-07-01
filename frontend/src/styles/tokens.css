@@ -1,0 +1,124 @@
+/* SNUK 디자인 토큰 (docs/05_화면정의서_디자인.md 근사치 — 실제 시안 hex/폰트로 보정 필요) */
+:root {
+  /* 배경 */
+  --bg-base: #ffffff;
+  --bg-placeholder: #eaeaea;
+
+  /* 브랜드 */
+  --brand-yellow: #f5c518;   /* CHZIKON 카툰 로고 노랑 */
+  --accent-orange: #f08020;  /* 게임링크/후기링크 등 액션 */
+  --label-red: #e23b3b;      /* (섹션명) 빨강 괄호 라벨 */
+
+  /* 상태 뱃지 */
+  --badge-scheduled: #e23b3b;
+  --badge-open: #1f9d55;
+  --badge-closed: #2b2b2b;
+  --btn-apply: #2b2b2b;
+
+  /* 텍스트 */
+  --text-strong: #1a1a1a;
+  --text-body: #444444;
+  --text-muted: #8a8a8a;
+
+  /* 점선 구분선 */
+  --divider-dash: repeating-linear-gradient(90deg, #bbb 0 8px, transparent 8px 16px);
+
+  --radius: 10px;
+  --maxw: 1180px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-base);
+  color: var(--text-body);
+  font-family: 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.wrap {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* 빨강 괄호형 섹션 라벨 */
+.section-label {
+  color: var(--label-red);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+  margin: 0 0 18px;
+}
+.section-label::before { content: '('; }
+.section-label::after { content: ')'; }
+
+/* 가로 점선 구분선 */
+.divider {
+  height: 2px;
+  background: var(--divider-dash);
+  border: 0;
+  margin: 56px 0;
+}
+
+.section { padding: 8px 0; }
+
+/* 상태 뱃지 */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+.badge.SCHEDULED { background: var(--badge-scheduled); }
+.badge.OPEN { background: var(--badge-open); }
+.badge.CLOSED { background: var(--badge-closed); }
+
+/* 액션 버튼 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 12px 22px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--btn-apply);
+}
+.btn:hover { opacity: 0.9; }
+.btn.orange { background: var(--accent-orange); }
+.btn.ghost { background: transparent; color: var(--text-strong); border: 1px solid #ddd; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 이미지 자리 회색 박스 */
+.placeholder {
+  background: var(--bg-placeholder);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  border-radius: var(--radius);
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  background: #fafafa;
+  border: 1px dashed #ddd;
+  border-radius: var(--radius);
+}

@@ -1,0 +1,24 @@
+# Build outputs
+backend/build/
+backend/.gradle/
+frontend/dist/
+frontend/node_modules/
+
+# Secrets / env
+*.env
+.env
+.env.local
+backend/src/main/resources/application-secret.yml
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Handoff extraction (작업용 임시)
+_extracted/
+
+# Logs
+*.log

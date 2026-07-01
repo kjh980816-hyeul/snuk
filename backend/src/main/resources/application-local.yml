@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:chzikon;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # 마이그레이션은 portable DDL — H2(MODE=MySQL)·MySQL8 공용
+
+logging:
+  level:
+    com.chzikon: DEBUG
+    org.springframework.security: INFO
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true

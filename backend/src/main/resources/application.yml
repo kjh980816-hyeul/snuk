@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: chzikon
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  jackson:
+    time-zone: Asia/Seoul
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8080
+
+# 도메인/앱 공통 (프로파일에서 override)
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET:local-dev-only-secret-please-override-with-openssl-rand-base64-64-aaaaaaaaaaaa}
+    access-token-validity-seconds: 1800        # 30분
+    refresh-token-validity-seconds: 1209600     # 14일
+  key-encryption:
+    # 게임 키 AES-256 암호화 키 (base64 32바이트). prod는 반드시 env로 override.
+    secret: ${KEY_ENCRYPTION_SECRET:bG9jYWwtZGV2LTMyYnl0ZS1rZXktMDAwMDAwMDAwMDA=}
+  chzzk:
+    client-id: ${CHZZK_CLIENT_ID:dummy-client-id}
+    client-secret: ${CHZZK_CLIENT_SECRET:dummy-client-secret}
+    redirect-uri: ${CHZZK_REDIRECT_URI:http://localhost:8080/login/oauth2/code/chzzk}
+    authorization-uri: https://chzzk.naver.com/account-interlock
+    token-uri: https://openapi.chzzk.naver.com/auth/v1/token
+    api-base-uri: https://openapi.chzzk.naver.com
+    follower-cache-seconds: 30
+  portone:
+    # PortOne(V2) 결제. storeId/channelKey 는 공개값(프론트 결제창), api-secret 은 비밀값(서버 검증).
+    # 실제 값은 PortOne 콘솔에서 발급 후 env 로 주입. 로컬 dummy 는 결제 미연동.
+    store-id: ${PORTONE_STORE_ID:store-dummy}
+    channel-key: ${PORTONE_CHANNEL_KEY:channel-dummy}
+    api-secret: ${PORTONE_API_SECRET:dummy-portone-api-secret}
+    api-base-uri: ${PORTONE_API_BASE_URI:https://api.portone.io}
+  frontend:
+    # 로그인 콜백 후 리다이렉트할 프론트 주소
+    redirect-base: ${FRONTEND_REDIRECT_BASE:http://localhost:5173}
+  admin:
+    # 이 치지직 채널ID로 로그인하면 ADMIN 으로 고정(대표 단일 ADMIN, ADM-01).
+    # 운영 시 대표 채널ID를 env(CHZZK_ADMIN_CHANNEL_ID)로 지정.
+    channel-id: ${CHZZK_ADMIN_CHANNEL_ID:}

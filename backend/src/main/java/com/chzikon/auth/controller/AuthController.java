@@ -1,0 +1,76 @@
+package com.chzikon.auth.controller;
+
+import com.chzikon.auth.dto.MeResponse;
+import com.chzikon.auth.dto.TokenPair;
+import com.chzikon.auth.service.AuthService;
+import com.chzikon.global.security.MemberPrincipal;
+import com.chzikon.member.service.MemberService;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+
+@Slf4j
+@RestController
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthService authService;
+    private final MemberService memberService;
+
+    @Value("${app.frontend.redirect-base}")
+    private String frontendRedirectBase;
+
+    /** 치지직 OAuth 시작 → 인가 URL 로 리다이렉트. */
+    @GetMapping("/oauth2/authorization/chzzk")
+    public void start(HttpServletResponse response) throws IOException {
+        response.sendRedirect(authService.buildAuthorizationUrl());
+    }
+
+    /**
+     * 콜백 → 토큰 발급 후 프론트로 리다이렉트.
+     * 토큰은 URL fragment(#)로 전달(서버 로그/Referer 비노출). 프론트가 저장 후 URL 정리.
+     */
+    @GetMapping("/login/oauth2/code/chzzk")
+    public void callback(@RequestParam String code,
+                         @RequestParam(required = false) String state,
+                         HttpServletResponse response) throws IOException {
+        try {
+            TokenPair tokens = authService.handleCallback(code, state);
+            String target = frontendRedirectBase + "/oauth/callback#accessToken="
+                    + enc(tokens.accessToken()) + "&refreshToken=" + enc(tokens.refreshToken());
+            response.sendRedirect(target);
+        } catch (Exception e) {
+            log.warn("OAuth callback failed: {}", e.getMessage());
+            response.sendRedirect(frontendRedirectBase + "/oauth/callback#error=oauth_failed");
+        }
+    }
+
+    @PostMapping("/api/auth/refresh")
+    public ResponseEntity<TokenPair> refresh(@RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(authService.refresh(body.get("refreshToken")));
+    }
+
+    @PostMapping("/api/auth/logout")
+    public ResponseEntity<Void> logout() {
+        // Stateless JWT — 클라이언트가 토큰 폐기. (확장 시 refresh 블랙리스트)
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/api/auth/me")
+    public ResponseEntity<MeResponse> me(@AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(MeResponse.from(memberService.getById(principal.memberId())));
+    }
+
+    private static String enc(String v) {
+        return URLEncoder.encode(v, StandardCharsets.UTF_8);
+    }
+}
