@@ -20,6 +20,7 @@ async function onLogout() {
         <RouterLink to="/campaigns" class="nav-link">컨텐츠</RouterLink>
         <RouterLink to="/videos" class="nav-link">영상</RouterLink>
         <RouterLink to="/collab" class="nav-link">콜라보</RouterLink>
+        <RouterLink to="/tournaments" class="nav-link">대회</RouterLink>
         <RouterLink to="/goods" class="nav-link">굿즈</RouterLink>
         <RouterLink to="/clients" class="nav-link">CLIENTS</RouterLink>
       </nav>

@@ -8,6 +8,7 @@ const router = createRouter({
     { path: '/campaigns', name: 'campaigns', component: () => import('@/views/CampaignsView.vue') },
     { path: '/videos', name: 'videos', component: () => import('@/views/VideosView.vue') },
     { path: '/collab', name: 'collab', component: () => import('@/views/CollabView.vue') },
+    { path: '/tournaments', name: 'tournaments', component: () => import('@/views/TournamentsView.vue') },
     { path: '/goods', name: 'goods', component: () => import('@/views/GoodsView.vue') },
     { path: '/clients', name: 'clients', component: () => import('@/views/ClientsView.vue') },
     { path: '/oauth/callback', name: 'oauth-callback', component: () => import('@/views/OAuthCallbackView.vue') },

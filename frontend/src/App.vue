@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import SiteHeader from '@/components/SiteHeader.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
+import TopStrip from '@/components/TopStrip.vue'
 
 const auth = useAuthStore()
 onMounted(() => {
@@ -13,6 +14,7 @@ onMounted(() => {
 <template>
   <SiteHeader />
   <div class="page-body">
+    <TopStrip />
     <main>
       <RouterView />
     </main>

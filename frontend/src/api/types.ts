@@ -73,6 +73,33 @@ export interface MyApplication {
   appliedAt: string
 }
 
+// ----- 대회 -----
+export type TournamentStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED' | 'DONE'
+
+export interface Tournament {
+  id: number
+  title: string
+  description: string | null
+  gameName: string | null
+  bannerImageUrl: string | null
+  eventDate: string | null
+  applyStart: string | null
+  applyEnd: string | null
+  capacity: number
+  filledSlots: number
+  status: TournamentStatus
+  resultText: string | null
+  featured: boolean
+  sortOrder: number
+}
+
+export interface MyParticipation {
+  participantId: number
+  tournamentId: number
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  appliedAt: string
+}
+
 // ----- 굿즈/결제 -----
 export type GoodsStatus = 'ACTIVE' | 'HIDDEN'
 export type OrderStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED'

@@ -39,6 +39,11 @@ public enum ErrorCode {
     PAYMENT_NOT_PAID(HttpStatus.CONFLICT, "G005", "아직 결제가 완료되지 않았습니다."),
     PAYMENT_VERIFY_FAILED(HttpStatus.BAD_GATEWAY, "G006", "결제 검증에 실패했습니다."),
 
+    // 대회 (TOUR)
+    TOURNAMENT_NOT_OPEN(HttpStatus.CONFLICT, "T001", "참가 신청 가능한 상태가 아닙니다."),
+    TOURNAMENT_FULL(HttpStatus.CONFLICT, "T002", "참가 정원이 모두 찼습니다."),
+    ALREADY_JOINED(HttpStatus.CONFLICT, "T003", "이미 참가 신청한 대회입니다."),
+
     // 설정 (ADM)
     SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "설정값을 찾을 수 없습니다.");
 

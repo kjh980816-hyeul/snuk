@@ -1,7 +1,7 @@
 import api from './client'
 import type {
   Campaign, ClientLogo, CollabGame, ContentVideo, Goods, Me, MyApplication,
-  OrderCreateRequest, OrderResponse, OrderView, Review,
+  MyParticipation, OrderCreateRequest, OrderResponse, OrderView, Review, Tournament,
 } from './types'
 
 // ----- auth -----
@@ -23,6 +23,16 @@ export const campaignApi = {
   reviews: (id: number) => api.get<Review[]>(`/api/campaigns/${id}/reviews`).then((r) => r.data),
   writeReview: (id: number, body: { title: string; content: string }) =>
     api.post<Review>(`/api/campaigns/${id}/reviews`, body).then((r) => r.data),
+}
+
+// ----- tournaments (public) -----
+export const tournamentApi = {
+  list: () => api.get<Tournament[]>('/api/tournaments').then((r) => r.data),
+  detail: (id: number) => api.get<Tournament>(`/api/tournaments/${id}`).then((r) => r.data),
+  apply: (id: number) =>
+    api.post<{ participantId: number; status: string }>(`/api/tournaments/${id}/apply`).then((r) => r.data),
+  myParticipation: (id: number) =>
+    api.get<MyParticipation>(`/api/tournaments/${id}/my-participation`).then((r) => r.data),
 }
 
 // ----- goods (public storefront) -----

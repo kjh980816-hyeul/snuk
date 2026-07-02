@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { adminApi } from '@/api/admin'
-import { campaignApi, collabApi } from '@/api'
-import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, OrderView } from '@/api/types'
+import { campaignApi, collabApi, tournamentApi } from '@/api'
+import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, OrderView, Tournament } from '@/api/types'
 
-type Tab = 'campaigns' | 'collab' | 'goods' | 'settings' | 'logs'
+type Tab = 'campaigns' | 'tournaments' | 'collab' | 'goods' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
 
 // ----- campaigns -----
@@ -74,6 +74,52 @@ async function approveApp(id: number) {
 async function rejectApp(id: number) {
   await adminApi.reject(id)
   if (selected.value) applications.value = await adminApi.applications(selected.value.id)
+}
+
+// ----- tournaments -----
+const tournaments = ref<Tournament[]>([])
+const tourEditing = ref<Partial<Tournament> | null>(null)
+const tourSelected = ref<Tournament | null>(null)
+const participants = ref<Array<{ participantId: number; memberId: number; status: string; followerSnapshot: number }>>([])
+
+async function loadTournaments() {
+  tournaments.value = await tournamentApi.list()
+}
+function newTournament() {
+  tourEditing.value = {
+    title: '', description: '', gameName: '', status: 'SCHEDULED',
+    capacity: 0, featured: false, sortOrder: tournaments.value.length,
+  }
+}
+function editTournament(t: Tournament) {
+  tourEditing.value = { ...t }
+}
+async function saveTournament() {
+  if (!tourEditing.value) return
+  const b = tourEditing.value
+  if (b.id) await adminApi.updateTournament(b.id, b)
+  else await adminApi.createTournament(b)
+  tourEditing.value = null
+  await loadTournaments()
+}
+async function removeTournament(t: Tournament) {
+  if (!confirm(`'${t.title}' 대회를 삭제할까요?`)) return
+  await adminApi.deleteTournament(t.id)
+  if (tourSelected.value?.id === t.id) tourSelected.value = null
+  await loadTournaments()
+}
+async function selectTournament(t: Tournament) {
+  tourSelected.value = t
+  participants.value = await adminApi.participants(t.id)
+}
+async function approveParticipant(id: number) {
+  await adminApi.approveParticipant(id)
+  if (tourSelected.value) participants.value = await adminApi.participants(tourSelected.value.id)
+  await loadTournaments()
+}
+async function rejectParticipant(id: number) {
+  await adminApi.rejectParticipant(id)
+  if (tourSelected.value) participants.value = await adminApi.participants(tourSelected.value.id)
 }
 
 // ----- collab (게임/영상/클라이언트: 추가+수정+삭제 모두 지원) -----
@@ -197,6 +243,7 @@ onMounted(loadCampaigns)
 
 function onTab(t: Tab) {
   tab.value = t
+  if (t === 'tournaments') loadTournaments()
   if (t === 'collab') loadCollab()
   if (t === 'goods') loadGoods()
   if (t === 'settings') loadSettings()
@@ -209,6 +256,7 @@ function onTab(t: Tab) {
     <h2 class="section-label">관리자</h2>
     <nav class="tabs">
       <button :class="{ on: tab === 'campaigns' }" @click="onTab('campaigns')">캠페인</button>
+      <button :class="{ on: tab === 'tournaments' }" @click="onTab('tournaments')">대회</button>
       <button :class="{ on: tab === 'collab' }" @click="onTab('collab')">콜라보/노출</button>
       <button :class="{ on: tab === 'goods' }" @click="onTab('goods')">굿즈/주문</button>
       <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정/권한</button>
@@ -307,6 +355,73 @@ function onTab(t: Tab) {
             </tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <!-- 대회 -->
+    <section v-else-if="tab === 'tournaments'">
+      <button class="btn orange sm" @click="newTournament">+ 새 대회</button>
+      <table class="grid">
+        <thead><tr><th>대회명</th><th>게임</th><th>대회일</th><th>상태</th><th>정원</th><th>대표</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="t in tournaments" :key="t.id" :class="{ sel: tourSelected?.id === t.id }">
+            <td>{{ t.title }}</td><td>{{ t.gameName }}</td><td>{{ t.eventDate ?? '-' }}</td>
+            <td>{{ t.status }}</td><td>{{ t.filledSlots }}/{{ t.capacity }}</td>
+            <td>{{ t.featured ? '★' : '' }}</td>
+            <td class="acts">
+              <button @click="selectTournament(t)">참가자</button>
+              <button @click="editTournament(t)">수정</button>
+              <button class="danger" @click="removeTournament(t)">삭제</button>
+            </td>
+          </tr>
+          <tr v-if="!tournaments.length"><td colspan="7" class="empty">등록된 대회가 없습니다.</td></tr>
+        </tbody>
+      </table>
+
+      <!-- 편집 폼 (결과입력 포함) -->
+      <div v-if="tourEditing" class="form-card">
+        <h4>{{ tourEditing.id ? '대회 수정' : '새 대회' }}</h4>
+        <label>대회명<input v-model="tourEditing.title" /></label>
+        <label>설명<textarea v-model="tourEditing.description"></textarea></label>
+        <label>게임명<input v-model="tourEditing.gameName" /></label>
+        <label>배너 이미지 URL<input v-model="tourEditing.bannerImageUrl" placeholder="https://" /></label>
+        <div class="row3">
+          <label>상태
+            <select v-model="tourEditing.status">
+              <option>SCHEDULED</option><option>OPEN</option><option>CLOSED</option><option>DONE</option>
+            </select>
+          </label>
+          <label>참가 정원<input type="number" v-model.number="tourEditing.capacity" /></label>
+          <label class="chk"><input type="checkbox" v-model="tourEditing.featured" /> 대표 대회</label>
+        </div>
+        <label>대회 결과 (DONE 상태에서 페이지에 노출)
+          <textarea v-model="tourEditing.resultText" placeholder="예) 우승: 팀 알파 / MVP: 스트리머A"></textarea>
+        </label>
+        <label>정렬순서<input type="number" v-model.number="tourEditing.sortOrder" /></label>
+        <div class="form-acts">
+          <button class="btn sm" @click="saveTournament">저장</button>
+          <button class="btn ghost sm" @click="tourEditing = null">취소</button>
+        </div>
+      </div>
+
+      <!-- 선택 대회: 참가 신청자 승인/거절 -->
+      <div v-if="tourSelected" class="manage">
+        <h4>‘{{ tourSelected.title }}’ 참가 신청자</h4>
+        <table class="grid">
+          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="p in participants" :key="p.participantId">
+              <td>#{{ p.memberId }}</td><td>{{ p.followerSnapshot }}</td><td>{{ p.status }}</td>
+              <td class="acts">
+                <template v-if="p.status === 'PENDING'">
+                  <button @click="approveParticipant(p.participantId)">승인</button>
+                  <button class="danger" @click="rejectParticipant(p.participantId)">거절</button>
+                </template>
+              </td>
+            </tr>
+            <tr v-if="!participants.length"><td colspan="4" class="empty">참가 신청자가 없습니다.</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 

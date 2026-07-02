@@ -1,5 +1,5 @@
 import api from './client'
-import type { Campaign, CollabGame, ClientLogo, ContentVideo, Goods, OrderView } from './types'
+import type { Campaign, CollabGame, ClientLogo, ContentVideo, Goods, OrderView, Tournament } from './types'
 
 /** 어드민 API (ADMIN 토큰 필요). */
 export const adminApi = {
@@ -40,6 +40,19 @@ export const adminApi = {
   createLogo: (body: Partial<ClientLogo>) => api.post('/api/admin/collab/clients', body),
   updateLogo: (id: number, body: Partial<ClientLogo>) => api.put(`/api/admin/collab/clients/${id}`, body),
   deleteLogo: (id: number) => api.delete(`/api/admin/collab/clients/${id}`),
+
+  // tournaments
+  createTournament: (body: Partial<Tournament>) =>
+    api.post<Tournament>('/api/admin/tournaments', body).then((r) => r.data),
+  updateTournament: (id: number, body: Partial<Tournament>) =>
+    api.put<Tournament>(`/api/admin/tournaments/${id}`, body).then((r) => r.data),
+  deleteTournament: (id: number) => api.delete(`/api/admin/tournaments/${id}`),
+  participants: (id: number) =>
+    api.get<Array<{ participantId: number; memberId: number; status: string; followerSnapshot: number }>>(
+      `/api/admin/tournaments/${id}/participants`,
+    ).then((r) => r.data),
+  approveParticipant: (participantId: number) => api.post(`/api/admin/participants/${participantId}/approve`),
+  rejectParticipant: (participantId: number) => api.post(`/api/admin/participants/${participantId}/reject`),
 
   // goods / orders
   listGoods: () => api.get<Goods[]>('/api/admin/goods').then((r) => r.data),

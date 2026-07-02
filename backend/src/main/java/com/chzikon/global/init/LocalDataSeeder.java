@@ -11,6 +11,9 @@ import com.chzikon.collab.repository.ContentVideoRepository;
 import com.chzikon.goods.domain.Goods;
 import com.chzikon.goods.domain.GoodsStatus;
 import com.chzikon.goods.repository.GoodsRepository;
+import com.chzikon.tournament.domain.Tournament;
+import com.chzikon.tournament.domain.TournamentStatus;
+import com.chzikon.tournament.repository.TournamentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -42,6 +45,7 @@ public class LocalDataSeeder implements ApplicationRunner {
     private final CollabGameRepository collabGameRepository;
     private final ClientLogoRepository clientLogoRepository;
     private final GoodsRepository goodsRepository;
+    private final TournamentRepository tournamentRepository;
 
     @Override
     @Transactional
@@ -51,6 +55,7 @@ public class LocalDataSeeder implements ApplicationRunner {
         seedCollabGames();
         seedClients();
         seedCampaigns();
+        seedTournaments();
     }
 
     private void seedGoods() {
@@ -146,5 +151,37 @@ public class LocalDataSeeder implements ApplicationRunner {
                 .status(CampaignStatus.CLOSED).distributionType(DistributionType.FCFS)
                 .keyMode(KeyMode.QUANTITY).totalSlots(15).featured(false).sortOrder(2).build());
         log.info("[seed] campaign 3건 삽입");
+    }
+
+    private void seedTournaments() {
+        if (tournamentRepository.count() > 0) return;
+        LocalDateTime now = LocalDateTime.now();
+        tournamentRepository.save(Tournament.builder()
+                .title("SNUK 컵 시즌1 — 배틀로얄 스트리머 대회")
+                .description("스트리머 16인 초청 배틀로얄 대회. 참가 신청 후 승인제로 확정됩니다.")
+                .gameName("네온 서바이벌")
+                .bannerImageUrl("https://placehold.co/1200x400/1a1a1a/f9a825?text=SNUK+CUP+S1")
+                .eventDate(LocalDate.now().plusDays(21))
+                .applyStart(now.minusDays(1)).applyEnd(now.plusDays(14))
+                .capacity(16).status(TournamentStatus.OPEN)
+                .featured(true).sortOrder(0).build());
+        tournamentRepository.save(Tournament.builder()
+                .title("픽셀 던전 스피드런 챌린지")
+                .description("클리어 타임 경쟁전. 참가 확정자에게 개별 안내.")
+                .gameName("픽셀 던전 러시")
+                .bannerImageUrl("https://placehold.co/1200x400/263238/ffffff?text=Speedrun")
+                .eventDate(LocalDate.now().plusDays(35))
+                .capacity(8).status(TournamentStatus.SCHEDULED)
+                .featured(false).sortOrder(1).build());
+        tournamentRepository.save(Tournament.builder()
+                .title("[종료] 클래식 아레나 쇼매치")
+                .description("종료된 대회 예시(DONE 상태 + 결과 노출 확인용).")
+                .gameName("클래식 아레나")
+                .bannerImageUrl("https://placehold.co/1200x400/455a64/ffffff?text=Show+Match")
+                .eventDate(LocalDate.now().minusDays(14))
+                .capacity(8).status(TournamentStatus.DONE)
+                .resultText("우승: 팀 알파 / 준우승: 팀 브라보 / MVP: 스트리머A")
+                .featured(false).sortOrder(2).build());
+        log.info("[seed] tournament 3건 삽입");
     }
 }
