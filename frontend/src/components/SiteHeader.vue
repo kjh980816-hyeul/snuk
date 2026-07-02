@@ -39,12 +39,12 @@ async function onLogout() {
 
 <style scoped>
 .site-header {
-  position: fixed;
+  position: sticky;
   top: 0;
-  right: 0;
-  bottom: 0;
   z-index: 50;
   width: var(--header-w, 220px);
+  height: 100vh;
+  flex-shrink: 0;
   background: #fff;
   border-left: 1px solid #eee;
 }
@@ -96,9 +96,8 @@ async function onLogout() {
   .site-header {
     position: sticky;
     top: 0;
-    right: auto;
-    bottom: auto;
-    width: auto;
+    width: 100%;
+    height: auto;
     border-left: none;
     border-bottom: 1px solid #eee;
   }

@@ -12,22 +12,28 @@ onMounted(() => {
 </script>
 
 <template>
-  <SiteHeader />
-  <div class="page-body">
-    <TopStrip />
-    <main>
-      <RouterView />
-    </main>
-    <SiteFooter />
+  <TopStrip />
+  <div class="layout">
+    <div class="content">
+      <main>
+        <RouterView />
+      </main>
+      <SiteFooter />
+    </div>
+    <SiteHeader />
   </div>
 </template>
 
 <style>
 :root { --header-w: 220px; }
 main { min-height: 60vh; }
-.page-body { margin-right: var(--header-w); }
+.layout { display: flex; align-items: flex-start; }
+/* 좌측에 사이드바 폭만큼 패딩 → 본문이 화면 전체 기준 중앙 */
+.content { flex: 1; min-width: 0; padding-left: var(--header-w); }
 
 @media (max-width: 760px) {
-  .page-body { margin-right: 0; }
+  .layout { flex-direction: column; }
+  .layout > .site-header { order: -1; width: 100%; }
+  .content { padding-left: 0; width: 100%; }
 }
 </style>

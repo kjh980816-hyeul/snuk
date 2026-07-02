@@ -56,8 +56,10 @@ onUnmounted(() => {
         ></div>
         <div class="banner-content">
           <span class="banner-badge">{{ current.label }}</span>
-          <h3 class="banner-title">{{ current.title }}</h3>
-          <p v-if="current.desc" class="banner-desc">{{ current.desc }}</p>
+          <div class="banner-text">
+            <h3 class="banner-title">{{ current.title }}</h3>
+            <p v-if="current.desc" class="banner-desc">{{ current.desc }}</p>
+          </div>
           <span class="banner-cta">자세히 보기 &gt;</span>
         </div>
       </div>
@@ -76,7 +78,7 @@ onUnmounted(() => {
   background: #1a1a1a;
   color: #fff;
 }
-.banner-inner { position: relative; min-height: 160px; display: flex; align-items: center; }
+.banner-inner { position: relative; min-height: 96px; display: flex; align-items: center; }
 .banner-bg {
   position: absolute;
   inset: 0;
@@ -88,36 +90,43 @@ onUnmounted(() => {
 .top-banner:hover .banner-bg { transform: scale(1.04); }
 .banner-content {
   position: relative;
-  padding: 26px 48px;
-  max-width: 900px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 36px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 .banner-badge {
-  display: inline-block;
+  flex-shrink: 0;
   background: var(--accent-orange);
   color: #fff;
   font-weight: 800;
-  font-size: 13px;
-  padding: 4px 14px;
+  font-size: 12px;
+  padding: 3px 12px;
   border-radius: 999px;
-  margin-bottom: 10px;
 }
+.banner-text { min-width: 0; }
 .banner-title {
-  font-size: 26px;
+  font-size: 19px;
   font-weight: 900;
-  margin: 0 0 6px;
-  line-height: 1.25;
+  margin: 0;
+  line-height: 1.3;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-.banner-desc {
-  margin: 0 0 10px;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 640px;
 }
-.banner-cta { font-weight: 800; color: var(--brand-yellow); font-size: 14px; }
+.banner-desc {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.banner-cta { flex-shrink: 0; margin-left: auto; font-weight: 800; color: var(--brand-yellow); font-size: 13px; }
 .top-banner:hover .banner-cta { text-decoration: underline; }
 
 .dots { position: absolute; right: 20px; bottom: 14px; display: flex; gap: 6px; }
@@ -129,9 +138,10 @@ onUnmounted(() => {
 .roll-leave-to { opacity: 0; transform: translateX(-24px); }
 
 @media (max-width: 760px) {
-  .banner-inner { min-height: 120px; }
-  .banner-content { padding: 18px 20px; }
-  .banner-title { font-size: 19px; }
+  .banner-inner { min-height: 72px; }
+  .banner-content { padding: 12px 16px; }
+  .banner-title { font-size: 15px; }
   .banner-desc { display: none; }
+  .dots { display: none; }
 }
 </style>
