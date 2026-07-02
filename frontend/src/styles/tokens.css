@@ -97,11 +97,14 @@ button {
   font-weight: 700;
   color: #fff;
   background: var(--btn-apply);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, background 0.15s ease;
 }
-.btn:hover { opacity: 0.9; }
+.btn:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14); }
+.btn:active { transform: translateY(0); box-shadow: none; }
 .btn.orange { background: var(--accent-orange); }
 .btn.ghost { background: transparent; color: var(--text-strong); border: 1px solid #ddd; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.ghost:hover { background: #f6f6f6; border-color: #ccc; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* 이미지 자리 회색 박스 */
 .placeholder {

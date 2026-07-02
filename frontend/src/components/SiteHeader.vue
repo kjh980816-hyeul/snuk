@@ -64,10 +64,29 @@ async function onLogout() {
   letter-spacing: 1px;
   text-align: center;
 }
-.nav { display: flex; flex-direction: column; gap: 14px; flex: 1; }
-.nav-link { font-weight: 600; color: var(--text-body); }
-.nav-link.router-link-exact-active { color: var(--text-strong); border-left: 3px solid var(--accent-orange); padding-left: 8px; }
+.nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.nav-link {
+  font-weight: 600;
+  color: var(--text-body);
+  padding: 9px 12px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+.nav-link:hover {
+  background: rgba(255, 138, 0, 0.09);
+  color: var(--text-strong);
+  transform: translateX(4px);
+}
+.nav-link.router-link-exact-active {
+  color: var(--text-strong);
+  border-left-color: var(--accent-orange);
+  border-radius: 0 8px 8px 0;
+  background: rgba(255, 138, 0, 0.06);
+}
+.nav-link.router-link-exact-active:hover { transform: none; }
 .nav-link.admin { color: var(--label-red); }
+.nav-link.admin:hover { background: rgba(220, 50, 50, 0.08); color: var(--label-red); }
 .account { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
 .me { font-weight: 700; color: var(--text-strong); text-align: center; }
 .btn.sm { padding: 8px 14px; font-size: 13px; }
@@ -92,8 +111,10 @@ async function onLogout() {
     overflow-y: visible;
   }
   .logo { text-align: left; }
-  .nav { flex-direction: row; order: 3; flex-basis: 100%; gap: 14px; overflow-x: auto; }
-  .nav-link.router-link-exact-active { border-left: none; padding-left: 0; border-bottom: 2px solid var(--accent-orange); padding-bottom: 4px; }
+  .nav { flex-direction: row; order: 3; flex-basis: 100%; gap: 6px; overflow-x: auto; }
+  .nav-link { padding: 6px 10px; white-space: nowrap; }
+  .nav-link:hover { transform: none; }
+  .nav-link.router-link-exact-active { border-left: none; border-radius: 8px; background: rgba(255, 138, 0, 0.12); }
   .account { flex-direction: row; align-items: center; gap: 14px; margin-left: auto; }
 }
 </style>
