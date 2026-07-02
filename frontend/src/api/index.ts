@@ -1,7 +1,7 @@
 import api from './client'
 import type {
   Campaign, ClientLogo, CollabGame, ContentVideo, Goods, Me, MyApplication,
-  MyParticipation, OrderCreateRequest, OrderResponse, OrderView, Review, Tournament,
+  MyParticipation, MypageSummary, OrderCreateRequest, OrderResponse, OrderView, Review, Tournament,
 } from './types'
 
 // ----- auth -----
@@ -23,6 +23,11 @@ export const campaignApi = {
   reviews: (id: number) => api.get<Review[]>(`/api/campaigns/${id}/reviews`).then((r) => r.data),
   writeReview: (id: number, body: { title: string; content: string }) =>
     api.post<Review>(`/api/campaigns/${id}/reviews`, body).then((r) => r.data),
+}
+
+// ----- mypage (로그인 필요) -----
+export const mypageApi = {
+  summary: () => api.get<MypageSummary>('/api/mypage/summary').then((r) => r.data),
 }
 
 // ----- tournaments (public) -----

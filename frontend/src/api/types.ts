@@ -100,6 +100,41 @@ export interface MyParticipation {
   appliedAt: string
 }
 
+// ----- 마이페이지 -----
+export interface MypageSummary {
+  applications: Array<{
+    applicationId: number
+    campaignId: number
+    campaignTitle: string
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+    hasAssignedKey: boolean
+    maskedKey: string | null
+    appliedAt: string
+  }>
+  tournaments: Array<{
+    participantId: number
+    tournamentId: number
+    tournamentTitle: string
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+    appliedAt: string
+  }>
+  reviews: Array<{
+    postId: number
+    campaignId: number | null
+    title: string
+    hidden: boolean
+    createdAt: string
+  }>
+  orders: Array<{
+    orderId: number
+    goodsName: string
+    quantity: number
+    totalAmount: number
+    status: OrderStatus
+    createdAt: string
+  }>
+}
+
 // ----- 굿즈/결제 -----
 export type GoodsStatus = 'ACTIVE' | 'HIDDEN'
 export type OrderStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED'

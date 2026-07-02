@@ -1,0 +1,50 @@
+package com.chzikon.mypage.dto;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 마이페이지 집계 응답(MY-01) — 새 테이블 없이 기존 도메인 조회만.
+ * 배정 키는 항상 마스킹(평문 reveal 은 캠페인 상세의 my-application 에서만).
+ */
+public record MypageSummaryResponse(
+        List<MyCampaignItem> applications,
+        List<MyTournamentItem> tournaments,
+        List<MyReviewItem> reviews,
+        List<MyOrderItem> orders
+) {
+    public record MyCampaignItem(
+            Long applicationId,
+            Long campaignId,
+            String campaignTitle,
+            String status,
+            boolean hasAssignedKey,
+            String maskedKey,
+            LocalDateTime appliedAt
+    ) {}
+
+    public record MyTournamentItem(
+            Long participantId,
+            Long tournamentId,
+            String tournamentTitle,
+            String status,
+            LocalDateTime appliedAt
+    ) {}
+
+    public record MyReviewItem(
+            Long postId,
+            Long campaignId,
+            String title,
+            boolean hidden,
+            LocalDateTime createdAt
+    ) {}
+
+    public record MyOrderItem(
+            Long orderId,
+            String goodsName,
+            int quantity,
+            int totalAmount,
+            String status,
+            LocalDateTime createdAt
+    ) {}
+}

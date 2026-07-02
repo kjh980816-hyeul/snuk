@@ -6,6 +6,8 @@ interface StripItem {
   key: string
   label: string
   title: string
+  desc: string | null
+  image: string | null
   to: string
 }
 
@@ -16,23 +18,25 @@ let timer: ReturnType<typeof setInterval> | null = null
 const current = computed(() => items.value[idx.value] ?? null)
 
 onMounted(async () => {
-  // 모집중(OPEN)인 컨텐츠·대회만 노출. 없으면 스트립 자체를 숨김(empty state 원칙).
+  // 모집중(OPEN)인 컨텐츠·대회만 노출. 없으면 배너 자체를 숨김(empty state 원칙).
   const [campaigns, tournaments] = await Promise.all([
     campaignApi.list().catch(() => []),
     tournamentApi.list().catch(() => []),
   ])
   items.value = [
     ...campaigns.filter((c) => c.status === 'OPEN').map((c) => ({
-      key: `c${c.id}`, label: '모집중', title: c.title, to: '/campaigns',
+      key: `c${c.id}`, label: '모집중', title: c.title, desc: c.description,
+      image: c.promoImageUrl, to: '/campaigns',
     })),
     ...tournaments.filter((t) => t.status === 'OPEN').map((t) => ({
-      key: `t${t.id}`, label: '대회', title: t.title, to: '/tournaments',
+      key: `t${t.id}`, label: '대회', title: t.title, desc: t.description,
+      image: t.bannerImageUrl, to: '/tournaments',
     })),
   ]
   if (items.value.length > 1) {
     timer = setInterval(() => {
       idx.value = (idx.value + 1) % items.value.length
-    }, 4000)
+    }, 5000)
   }
 })
 
@@ -42,45 +46,92 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <RouterLink v-if="current" :to="current.to" class="top-strip">
-    <span class="strip-badge">{{ current.label }}</span>
+  <RouterLink v-if="current" :to="current.to" class="top-banner">
     <Transition name="roll" mode="out-in">
-      <span :key="current.key" class="strip-title">{{ current.title }}</span>
+      <div :key="current.key" class="banner-inner">
+        <div
+          v-if="current.image"
+          class="banner-bg"
+          :style="{ backgroundImage: `url(${current.image})` }"
+        ></div>
+        <div class="banner-content">
+          <span class="banner-badge">{{ current.label }}</span>
+          <h3 class="banner-title">{{ current.title }}</h3>
+          <p v-if="current.desc" class="banner-desc">{{ current.desc }}</p>
+          <span class="banner-cta">자세히 보기 &gt;</span>
+        </div>
+      </div>
     </Transition>
-    <span class="strip-cta">바로가기 &gt;</span>
+    <div v-if="items.length > 1" class="dots">
+      <span v-for="(it, i) in items" :key="it.key" class="dot" :class="{ on: i === idx }"></span>
+    </div>
   </RouterLink>
 </template>
 
 <style scoped>
-.top-strip {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 24px;
-  background: linear-gradient(90deg, #1a1a1a, #33291a);
+.top-banner {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #1a1a1a;
   color: #fff;
-  font-size: 14px;
-  transition: filter 0.15s ease;
 }
-.top-strip:hover { filter: brightness(1.25); }
-.strip-badge {
-  flex-shrink: 0;
+.banner-inner { position: relative; min-height: 160px; display: flex; align-items: center; }
+.banner-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.45;
+  transition: transform 0.4s ease;
+}
+.top-banner:hover .banner-bg { transform: scale(1.04); }
+.banner-content {
+  position: relative;
+  padding: 26px 48px;
+  max-width: 900px;
+}
+.banner-badge {
+  display: inline-block;
   background: var(--accent-orange);
   color: #fff;
   font-weight: 800;
-  font-size: 12px;
-  padding: 3px 10px;
+  font-size: 13px;
+  padding: 4px 14px;
   border-radius: 999px;
+  margin-bottom: 10px;
 }
-.strip-title {
-  font-weight: 600;
+.banner-title {
+  font-size: 26px;
+  font-weight: 900;
+  margin: 0 0 6px;
+  line-height: 1.25;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.banner-desc {
+  margin: 0 0 10px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 640px;
 }
-.strip-cta { flex-shrink: 0; margin-left: auto; font-weight: 700; color: var(--brand-yellow); }
+.banner-cta { font-weight: 800; color: var(--brand-yellow); font-size: 14px; }
+.top-banner:hover .banner-cta { text-decoration: underline; }
 
-.roll-enter-active, .roll-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
-.roll-enter-from { opacity: 0; transform: translateY(8px); }
-.roll-leave-to { opacity: 0; transform: translateY(-8px); }
+.dots { position: absolute; right: 20px; bottom: 14px; display: flex; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); transition: background 0.2s; }
+.dot.on { background: var(--accent-orange); }
+
+.roll-enter-active, .roll-leave-active { transition: opacity 0.35s ease, transform 0.35s ease; }
+.roll-enter-from { opacity: 0; transform: translateX(24px); }
+.roll-leave-to { opacity: 0; transform: translateX(-24px); }
+
+@media (max-width: 760px) {
+  .banner-inner { min-height: 120px; }
+  .banner-content { padding: 18px 20px; }
+  .banner-title { font-size: 19px; }
+  .banner-desc { display: none; }
+}
 </style>
