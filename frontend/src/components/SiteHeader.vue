@@ -13,7 +13,7 @@ async function onLogout() {
 
 <template>
   <header class="site-header">
-    <div class="wrap inner">
+    <div class="inner">
       <RouterLink to="/" class="logo">SNUK</RouterLink>
       <nav class="nav">
         <RouterLink to="/" class="nav-link">홈</RouterLink>
@@ -38,17 +38,23 @@ async function onLogout() {
 
 <style scoped>
 .site-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  bottom: 0;
   z-index: 50;
+  width: var(--header-w, 220px);
   background: #fff;
-  border-bottom: 1px solid #eee;
+  border-left: 1px solid #eee;
 }
 .inner {
   display: flex;
-  align-items: center;
-  gap: 24px;
-  height: 64px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 28px;
+  height: 100%;
+  padding: 28px 22px;
+  overflow-y: auto;
 }
 .logo {
   font-weight: 900;
@@ -56,17 +62,38 @@ async function onLogout() {
   color: var(--brand-yellow);
   -webkit-text-stroke: 1px #1a1a1a;
   letter-spacing: 1px;
+  text-align: center;
 }
-.nav { display: flex; align-items: center; gap: 18px; flex: 1; }
+.nav { display: flex; flex-direction: column; gap: 14px; flex: 1; }
 .nav-link { font-weight: 600; color: var(--text-body); }
-.nav-link.router-link-exact-active { color: var(--text-strong); border-bottom: 2px solid var(--accent-orange); padding-bottom: 4px; }
+.nav-link.router-link-exact-active { color: var(--text-strong); border-left: 3px solid var(--accent-orange); padding-left: 8px; }
 .nav-link.admin { color: var(--label-red); }
-.account { display: flex; align-items: center; gap: 14px; }
-.me { font-weight: 700; color: var(--text-strong); }
+.account { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+.me { font-weight: 700; color: var(--text-strong); text-align: center; }
 .btn.sm { padding: 8px 14px; font-size: 13px; }
 
 @media (max-width: 760px) {
-  .inner { flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 10px; gap: 12px; }
-  .nav { order: 3; flex-basis: 100%; gap: 14px; overflow-x: auto; }
+  .site-header {
+    position: sticky;
+    top: 0;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    border-left: none;
+    border-bottom: 1px solid #eee;
+  }
+  .inner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    height: auto;
+    padding: 10px 16px;
+    gap: 12px;
+    overflow-y: visible;
+  }
+  .logo { text-align: left; }
+  .nav { flex-direction: row; order: 3; flex-basis: 100%; gap: 14px; overflow-x: auto; }
+  .nav-link.router-link-exact-active { border-left: none; padding-left: 0; border-bottom: 2px solid var(--accent-orange); padding-bottom: 4px; }
+  .account { flex-direction: row; align-items: center; gap: 14px; margin-left: auto; }
 }
 </style>

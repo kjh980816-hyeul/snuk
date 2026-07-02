@@ -12,12 +12,20 @@ onMounted(() => {
 
 <template>
   <SiteHeader />
-  <main>
-    <RouterView />
-  </main>
-  <SiteFooter />
+  <div class="page-body">
+    <main>
+      <RouterView />
+    </main>
+    <SiteFooter />
+  </div>
 </template>
 
 <style>
+:root { --header-w: 220px; }
 main { min-height: 60vh; }
+.page-body { margin-right: var(--header-w); }
+
+@media (max-width: 760px) {
+  .page-body { margin-right: 0; }
+}
 </style>
