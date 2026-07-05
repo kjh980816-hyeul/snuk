@@ -5,6 +5,9 @@ import type { Goods } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 import { useCheckout } from '@/composables/useCheckout'
 
+// 사업자 등록 + PortOne 발급 전까지 상점 비노출. 준비되면 true 로만 바꾸면 됨.
+const GOODS_READY = false
+
 const auth = useAuthStore()
 const goods = ref<Goods[]>([])
 const loading = ref(true)
@@ -51,6 +54,10 @@ async function buy() {
 }
 
 onMounted(async () => {
+  if (!GOODS_READY) {
+    loading.value = false
+    return
+  }
   try {
     await reload()
   } finally {
@@ -63,7 +70,11 @@ onMounted(async () => {
   <div class="wrap section">
     <h2 class="section-label">굿즈</h2>
 
-    <div v-if="loading" class="empty-state">불러오는 중…</div>
+    <div v-if="!GOODS_READY" class="empty-state">
+      <p style="font-size: 18px; font-weight: 800; margin: 0 0 6px">굿즈 준비중입니다</p>
+      <p style="margin: 0">SNUK 공식 굿즈를 준비하고 있어요. 조금만 기다려주세요!</p>
+    </div>
+    <div v-else-if="loading" class="empty-state">불러오는 중…</div>
     <div v-else-if="!goods.length" class="empty-state">아직 등록된 굿즈가 없습니다.</div>
     <div v-else class="card-grid">
       <div v-for="g in goods" :key="g.id" class="goods-card">
