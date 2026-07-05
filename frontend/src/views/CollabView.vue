@@ -45,6 +45,9 @@ onMounted(async () => {
             <div class="links">
               <a v-if="g.gameLinkUrl" class="btn orange sm" :href="g.gameLinkUrl" target="_blank" rel="noopener">게임 링크 &#9654;</a>
               <a v-if="g.reviewLinkUrl" class="btn ghost sm" :href="g.reviewLinkUrl" target="_blank" rel="noopener">후기 링크 &#9654;</a>
+              <RouterLink v-if="g.campaignId" :to="`/campaigns/${g.campaignId}/reviews`" class="btn ghost sm">
+                후기 게시판 &#9654;
+              </RouterLink>
             </div>
           </article>
         </div>

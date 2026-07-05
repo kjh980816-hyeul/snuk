@@ -50,7 +50,7 @@ public class CollabService {
         urlValidator.validateNullable(req.gameLinkUrl());
         urlValidator.validateNullable(req.reviewLinkUrl());
         CollabGame saved = gameRepository.save(new CollabGame(req.name(), req.description(),
-                req.thumbnailUrl(), req.gameLinkUrl(), req.reviewLinkUrl(), req.sortOrder()));
+                req.thumbnailUrl(), req.gameLinkUrl(), req.reviewLinkUrl(), req.campaignId(), req.sortOrder()));
         adminLogService.record(actorId, "COLLAB_GAME_CREATE", "collab_game", saved.getId(), req.name());
         return saved;
     }
@@ -63,7 +63,7 @@ public class CollabService {
         CollabGame game = gameRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         game.update(req.name(), req.description(), req.thumbnailUrl(),
-                req.gameLinkUrl(), req.reviewLinkUrl(), req.sortOrder());
+                req.gameLinkUrl(), req.reviewLinkUrl(), req.campaignId(), req.sortOrder());
         adminLogService.record(actorId, "COLLAB_GAME_UPDATE", "collab_game", id, req.name());
         return game;
     }

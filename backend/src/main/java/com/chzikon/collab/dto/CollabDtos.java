@@ -18,17 +18,19 @@ public final class CollabDtos {
             String thumbnailUrl,
             String gameLinkUrl,
             String reviewLinkUrl,
+            Long campaignId,
             int sortOrder
     ) {
     }
 
     public record CollabGameResponse(
             Long id, String name, String description, String thumbnailUrl,
-            String gameLinkUrl, String reviewLinkUrl, int sortOrder
+            String gameLinkUrl, String reviewLinkUrl, Long campaignId, int sortOrder
     ) {
         public static CollabGameResponse from(CollabGame g) {
             return new CollabGameResponse(g.getId(), g.getName(), g.getDescription(),
-                    g.getThumbnailUrl(), g.getGameLinkUrl(), g.getReviewLinkUrl(), g.getSortOrder());
+                    g.getThumbnailUrl(), g.getGameLinkUrl(), g.getReviewLinkUrl(),
+                    g.getCampaignId(), g.getSortOrder());
         }
     }
 

@@ -62,6 +62,15 @@ export const adminApi = {
   deleteGoods: (id: number) => api.delete(`/api/admin/goods/${id}`),
   orders: () => api.get<OrderView[]>('/api/admin/goods/orders').then((r) => r.data),
 
+  // uploads
+  uploadImage: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<{ url: string }>('/api/admin/uploads/image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
+
   // settings / members / logs
   settings: () => api.get<Array<{ settingKey: string; settingValue: string; description: string | null }>>(
     '/api/admin/settings',

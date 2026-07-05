@@ -36,6 +36,7 @@ export interface CollabGame {
   thumbnailUrl: string | null
   gameLinkUrl: string | null
   reviewLinkUrl: string | null
+  campaignId: number | null
   sortOrder: number
 }
 

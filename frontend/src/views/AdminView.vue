@@ -146,7 +146,7 @@ async function loadCollab() {
 }
 // 게임
 function newGame() {
-  gameEditing.value = { name: '', description: '', thumbnailUrl: '', gameLinkUrl: '', reviewLinkUrl: '', sortOrder: games.value.length }
+  gameEditing.value = { name: '', description: '', thumbnailUrl: '', gameLinkUrl: '', reviewLinkUrl: '', campaignId: null, sortOrder: games.value.length }
 }
 function editGame(g: CollabGame) { gameEditing.value = { ...g } }
 async function saveGame() {
@@ -183,6 +183,23 @@ function newLogo() {
   logoEditing.value = { name: '', logoUrl: '', linkUrl: '', sortOrder: clients.value.length }
 }
 function editLogo(l: ClientLogo) { logoEditing.value = { ...l } }
+const logoUploading = ref(false)
+async function onLogoFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !logoEditing.value) return
+  if (file.size > 5 * 1024 * 1024) { alert('이미지는 5MB 이하만 업로드할 수 있어요.'); input.value = ''; return }
+  logoUploading.value = true
+  try {
+    const { url } = await adminApi.uploadImage(file)
+    logoEditing.value.logoUrl = url
+  } catch {
+    alert('업로드 실패 — 이미지 파일(jpg/png/gif/webp)인지 확인해주세요.')
+  } finally {
+    logoUploading.value = false
+    input.value = ''
+  }
+}
 async function saveLogo() {
   const b = logoEditing.value
   if (!b) return
@@ -494,7 +511,13 @@ function onTab(t: Tab) {
         <label>설명<textarea v-model="gameEditing.description"></textarea></label>
         <label>썸네일 URL<input v-model="gameEditing.thumbnailUrl" placeholder="https://" /></label>
         <label>게임 링크 URL<input v-model="gameEditing.gameLinkUrl" placeholder="https://" /></label>
-        <label>후기 링크 URL<input v-model="gameEditing.reviewLinkUrl" placeholder="https://" /></label>
+        <label>후기 링크 URL (외부 블로그 등 — 선택)<input v-model="gameEditing.reviewLinkUrl" placeholder="https://" /></label>
+        <label>후기 게시판 연결 (사이트 내 캠페인 — 선택)
+          <select v-model="gameEditing.campaignId">
+            <option :value="null">연결 안 함</option>
+            <option v-for="c in campaigns" :key="c.id" :value="c.id">{{ c.title }}</option>
+          </select>
+        </label>
         <label>정렬순서<input type="number" v-model.number="gameEditing.sortOrder" /></label>
         <div class="form-acts">
           <button class="btn sm" @click="saveGame">저장</button>
@@ -546,7 +569,13 @@ function onTab(t: Tab) {
       <div v-if="logoEditing" class="form-card">
         <h4>{{ logoEditing.id ? '로고 수정' : '새 로고' }}</h4>
         <label>이름<input v-model="logoEditing.name" /></label>
-        <label>로고 이미지 URL<input v-model="logoEditing.logoUrl" placeholder="https://" /></label>
+        <label>로고 이미지
+          <div class="logo-upload">
+            <img v-if="logoEditing.logoUrl" :src="logoEditing.logoUrl" class="logo-preview" alt="" />
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="onLogoFile" />
+            <span v-if="logoUploading">업로드 중…</span>
+          </div>
+        </label>
         <label>연결 링크 URL<input v-model="logoEditing.linkUrl" placeholder="https://" /></label>
         <label>정렬순서<input type="number" v-model.number="logoEditing.sortOrder" /></label>
         <div class="form-acts">
@@ -698,6 +727,8 @@ function onTab(t: Tab) {
 .mono { font-family: monospace; font-size: 12px; color: var(--text-muted); }
 .badge { margin-left: 6px; font-size: 11px; font-weight: 800; color: var(--accent-orange); border: 1px solid var(--accent-orange); border-radius: 999px; padding: 1px 7px; }
 .hint { margin-top: 12px; font-size: 13px; color: var(--text-muted); }
+.logo-upload { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.logo-preview { width: 48px; height: 48px; object-fit: contain; border: 1px solid #eee; border-radius: 6px; background: #fafafa; }
 .form-card, .manage { margin-top: 24px; border: 1px solid #eee; border-radius: var(--radius); padding: 18px; }
 .form-card label { display: block; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .form-card input, .form-card textarea, .form-card select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-top: 4px; }

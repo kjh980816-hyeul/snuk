@@ -102,11 +102,11 @@ public class LocalDataSeeder implements ApplicationRunner {
         collabGameRepository.save(new CollabGame("네온 서바이벌",
                 "스트리머 초청 배틀로얄 콜라보. 시청자 참여전 진행.",
                 "https://placehold.co/400x300/1a1a1a/f9a825?text=Neon",
-                "https://store.example.com/neon", "https://blog.example.com/neon-review", 0));
+                "https://store.example.com/neon", "https://blog.example.com/neon-review", 1L, 0));
         collabGameRepository.save(new CollabGame("픽셀 던전 러시",
                 "인디 로그라이크 협찬 콜라보. 키 배포 이벤트 동반.",
                 "https://placehold.co/400x300/263238/ffffff?text=Pixel",
-                "https://store.example.com/pixel", null, 1));
+                "https://store.example.com/pixel", null, null, 1));
         log.info("[seed] collab_game 2건 삽입");
     }
 

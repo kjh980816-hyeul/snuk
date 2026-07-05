@@ -33,6 +33,10 @@ public class CollabGame {
     @Column(name = "review_link_url", length = 512)
     private String reviewLinkUrl;
 
+    /** 연결된 캠페인(사이트 내 후기 게시판). NULL 이면 미연결. */
+    @Column(name = "campaign_id")
+    private Long campaignId;
+
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
@@ -43,12 +47,13 @@ public class CollabGame {
     private LocalDateTime updatedAt;
 
     public CollabGame(String name, String description, String thumbnailUrl,
-                      String gameLinkUrl, String reviewLinkUrl, int sortOrder) {
+                      String gameLinkUrl, String reviewLinkUrl, Long campaignId, int sortOrder) {
         this.name = name;
         this.description = description;
         this.thumbnailUrl = thumbnailUrl;
         this.gameLinkUrl = gameLinkUrl;
         this.reviewLinkUrl = reviewLinkUrl;
+        this.campaignId = campaignId;
         this.sortOrder = sortOrder;
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
@@ -56,12 +61,13 @@ public class CollabGame {
     }
 
     public void update(String name, String description, String thumbnailUrl,
-                       String gameLinkUrl, String reviewLinkUrl, Integer sortOrder) {
+                       String gameLinkUrl, String reviewLinkUrl, Long campaignId, Integer sortOrder) {
         if (name != null) this.name = name;
         this.description = description;
         this.thumbnailUrl = thumbnailUrl;
         this.gameLinkUrl = gameLinkUrl;
         this.reviewLinkUrl = reviewLinkUrl;
+        this.campaignId = campaignId;
         if (sortOrder != null) this.sortOrder = sortOrder;
         this.updatedAt = LocalDateTime.now();
     }

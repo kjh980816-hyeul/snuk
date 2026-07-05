@@ -25,6 +25,10 @@ public class ExternalUrlValidator {
 
     public void validate(String url) {
         String lower = url.trim().toLowerCase(Locale.ROOT);
+        // 내부 업로드 파일 경로(/uploads/…)는 우리 서버 정적 파일 — 외부 요청이 없어 SSRF 무관
+        if (lower.startsWith("/uploads/") && !lower.contains("..")) {
+            return;
+        }
         if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "허용되지 않는 URL 스킴입니다.");
         }

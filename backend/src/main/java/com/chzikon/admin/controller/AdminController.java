@@ -33,6 +33,7 @@ public class AdminController {
     private final AppSettingService appSettingService;
     private final AdminLogService adminLogService;
     private final MemberService memberService;
+    private final com.chzikon.global.upload.FileStorageService fileStorage;
 
     // ----- 설정값 -----
     @GetMapping("/settings")
@@ -52,6 +53,13 @@ public class AdminController {
         adminLogService.record(principal.memberId(), "SETTING_UPDATE", "app_setting", null,
                 key + "=" + value);
         return ResponseEntity.ok(saved);
+    }
+
+    // ----- 이미지 업로드 (로고/썸네일 등) -----
+    @PostMapping("/uploads/image")
+    public ResponseEntity<Map<String, String>> uploadImage(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(Map.of("url", fileStorage.storeImage(file)));
     }
 
     // ----- 회원 관리 -----
