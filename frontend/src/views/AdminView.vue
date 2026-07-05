@@ -7,6 +7,16 @@ import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, OrderView, 
 type Tab = 'campaigns' | 'tournaments' | 'collab' | 'goods' | 'members' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
 
+// 화면 표기용 한글 라벨 (저장값은 영문 enum 그대로)
+const ko: Record<string, string> = {
+  SCHEDULED: '예정', OPEN: '모집중', CLOSED: '마감', DONE: '종료',
+  FCFS: '선착순', APPROVAL: '승인제',
+  QUANTITY: '수량만(키 없음)', UNIQUE_KEY: '고유 키 배포',
+  AVAILABLE: '미배정', ASSIGNED: '배정됨', REVOKED: '무효',
+  PENDING: '대기', APPROVED: '승인', REJECTED: '거절',
+}
+const lbl = (v: string | undefined | null) => (v ? (ko[v] ?? v) : '-')
+
 // ----- campaigns -----
 const campaigns = ref<Campaign[]>([])
 const editing = ref<Partial<Campaign> | null>(null)
@@ -297,8 +307,8 @@ function onTab(t: Tab) {
         <thead><tr><th>제목</th><th>상태</th><th>배포</th><th>키모드</th><th>슬롯</th><th>대표</th><th></th></tr></thead>
         <tbody>
           <tr v-for="c in campaigns" :key="c.id" :class="{ sel: selected?.id === c.id }">
-            <td>{{ c.title }}</td><td>{{ c.status }}</td><td>{{ c.distributionType }}</td>
-            <td>{{ c.keyMode }}</td><td>{{ c.filledSlots }}/{{ c.totalSlots }}</td>
+            <td>{{ c.title }}</td><td>{{ lbl(c.status) }}</td><td>{{ lbl(c.distributionType) }}</td>
+            <td>{{ lbl(c.keyMode) }}</td><td>{{ c.filledSlots }}/{{ c.totalSlots }}</td>
             <td>{{ c.featured ? '★' : '' }}</td>
             <td class="acts">
               <button @click="selectCampaign(c)">관리</button>
@@ -320,14 +330,20 @@ function onTab(t: Tab) {
         <div class="row3">
           <label>상태
             <select v-model="editing.status">
-              <option>SCHEDULED</option><option>OPEN</option><option>CLOSED</option>
+              <option value="SCHEDULED">예정</option><option value="OPEN">모집중</option><option value="CLOSED">마감</option>
             </select>
           </label>
           <label>배포방식
-            <select v-model="editing.distributionType"><option>FCFS</option><option>APPROVAL</option></select>
+            <select v-model="editing.distributionType">
+              <option value="FCFS">선착순 (신청 즉시 확정)</option>
+              <option value="APPROVAL">승인제 (관리자 승인 후 확정)</option>
+            </select>
           </label>
           <label>키모드
-            <select v-model="editing.keyMode"><option>QUANTITY</option><option>UNIQUE_KEY</option></select>
+            <select v-model="editing.keyMode">
+              <option value="QUANTITY">수량만 (키 배포 없음)</option>
+              <option value="UNIQUE_KEY">고유 키 배포 (키 등록 필요)</option>
+            </select>
           </label>
         </div>
         <div class="row3">
@@ -353,7 +369,7 @@ function onTab(t: Tab) {
             <thead><tr><th>키(마스킹)</th><th>상태</th><th>배정대상</th><th></th></tr></thead>
             <tbody>
               <tr v-for="k in keys" :key="k.id">
-                <td>{{ k.maskedKey }}</td><td>{{ k.status }}</td><td>{{ k.assignedMemberId ?? '-' }}</td>
+                <td>{{ k.maskedKey }}</td><td>{{ lbl(k.status) }}</td><td>{{ k.assignedMemberId ?? '-' }}</td>
                 <td class="acts">
                   <button v-if="k.status === 'AVAILABLE'" class="danger" @click="delKey(k.id)">삭제</button>
                   <button v-if="k.status === 'ASSIGNED'" @click="revokeKey(k.id)">무효화</button>
@@ -363,6 +379,10 @@ function onTab(t: Tab) {
             </tbody>
           </table>
         </div>
+        <p v-else class="hint">
+          이 캠페인은 "수량만" 모드라 게임 키 등록이 없습니다. 키를 배포하려면 캠페인 수정에서
+          키모드를 "고유 키 배포"로 바꾸면 여기에 키 등록 칸이 생깁니다.
+        </p>
 
         <div class="apps">
           <h5>신청자</h5>
@@ -370,7 +390,7 @@ function onTab(t: Tab) {
             <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
             <tbody>
               <tr v-for="a in applications" :key="a.applicationId">
-                <td>#{{ a.memberId }}</td><td>{{ a.followerSnapshot }}</td><td>{{ a.status }}</td>
+                <td>#{{ a.memberId }}</td><td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
                 <td class="acts">
                   <template v-if="a.status === 'PENDING'">
                     <button @click="approveApp(a.applicationId)">승인</button>
@@ -393,7 +413,7 @@ function onTab(t: Tab) {
         <tbody>
           <tr v-for="t in tournaments" :key="t.id" :class="{ sel: tourSelected?.id === t.id }">
             <td>{{ t.title }}</td><td>{{ t.gameName }}</td><td>{{ t.eventDate ?? '-' }}</td>
-            <td>{{ t.status }}</td><td>{{ t.filledSlots }}/{{ t.capacity }}</td>
+            <td>{{ lbl(t.status) }}</td><td>{{ t.filledSlots }}/{{ t.capacity }}</td>
             <td>{{ t.featured ? '★' : '' }}</td>
             <td class="acts">
               <button @click="selectTournament(t)">참가자</button>
@@ -415,7 +435,8 @@ function onTab(t: Tab) {
         <div class="row3">
           <label>상태
             <select v-model="tourEditing.status">
-              <option>SCHEDULED</option><option>OPEN</option><option>CLOSED</option><option>DONE</option>
+              <option value="SCHEDULED">예정</option><option value="OPEN">모집중</option>
+              <option value="CLOSED">마감</option><option value="DONE">종료(결과 노출)</option>
             </select>
           </label>
           <label>참가 정원<input type="number" v-model.number="tourEditing.capacity" /></label>
@@ -438,7 +459,7 @@ function onTab(t: Tab) {
           <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
           <tbody>
             <tr v-for="p in participants" :key="p.participantId">
-              <td>#{{ p.memberId }}</td><td>{{ p.followerSnapshot }}</td><td>{{ p.status }}</td>
+              <td>#{{ p.memberId }}</td><td>{{ p.followerSnapshot }}</td><td>{{ lbl(p.status) }}</td>
               <td class="acts">
                 <template v-if="p.status === 'PENDING'">
                   <button @click="approveParticipant(p.participantId)">승인</button>
