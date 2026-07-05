@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
@@ -9,10 +10,42 @@ async function onLogout() {
   await auth.logout()
   router.push('/')
 }
+
+// 상단 배너가 보이는 동안엔 사이드바를 그만큼 줄여서
+// 하단 계정 영역(치지직 로그인)이 스크롤 최상단에서도 화면 안에 들어오게 함.
+const headerEl = ref<HTMLElement | null>(null)
+let raf = 0
+let bodyObserver: ResizeObserver | null = null
+
+function syncHeight() {
+  raf = 0
+  const el = headerEl.value
+  if (!el) return
+  const top = Math.max(0, el.getBoundingClientRect().top)
+  el.style.setProperty('--side-h', `calc(100vh - ${top}px)`)
+}
+function requestSync() {
+  if (!raf) raf = requestAnimationFrame(syncHeight)
+}
+
+onMounted(() => {
+  syncHeight()
+  window.addEventListener('scroll', requestSync, { passive: true })
+  window.addEventListener('resize', requestSync)
+  // 배너(TopStrip)는 API 응답 후 늦게 뜨므로 레이아웃 변화도 감지
+  bodyObserver = new ResizeObserver(requestSync)
+  bodyObserver.observe(document.body)
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', requestSync)
+  window.removeEventListener('resize', requestSync)
+  bodyObserver?.disconnect()
+  if (raf) cancelAnimationFrame(raf)
+})
 </script>
 
 <template>
-  <header class="site-header">
+  <header ref="headerEl" class="site-header">
     <div class="inner">
       <RouterLink to="/" class="logo">SNUK</RouterLink>
       <nav class="nav">
@@ -43,7 +76,8 @@ async function onLogout() {
   top: 0;
   z-index: 50;
   width: var(--header-w, 220px);
-  height: 100vh;
+  /* 배너가 보이면 그 높이만큼 줄어듦(--side-h는 스크립트가 갱신) */
+  height: var(--side-h, 100vh);
   flex-shrink: 0;
   background: #fff;
   border-left: 1px solid #eee;
