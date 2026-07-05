@@ -19,6 +19,7 @@ import java.util.List;
 public class GoodsService {
 
     private final GoodsRepository goodsRepository;
+    private final com.chzikon.goods.repository.GoodsOrderRepository orderRepository;
     private final ExternalUrlValidator urlValidator;
     private final AdminLogService adminLogService;
 
@@ -66,6 +67,10 @@ public class GoodsService {
     @Transactional
     public void delete(Long id, Long actorId) {
         Goods goods = getById(id);
+        // 주문 이력이 있으면 삭제 대신 숨김 처리 유도 (FK 위반 500 방지 + 주문 기록 보존)
+        if (orderRepository.existsByGoodsId(id)) {
+            throw new BusinessException(ErrorCode.GOODS_HAS_ORDERS);
+        }
         goodsRepository.delete(goods);
         adminLogService.record(actorId, "GOODS_DELETE", "goods", id, "name=" + goods.getName());
     }

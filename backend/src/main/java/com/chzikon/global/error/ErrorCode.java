@@ -38,6 +38,7 @@ public enum ErrorCode {
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.CONFLICT, "G004", "결제 금액이 주문 금액과 일치하지 않습니다."),
     PAYMENT_NOT_PAID(HttpStatus.CONFLICT, "G005", "아직 결제가 완료되지 않았습니다."),
     PAYMENT_VERIFY_FAILED(HttpStatus.BAD_GATEWAY, "G006", "결제 검증에 실패했습니다."),
+    GOODS_HAS_ORDERS(HttpStatus.CONFLICT, "G007", "주문 이력이 있는 상품은 삭제할 수 없습니다. 대신 숨김 처리하세요."),
 
     // 대회 (TOUR)
     TOURNAMENT_NOT_OPEN(HttpStatus.CONFLICT, "T001", "참가 신청 가능한 상태가 아닙니다."),

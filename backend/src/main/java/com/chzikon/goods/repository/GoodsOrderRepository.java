@@ -13,4 +13,6 @@ public interface GoodsOrderRepository extends JpaRepository<GoodsOrder, Long> {
     List<GoodsOrder> findByMemberIdOrderByCreatedAtDesc(Long memberId);
 
     List<GoodsOrder> findAllByOrderByCreatedAtDesc();
+
+    boolean existsByGoodsId(Long goodsId);
 }
