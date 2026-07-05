@@ -70,7 +70,16 @@ public class AuthController {
         return ResponseEntity.ok(MeResponse.from(memberService.getById(principal.memberId())));
     }
 
-    /** 프사 변경. imageUrl 이 비어있으면 치지직 프사로 복원. */
+    /** 프사 파일 업로드(이미지만, 5MB 이하). */
+    @PostMapping("/api/auth/me/profile-image")
+    public ResponseEntity<MeResponse> uploadProfileImage(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(MeResponse.from(
+                memberService.changeProfileImageUpload(principal.memberId(), file)));
+    }
+
+    /** 프사 변경(URL). imageUrl 이 비어있으면 치지직 프사로 복원. */
     @PatchMapping("/api/auth/me/profile-image")
     public ResponseEntity<MeResponse> changeProfileImage(@RequestBody Map<String, String> body,
                                                          @AuthenticationPrincipal MemberPrincipal principal) {

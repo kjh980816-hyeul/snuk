@@ -3,12 +3,14 @@ import type { Campaign } from '@/api/types'
 
 defineProps<{ campaign: Campaign }>()
 const emit = defineEmits<{ apply: [c: Campaign] }>()
+
+const statusKo: Record<string, string> = { SCHEDULED: '예정', OPEN: '모집중', CLOSED: '마감' }
 </script>
 
 <template>
   <article class="card">
     <div class="card-img">
-      <span class="badge" :class="campaign.status">{{ campaign.status }}</span>
+      <span class="badge" :class="campaign.status">{{ statusKo[campaign.status] ?? campaign.status }}</span>
       <img v-if="campaign.promoImageUrl" :src="campaign.promoImageUrl" :alt="campaign.title" />
       <div v-else class="placeholder">홍보사진</div>
     </div>
@@ -16,9 +18,12 @@ const emit = defineEmits<{ apply: [c: Campaign] }>()
       <h5>{{ campaign.title }}</h5>
       <p class="desc">{{ campaign.description }}</p>
       <p class="date" v-if="campaign.eventDate">{{ campaign.eventDate }}</p>
-      <button class="btn sm" :disabled="campaign.status !== 'OPEN'" @click="emit('apply', campaign)">
-        신청하기 &gt;
-      </button>
+      <div class="card-acts">
+        <button class="btn sm" :disabled="campaign.status !== 'OPEN'" @click="emit('apply', campaign)">
+          신청하기 &gt;
+        </button>
+        <RouterLink :to="`/campaigns/${campaign.id}/reviews`" class="btn ghost sm">후기</RouterLink>
+      </div>
     </div>
   </article>
 </template>
@@ -35,4 +40,5 @@ const emit = defineEmits<{ apply: [c: Campaign] }>()
   display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card-body .date { font-size: 12px; color: var(--text-muted); margin: 0 0 10px; }
 .btn.sm { padding: 8px 14px; font-size: 13px; }
+.card-acts { display: flex; gap: 8px; align-items: center; }
 </style>

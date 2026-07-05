@@ -7,6 +7,10 @@ spring:
     time-zone: Asia/Seoul
     serialization:
       write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 server:
   port: 8080
@@ -37,6 +41,9 @@ app:
     channel-key: ${PORTONE_CHANNEL_KEY:channel-dummy}
     api-secret: ${PORTONE_API_SECRET:dummy-portone-api-secret}
     api-base-uri: ${PORTONE_API_BASE_URI:https://api.portone.io}
+  upload:
+    # 프사 등 업로드 파일 저장 위치. 운영은 UPLOAD_DIR env 로 지정(웹서버 서빙 경로와 일치).
+    dir: ${UPLOAD_DIR:uploads}
   frontend:
     # 로그인 콜백 후 리다이렉트할 프론트 주소
     redirect-base: ${FRONTEND_REDIRECT_BASE:http://localhost:5173}

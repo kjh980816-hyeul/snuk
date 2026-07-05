@@ -20,6 +20,7 @@ public class MemberService {
     private final RoleCalculator roleCalculator;
     private final com.chzikon.auth.client.ChzzkOAuthClient chzzkClient;
     private final com.chzikon.global.util.ExternalUrlValidator urlValidator;
+    private final com.chzikon.global.upload.FileStorageService fileStorage;
 
     @Value("${app.admin.channel-id:}")
     private String adminChannelId;
@@ -65,11 +66,23 @@ public class MemberService {
         return member;
     }
 
-    /** 치지직 프사로 복원 + 동기화 재개. */
+    /** 프사 파일 업로드 적용. 이전 업로드 파일은 정리. */
+    @Transactional
+    public Member changeProfileImageUpload(Long memberId, org.springframework.web.multipart.MultipartFile file) {
+        Member member = getById(memberId);
+        String old = member.getProfileImageUrl();
+        member.changeProfileImage(fileStorage.storeImage(file));
+        fileStorage.deleteIfLocal(old);
+        return member;
+    }
+
+    /** 치지직 프사로 복원 + 동기화 재개. 이전 업로드 파일은 정리. */
     @Transactional
     public Member resetProfileImage(Long memberId) {
         Member member = getById(memberId);
+        String old = member.getProfileImageUrl();
         member.resetProfileImage(chzzkClient.fetchChannelImageUrl(member.getChzzkChannelId()));
+        fileStorage.deleteIfLocal(old);
         return member;
     }
 

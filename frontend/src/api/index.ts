@@ -7,7 +7,15 @@ import type {
 // ----- auth -----
 export const authApi = {
   me: () => api.get<Me>('/api/auth/me').then((r) => r.data),
-  // 프사 변경(URL). null/빈값이면 치지직 프사로 복원
+  // 프사 파일 업로드
+  uploadProfileImage: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<Me>('/api/auth/me/profile-image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
+  // null/빈값이면 치지직 프사로 복원
   updateProfileImage: (imageUrl: string | null) =>
     api.patch<Me>('/api/auth/me/profile-image', { imageUrl }).then((r) => r.data),
   refresh: (refreshToken: string) =>

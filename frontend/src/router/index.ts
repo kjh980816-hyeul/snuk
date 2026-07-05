@@ -6,6 +6,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
     { path: '/campaigns', name: 'campaigns', component: () => import('@/views/CampaignsView.vue') },
+    { path: '/campaigns/:id/reviews', name: 'campaign-reviews', component: () => import('@/views/ReviewBoardView.vue') },
     { path: '/videos', name: 'videos', component: () => import('@/views/VideosView.vue') },
     { path: '/collab', name: 'collab', component: () => import('@/views/CollabView.vue') },
     { path: '/tournaments', name: 'tournaments', component: () => import('@/views/TournamentsView.vue') },

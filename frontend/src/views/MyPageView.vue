@@ -8,21 +8,27 @@ const auth = useAuthStore()
 const summary = ref<MypageSummary | null>(null)
 const loading = ref(true)
 
-// ----- 프사 변경 -----
-const imgUrl = ref('')
+// ----- 프사 변경 (파일 업로드) -----
+const fileEl = ref<HTMLInputElement | null>(null)
 const picSaving = ref(false)
-async function savePic() {
-  const url = imgUrl.value.trim()
-  if (!url || picSaving.value) return
+async function onPicFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || picSaving.value) return
+  if (file.size > 5 * 1024 * 1024) {
+    alert('이미지는 5MB 이하만 업로드할 수 있어요.')
+    input.value = ''
+    return
+  }
   picSaving.value = true
   try {
-    await authApi.updateProfileImage(url)
+    await authApi.uploadProfileImage(file)
     await auth.fetchMe()
-    imgUrl.value = ''
   } catch {
-    alert('이미지 URL 을 확인해주세요. (https:// 로 시작하는 이미지 주소)')
+    alert('업로드에 실패했어요. 이미지 파일(jpg/png/gif/webp)인지 확인해주세요.')
   } finally {
     picSaving.value = false
+    input.value = ''
   }
 }
 async function resetPic() {
@@ -75,8 +81,10 @@ onMounted(async () => {
         <p class="row">등급 · <strong>{{ roleLabel[auth.me.role] ?? auth.me.role }}</strong></p>
         <p class="row" v-if="auth.me.followerCount !== null">팔로워 · {{ auth.me.followerCount?.toLocaleString() }}</p>
         <div class="pic-edit">
-          <input v-model="imgUrl" placeholder="새 프사 이미지 URL (https://…)" @keyup.enter="savePic" />
-          <button class="btn sm" :disabled="picSaving" @click="savePic">프사 변경</button>
+          <input ref="fileEl" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden-file" @change="onPicFile" />
+          <button class="btn sm" :disabled="picSaving" @click="fileEl?.click()">
+            {{ picSaving ? '업로드 중…' : '프사 변경' }}
+          </button>
           <button v-if="auth.me.profileImageOverridden" class="btn ghost sm" :disabled="picSaving" @click="resetPic">
             치지직 프사로
           </button>
@@ -170,6 +178,6 @@ onMounted(async () => {
 .pill.PENDING { background: #fff3e0; color: #e65100; }
 .pill.REJECTED, .pill.CANCELLED, .pill.FAILED { background: #fdecea; color: #c62828; }
 .pic-edit { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.pic-edit input { flex: 1; min-width: 220px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+.hidden-file { display: none; }
 .btn.sm { padding: 8px 14px; font-size: 13px; }
 </style>
