@@ -9,10 +9,12 @@ import com.chzikon.global.error.ErrorCode;
 import com.chzikon.global.security.MemberPrincipal;
 import com.chzikon.member.domain.Member;
 import com.chzikon.member.domain.Role;
+import com.chzikon.member.dto.MemberSummary;
 import com.chzikon.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -50,6 +52,15 @@ public class AdminController {
         adminLogService.record(principal.memberId(), "SETTING_UPDATE", "app_setting", null,
                 key + "=" + value);
         return ResponseEntity.ok(saved);
+    }
+
+    // ----- 회원 관리 -----
+    @GetMapping("/members")
+    public ResponseEntity<Page<MemberSummary>> members(@RequestParam(defaultValue = "0") int page,
+                                                       @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(memberService
+                .list(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")))
+                .map(MemberSummary::from));
     }
 
     // ----- 권한 수동 오버라이드 (AUTH-05) -----

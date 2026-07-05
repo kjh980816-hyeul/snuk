@@ -59,10 +59,10 @@ onUnmounted(() => {
       </nav>
       <div class="account">
         <template v-if="auth.isLoggedIn">
-          <RouterLink to="/mypage" class="nav-link">마이페이지</RouterLink>
-          <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link admin">관리자</RouterLink>
           <span class="me">{{ auth.me?.nickname }}</span>
           <button class="btn ghost sm" @click="onLogout">로그아웃</button>
+          <RouterLink to="/mypage" class="nav-link">마이페이지</RouterLink>
+          <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link admin">관리자</RouterLink>
         </template>
         <button v-else class="btn orange sm" @click="auth.login()">치지직 로그인</button>
       </div>

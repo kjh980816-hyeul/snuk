@@ -44,6 +44,11 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Member> list(org.springframework.data.domain.Pageable pageable) {
+        return memberRepository.findAll(pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Member getById(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));

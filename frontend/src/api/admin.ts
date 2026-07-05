@@ -68,6 +68,10 @@ export const adminApi = {
   ).then((r) => r.data),
   updateSetting: (key: string, value: string) =>
     api.put(`/api/admin/settings/${key}`, { value }),
+  members: (page = 0, size = 50) =>
+    api.get<{ content: Array<{ id: number; chzzkChannelId: string; nickname: string; profileImageUrl: string | null; followerCount: number | null; role: string; roleOverridden: boolean; createdAt: string }> }>(
+      '/api/admin/members', { params: { page, size } },
+    ).then((r) => r.data),
   overrideRole: (memberId: number, role: string) =>
     api.post(`/api/admin/members/${memberId}/role-override`, { role }),
   clearOverride: (memberId: number) => api.delete(`/api/admin/members/${memberId}/role-override`),

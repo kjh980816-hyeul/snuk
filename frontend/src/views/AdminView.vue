@@ -4,7 +4,7 @@ import { adminApi } from '@/api/admin'
 import { campaignApi, collabApi, tournamentApi } from '@/api'
 import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, OrderView, Tournament } from '@/api/types'
 
-type Tab = 'campaigns' | 'tournaments' | 'collab' | 'goods' | 'settings' | 'logs'
+type Tab = 'campaigns' | 'tournaments' | 'collab' | 'goods' | 'members' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
 
 // ----- campaigns -----
@@ -216,6 +216,31 @@ function won(v: number) {
   return v.toLocaleString('ko-KR') + '원'
 }
 
+// ----- members -----
+interface MemberRow {
+  id: number
+  chzzkChannelId: string
+  nickname: string
+  profileImageUrl: string | null
+  followerCount: number | null
+  role: string
+  roleOverridden: boolean
+  createdAt: string
+}
+const members = ref<MemberRow[]>([])
+async function loadMembers() {
+  members.value = (await adminApi.members()).content
+}
+async function changeMemberRole(m: MemberRow, role: string) {
+  if (role === m.role) return
+  await adminApi.overrideRole(m.id, role)
+  await loadMembers()
+}
+async function resetMemberRole(m: MemberRow) {
+  await adminApi.clearOverride(m.id)
+  await loadMembers()
+}
+
 // ----- settings -----
 const settings = ref<Array<{ settingKey: string; settingValue: string; description: string | null }>>([])
 async function loadSettings() {
@@ -246,6 +271,7 @@ function onTab(t: Tab) {
   if (t === 'tournaments') loadTournaments()
   if (t === 'collab') loadCollab()
   if (t === 'goods') loadGoods()
+  if (t === 'members') loadMembers()
   if (t === 'settings') loadSettings()
   if (t === 'logs') loadLogs()
 }
@@ -259,6 +285,7 @@ function onTab(t: Tab) {
       <button :class="{ on: tab === 'tournaments' }" @click="onTab('tournaments')">대회</button>
       <button :class="{ on: tab === 'collab' }" @click="onTab('collab')">콜라보/노출</button>
       <button :class="{ on: tab === 'goods' }" @click="onTab('goods')">굿즈/주문</button>
+      <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
       <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정/권한</button>
       <button :class="{ on: tab === 'logs' }" @click="onTab('logs')">감사로그</button>
     </nav>
@@ -564,6 +591,36 @@ function onTab(t: Tab) {
     </section>
 
     <!-- 설정/권한 -->
+    <!-- 회원 -->
+    <section v-else-if="tab === 'members'">
+      <table class="grid">
+        <thead><tr><th>ID</th><th>닉네임</th><th>채널ID</th><th>팔로워</th><th>등급</th><th>가입일</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="m in members" :key="m.id">
+            <td>{{ m.id }}</td>
+            <td>
+              <img v-if="m.profileImageUrl" :src="m.profileImageUrl" class="avatar" alt="" />
+              {{ m.nickname }}
+            </td>
+            <td class="mono">{{ m.chzzkChannelId.slice(0, 12) }}…</td>
+            <td>{{ m.followerCount ?? '-' }}</td>
+            <td>
+              <select :value="m.role" @change="changeMemberRole(m, ($event.target as HTMLSelectElement).value)">
+                <option>VIEWER</option><option>STREAMER</option><option>ADMIN</option>
+              </select>
+              <span v-if="m.roleOverridden" class="badge">수동</span>
+            </td>
+            <td>{{ m.createdAt?.slice(0, 10) }}</td>
+            <td class="acts">
+              <button v-if="m.roleOverridden" @click="resetMemberRole(m)">자동 복귀</button>
+            </td>
+          </tr>
+          <tr v-if="!members.length"><td colspan="7" class="empty">회원이 없습니다.</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">등급을 바꾸면 수동 고정(자동 재산정 제외)됩니다. "자동 복귀"를 누르면 다음 로그인부터 팔로워 기준으로 다시 계산돼요.</p>
+    </section>
+
     <section v-else-if="tab === 'settings'">
       <h4>설정값</h4>
       <table class="grid">
@@ -616,6 +673,10 @@ function onTab(t: Tab) {
 .acts button { margin-right: 6px; border: 1px solid #ddd; background: #fff; border-radius: 6px; padding: 4px 8px; }
 .acts button.danger, .danger { color: var(--label-red); border-color: #f3c2c2; }
 .xs { font-size: 12px; padding: 2px 8px; margin-left: 6px; }
+.avatar { width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 6px; object-fit: cover; }
+.mono { font-family: monospace; font-size: 12px; color: var(--text-muted); }
+.badge { margin-left: 6px; font-size: 11px; font-weight: 800; color: var(--accent-orange); border: 1px solid var(--accent-orange); border-radius: 999px; padding: 1px 7px; }
+.hint { margin-top: 12px; font-size: 13px; color: var(--text-muted); }
 .form-card, .manage { margin-top: 24px; border: 1px solid #eee; border-radius: var(--radius); padding: 18px; }
 .form-card label { display: block; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .form-card input, .form-card textarea, .form-card select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-top: 4px; }
