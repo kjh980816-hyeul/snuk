@@ -13,13 +13,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 치지직 OAuth 토큰 교환 + 프로필/팔로워 조회.
- *
- * ⚠️ 엔드포인트/필드명은 chzzk-integration.md 기준 best-guess.
- *    구현 직전 공식 문서(developers.chzzk.naver.com / chzzk.gitbook.io)로 반드시 재확인.
- * - Authorization: "Bearer <token>" (Bearer 와 토큰 사이 공백 필수)
- * - 팔로워 응답은 인메모리 캐시(followerCacheSeconds)로 429 quota 방어.
- * - 조회 실패/채널 없음 → followerCount=null 로 반환(로그인은 성공 처리).
+ * 치지직 OAuth 토큰 교환 + 프로필/채널 조회. (공식문서 chzzk.gitbook.io 대조 완료 2026-07-05)
+ * - users/me(Bearer): channelId·channelName 만 반환 — 프로필 이미지는 없음.
+ * - channels(Client-Id/Client-Secret 헤더): followerCount + channelImageUrl → 등급 산정·프사 자동 수집.
+ * - 채널 응답은 인메모리 캐시(followerCacheSeconds)로 429 quota 방어.
+ * - 조회 실패/채널 없음 → null 필드로 반환(로그인은 성공 처리, VIEWER 폴백).
  */
 @Slf4j
 @Component
@@ -29,8 +27,8 @@ public class ChzzkOAuthClient {
     private final RestClient tokenClient;
     private final RestClient apiClient;
 
-    // channelId -> (followerCount, expiryMillis)
-    private final Map<String, FollowerCacheEntry> followerCache = new ConcurrentHashMap<>();
+    // channelId -> (팔로워/채널이미지, expiryMillis)
+    private final Map<String, ChannelCacheEntry> channelCache = new ConcurrentHashMap<>();
 
     public ChzzkOAuthClient(ChzzkProperties props, RestClient.Builder builder) {
         this.props = props;
@@ -96,39 +94,42 @@ public class ChzzkOAuthClient {
         JsonNode content = (me != null && me.has("content")) ? me.get("content") : me;
         String channelId = textAtAny(content, "channelId", "userIdHash", "id");
         String nickname = firstNonBlank(textAtAny(content, "nickname", "channelName"), "스트리머");
-        String profileImage = textAtAny(content, "profileImageUrl", "channelImageUrl");
 
-        Integer followerCount = (channelId != null) ? fetchFollowerCount(accessToken, channelId) : null;
-        return new ChzzkProfile(channelId, nickname, profileImage, followerCount);
+        // 프사·팔로워는 채널 API에서 (users/me 엔 이미지 필드 없음)
+        ChannelInfo channel = (channelId != null) ? fetchChannelInfo(channelId) : ChannelInfo.EMPTY;
+        return new ChzzkProfile(channelId, nickname, channel.imageUrl(), channel.followerCount());
     }
 
-    /** 팔로워 수 조회 (캐시). 실패/없음 → null (호출측 VIEWER 폴백). */
-    private Integer fetchFollowerCount(String accessToken, String channelId) {
-        FollowerCacheEntry cached = followerCache.get(channelId);
+    /** 채널 정보(팔로워 수 + 채널 이미지) 조회 — Client 자격 인증, 캐시. 실패 → null 필드(VIEWER 폴백). */
+    private ChannelInfo fetchChannelInfo(String channelId) {
+        ChannelCacheEntry cached = channelCache.get(channelId);
         long now = System.currentTimeMillis();
         if (cached != null && cached.expiryMillis >= now) {
-            return cached.followerCount;
+            return cached.info;
         }
-        Integer value = null;
+        ChannelInfo info = ChannelInfo.EMPTY;
         try {
             JsonNode res = apiClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/open/v1/channels")
                             .queryParam("channelIds", channelId).build())
-                    .header("Authorization", "Bearer " + accessToken)
+                    .header("Client-Id", props.clientId())
+                    .header("Client-Secret", props.clientSecret())
                     .retrieve()
                     .body(JsonNode.class);
             JsonNode data = (res != null && res.has("content")) ? res.get("content") : res;
             JsonNode arr = (data != null && data.has("data")) ? data.get("data") : data;
             JsonNode first = (arr != null && arr.isArray() && !arr.isEmpty()) ? arr.get(0) : data;
-            if (first != null && first.has("followerCount") && !first.get("followerCount").isNull()) {
-                value = first.get("followerCount").asInt();
+            if (first != null) {
+                Integer followers = (first.has("followerCount") && !first.get("followerCount").isNull())
+                        ? first.get("followerCount").asInt() : null;
+                info = new ChannelInfo(followers, textAtAny(first, "channelImageUrl", "profileImageUrl"));
             }
         } catch (Exception e) {
-            log.warn("chzzk follower count failed (fallback VIEWER): {}", e.getMessage());
+            log.warn("chzzk channel info failed (fallback VIEWER): {}", e.getMessage());
         }
-        followerCache.put(channelId,
-                new FollowerCacheEntry(value, now + props.followerCacheSeconds() * 1000));
-        return value;
+        channelCache.put(channelId,
+                new ChannelCacheEntry(info, now + props.followerCacheSeconds() * 1000));
+        return info;
     }
 
     private static String textAtAny(JsonNode node, String... fields) {
@@ -152,6 +153,10 @@ public class ChzzkOAuthClient {
         return java.net.URLEncoder.encode(v, java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    private record FollowerCacheEntry(Integer followerCount, long expiryMillis) {
+    private record ChannelInfo(Integer followerCount, String imageUrl) {
+        static final ChannelInfo EMPTY = new ChannelInfo(null, null);
+    }
+
+    private record ChannelCacheEntry(ChannelInfo info, long expiryMillis) {
     }
 }
