@@ -183,20 +183,21 @@ function newLogo() {
   logoEditing.value = { name: '', logoUrl: '', linkUrl: '', sortOrder: clients.value.length }
 }
 function editLogo(l: ClientLogo) { logoEditing.value = { ...l } }
-const logoUploading = ref(false)
-async function onLogoFile(e: Event) {
+// 공용 이미지 파일 업로드 → 대상 객체의 필드에 /uploads/ 경로 주입 (모든 이미지 입력 공용)
+const imgUploading = ref(false)
+async function pickImage(e: Event, obj: object | null, field: string) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file || !logoEditing.value) return
+  if (!file || !obj) return
   if (file.size > 5 * 1024 * 1024) { alert('이미지는 5MB 이하만 업로드할 수 있어요.'); input.value = ''; return }
-  logoUploading.value = true
+  imgUploading.value = true
   try {
     const { url } = await adminApi.uploadImage(file)
-    logoEditing.value.logoUrl = url
+    ;(obj as Record<string, unknown>)[field] = url
   } catch {
     alert('업로드 실패 — 이미지 파일(jpg/png/gif/webp)인지 확인해주세요.')
   } finally {
-    logoUploading.value = false
+    imgUploading.value = false
     input.value = ''
   }
 }
@@ -343,7 +344,13 @@ function onTab(t: Tab) {
         <label>제목<input v-model="editing.title" /></label>
         <label>설명<textarea v-model="editing.description"></textarea></label>
         <label>게임명<input v-model="editing.gameName" /></label>
-        <label>홍보 이미지 URL<input v-model="editing.promoImageUrl" placeholder="https://" /></label>
+        <label>홍보 이미지
+          <div class="logo-upload">
+            <img v-if="editing.promoImageUrl" :src="editing.promoImageUrl" class="logo-preview" alt="" />
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, editing, 'promoImageUrl')" />
+            <span v-if="imgUploading">업로드 중…</span>
+          </div>
+        </label>
         <div class="row3">
           <label>상태
             <select v-model="editing.status">
@@ -448,7 +455,13 @@ function onTab(t: Tab) {
         <label>대회명<input v-model="tourEditing.title" /></label>
         <label>설명<textarea v-model="tourEditing.description"></textarea></label>
         <label>게임명<input v-model="tourEditing.gameName" /></label>
-        <label>배너 이미지 URL<input v-model="tourEditing.bannerImageUrl" placeholder="https://" /></label>
+        <label>배너 이미지
+          <div class="logo-upload">
+            <img v-if="tourEditing.bannerImageUrl" :src="tourEditing.bannerImageUrl" class="logo-preview" alt="" />
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, tourEditing, 'bannerImageUrl')" />
+            <span v-if="imgUploading">업로드 중…</span>
+          </div>
+        </label>
         <div class="row3">
           <label>상태
             <select v-model="tourEditing.status">
@@ -509,7 +522,13 @@ function onTab(t: Tab) {
         <h4>{{ gameEditing.id ? '게임 수정' : '새 게임' }}</h4>
         <label>게임명<input v-model="gameEditing.name" /></label>
         <label>설명<textarea v-model="gameEditing.description"></textarea></label>
-        <label>썸네일 URL<input v-model="gameEditing.thumbnailUrl" placeholder="https://" /></label>
+        <label>썸네일 이미지
+          <div class="logo-upload">
+            <img v-if="gameEditing.thumbnailUrl" :src="gameEditing.thumbnailUrl" class="logo-preview" alt="" />
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, gameEditing, 'thumbnailUrl')" />
+            <span v-if="imgUploading">업로드 중…</span>
+          </div>
+        </label>
         <label>게임 링크 URL<input v-model="gameEditing.gameLinkUrl" placeholder="https://" /></label>
         <label>후기 링크 URL (외부 블로그 등 — 선택)<input v-model="gameEditing.reviewLinkUrl" placeholder="https://" /></label>
         <label>후기 게시판 연결 (사이트 내 캠페인 — 선택)
@@ -542,7 +561,13 @@ function onTab(t: Tab) {
         <h4>{{ videoEditing.id ? '영상 수정' : '새 영상' }}</h4>
         <label>제목<input v-model="videoEditing.title" /></label>
         <label>영상 URL<input v-model="videoEditing.videoUrl" placeholder="https://youtube.com/watch?v=..." /></label>
-        <label>썸네일 URL<input v-model="videoEditing.thumbnailUrl" placeholder="https://" /></label>
+        <label>썸네일 이미지 (선택)
+          <div class="logo-upload">
+            <img v-if="videoEditing.thumbnailUrl" :src="videoEditing.thumbnailUrl" class="logo-preview" alt="" />
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, videoEditing, 'thumbnailUrl')" />
+            <span v-if="imgUploading">업로드 중…</span>
+          </div>
+        </label>
         <div class="row3">
           <label class="chk"><input type="checkbox" v-model="videoEditing.featured" /> 히어로 대표</label>
           <label>정렬순서<input type="number" v-model.number="videoEditing.sortOrder" /></label>
@@ -572,8 +597,8 @@ function onTab(t: Tab) {
         <label>로고 이미지
           <div class="logo-upload">
             <img v-if="logoEditing.logoUrl" :src="logoEditing.logoUrl" class="logo-preview" alt="" />
-            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="onLogoFile" />
-            <span v-if="logoUploading">업로드 중…</span>
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, logoEditing, 'logoUrl')" />
+            <span v-if="imgUploading">업로드 중…</span>
           </div>
         </label>
         <label>연결 링크 URL<input v-model="logoEditing.linkUrl" placeholder="https://" /></label>
@@ -607,7 +632,13 @@ function onTab(t: Tab) {
         <h4>{{ goodsEditing.id ? '굿즈 수정' : '새 굿즈' }}</h4>
         <label>상품명<input v-model="goodsEditing.name" /></label>
         <label>설명<textarea v-model="goodsEditing.description"></textarea></label>
-        <label>이미지 URL<input v-model="goodsEditing.imageUrl" placeholder="https://" /></label>
+        <label>상품 이미지
+          <div class="logo-upload">
+            <img v-if="goodsEditing.imageUrl" :src="goodsEditing.imageUrl" class="logo-preview" alt="" />
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, goodsEditing, 'imageUrl')" />
+            <span v-if="imgUploading">업로드 중…</span>
+          </div>
+        </label>
         <div class="row3">
           <label>가격(원)<input type="number" v-model.number="goodsEditing.price" /></label>
           <label>재고<input type="number" v-model.number="goodsEditing.stock" /></label>

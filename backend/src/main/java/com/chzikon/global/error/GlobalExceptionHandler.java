@@ -38,6 +38,14 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(ErrorCode.FORBIDDEN));
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(
+            org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        // 없는 정적 리소스/경로 — 500 이 아닌 404
+        return ResponseEntity.status(ErrorCode.NOT_FOUND.getStatus())
+                .body(ErrorResponse.of(ErrorCode.NOT_FOUND));
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException e) {
         // 깨진 JSON 등 클라이언트 요청 문제 — 500 이 아닌 400 으로 응답
