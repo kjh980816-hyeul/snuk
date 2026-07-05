@@ -9,7 +9,7 @@ const summary = ref<MypageSummary | null>(null)
 const loading = ref(true)
 
 const roleLabel: Record<string, string> = {
-  VIEWER: '시청자', STREAMER: '스트리머', ADMIN: '대표(관리자)', GUEST: '게스트',
+  VIEWER: '시청자', STREAMER: '스트리머', ADMIN: '관리자', GUEST: '게스트',
 }
 const appStatusLabel: Record<string, string> = {
   PENDING: '승인 대기', APPROVED: '확정', REJECTED: '거절',
