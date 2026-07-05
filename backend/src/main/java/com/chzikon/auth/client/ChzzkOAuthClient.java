@@ -100,6 +100,11 @@ public class ChzzkOAuthClient {
         return new ChzzkProfile(channelId, nickname, channel.imageUrl(), channel.followerCount());
     }
 
+    /** 채널 이미지 URL 조회(프사 복원용). 실패 → null. */
+    public String fetchChannelImageUrl(String channelId) {
+        return fetchChannelInfo(channelId).imageUrl();
+    }
+
     /** 채널 정보(팔로워 수 + 채널 이미지) 조회 — Client 자격 인증, 캐시. 실패 → null 필드(VIEWER 폴백). */
     private ChannelInfo fetchChannelInfo(String channelId) {
         ChannelCacheEntry cached = channelCache.get(channelId);

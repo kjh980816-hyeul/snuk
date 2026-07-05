@@ -7,6 +7,7 @@ export interface Me {
   id: number
   nickname: string
   profileImageUrl: string | null
+  profileImageOverridden?: boolean
   followerCount: number | null
   role: Role
 }

@@ -1,12 +1,40 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { mypageApi } from '@/api'
+import { authApi, mypageApi } from '@/api'
 import type { MypageSummary } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const summary = ref<MypageSummary | null>(null)
 const loading = ref(true)
+
+// ----- 프사 변경 -----
+const imgUrl = ref('')
+const picSaving = ref(false)
+async function savePic() {
+  const url = imgUrl.value.trim()
+  if (!url || picSaving.value) return
+  picSaving.value = true
+  try {
+    await authApi.updateProfileImage(url)
+    await auth.fetchMe()
+    imgUrl.value = ''
+  } catch {
+    alert('이미지 URL 을 확인해주세요. (https:// 로 시작하는 이미지 주소)')
+  } finally {
+    picSaving.value = false
+  }
+}
+async function resetPic() {
+  if (picSaving.value) return
+  picSaving.value = true
+  try {
+    await authApi.updateProfileImage(null)
+    await auth.fetchMe()
+  } finally {
+    picSaving.value = false
+  }
+}
 
 const roleLabel: Record<string, string> = {
   VIEWER: '시청자', STREAMER: '스트리머', ADMIN: '관리자', GUEST: '게스트',
@@ -46,6 +74,13 @@ onMounted(async () => {
         <p class="nick">{{ auth.me.nickname }}</p>
         <p class="row">등급 · <strong>{{ roleLabel[auth.me.role] ?? auth.me.role }}</strong></p>
         <p class="row" v-if="auth.me.followerCount !== null">팔로워 · {{ auth.me.followerCount?.toLocaleString() }}</p>
+        <div class="pic-edit">
+          <input v-model="imgUrl" placeholder="새 프사 이미지 URL (https://…)" @keyup.enter="savePic" />
+          <button class="btn sm" :disabled="picSaving" @click="savePic">프사 변경</button>
+          <button v-if="auth.me.profileImageOverridden" class="btn ghost sm" :disabled="picSaving" @click="resetPic">
+            치지직 프사로
+          </button>
+        </div>
       </div>
     </div>
 
@@ -134,4 +169,7 @@ onMounted(async () => {
 .pill.APPROVED, .pill.PAID { background: #e8f5e9; color: #2e7d32; }
 .pill.PENDING { background: #fff3e0; color: #e65100; }
 .pill.REJECTED, .pill.CANCELLED, .pill.FAILED { background: #fdecea; color: #c62828; }
+.pic-edit { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.pic-edit input { flex: 1; min-width: 220px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+.btn.sm { padding: 8px 14px; font-size: 13px; }
 </style>

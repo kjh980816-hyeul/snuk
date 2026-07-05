@@ -18,6 +18,8 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final RoleCalculator roleCalculator;
+    private final com.chzikon.auth.client.ChzzkOAuthClient chzzkClient;
+    private final com.chzikon.global.util.ExternalUrlValidator urlValidator;
 
     @Value("${app.admin.channel-id:}")
     private String adminChannelId;
@@ -52,6 +54,23 @@ public class MemberService {
     public Member getById(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    }
+
+    /** 프사 직접 변경(URL 검증). 이후 로그인 동기화가 덮어쓰지 않음. */
+    @Transactional
+    public Member changeProfileImage(Long memberId, String imageUrl) {
+        urlValidator.validate(imageUrl);
+        Member member = getById(memberId);
+        member.changeProfileImage(imageUrl);
+        return member;
+    }
+
+    /** 치지직 프사로 복원 + 동기화 재개. */
+    @Transactional
+    public Member resetProfileImage(Long memberId) {
+        Member member = getById(memberId);
+        member.resetProfileImage(chzzkClient.fetchChannelImageUrl(member.getChzzkChannelId()));
+        return member;
     }
 
     @Transactional

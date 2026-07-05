@@ -36,6 +36,9 @@ public class Member {
     @Column(name = "role_overridden", nullable = false)
     private boolean roleOverridden = false;
 
+    @Column(name = "profile_image_overridden", nullable = false)
+    private boolean profileImageOverridden = false;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -59,10 +62,12 @@ public class Member {
         return new Member(chzzkChannelId, nickname, profileImageUrl, followerCount, role);
     }
 
-    /** 매 로그인 시 프로필/팔로워 갱신. role 자동 재산정은 오버라이드 안 된 경우만. */
+    /** 매 로그인 시 프로필/팔로워 갱신. role 자동 재산정은 오버라이드 안 된 경우만, 프사는 수동 변경 안 한 경우만. */
     public void refreshOnLogin(String nickname, String profileImageUrl, Integer followerCount, Role recomputedRole) {
         this.nickname = nickname;
-        this.profileImageUrl = profileImageUrl;
+        if (!this.profileImageOverridden) {
+            this.profileImageUrl = profileImageUrl;
+        }
         this.followerCount = followerCount;
         if (!this.roleOverridden && this.role != Role.ADMIN) {
             this.role = recomputedRole;
@@ -80,6 +85,20 @@ public class Member {
     /** 오버라이드 해제 → 자동 재산정 복귀. */
     public void clearOverride() {
         this.roleOverridden = false;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 프사 직접 변경. 이후 로그인 동기화가 덮어쓰지 않음. */
+    public void changeProfileImage(String imageUrl) {
+        this.profileImageUrl = imageUrl;
+        this.profileImageOverridden = true;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 치지직 프사로 복원(동기화 재개). */
+    public void resetProfileImage(String chzzkImageUrl) {
+        this.profileImageUrl = chzzkImageUrl;
+        this.profileImageOverridden = false;
         this.updatedAt = LocalDateTime.now();
     }
 }

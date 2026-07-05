@@ -7,6 +7,9 @@ import type {
 // ----- auth -----
 export const authApi = {
   me: () => api.get<Me>('/api/auth/me').then((r) => r.data),
+  // 프사 변경(URL). null/빈값이면 치지직 프사로 복원
+  updateProfileImage: (imageUrl: string | null) =>
+    api.patch<Me>('/api/auth/me/profile-image', { imageUrl }).then((r) => r.data),
   refresh: (refreshToken: string) =>
     api.post('/api/auth/refresh', { refreshToken }).then((r) => r.data),
   logout: () => api.post('/api/auth/logout'),

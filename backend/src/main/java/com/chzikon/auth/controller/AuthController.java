@@ -70,6 +70,17 @@ public class AuthController {
         return ResponseEntity.ok(MeResponse.from(memberService.getById(principal.memberId())));
     }
 
+    /** 프사 변경. imageUrl 이 비어있으면 치지직 프사로 복원. */
+    @PatchMapping("/api/auth/me/profile-image")
+    public ResponseEntity<MeResponse> changeProfileImage(@RequestBody Map<String, String> body,
+                                                         @AuthenticationPrincipal MemberPrincipal principal) {
+        String url = body.get("imageUrl");
+        var member = (url == null || url.isBlank())
+                ? memberService.resetProfileImage(principal.memberId())
+                : memberService.changeProfileImage(principal.memberId(), url.trim());
+        return ResponseEntity.ok(MeResponse.from(member));
+    }
+
     private static String enc(String v) {
         return URLEncoder.encode(v, StandardCharsets.UTF_8);
     }
