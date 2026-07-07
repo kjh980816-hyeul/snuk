@@ -29,22 +29,25 @@ public class AuthController {
     @Value("${app.frontend.redirect-base}")
     private String frontendRedirectBase;
 
-    /** 치지직 OAuth 시작 → 인가 URL 로 리다이렉트. */
-    @GetMapping("/oauth2/authorization/chzzk")
-    public void start(HttpServletResponse response) throws IOException {
-        response.sendRedirect(authService.buildAuthorizationUrl());
+    /** OAuth 시작(치지직/씨미/숲) → 인가 URL 로 리다이렉트. */
+    @GetMapping("/oauth2/authorization/{provider}")
+    public void start(@PathVariable String provider, HttpServletResponse response) throws IOException {
+        response.sendRedirect(authService.buildAuthorizationUrl(
+                com.chzikon.member.domain.Provider.fromPath(provider)));
     }
 
     /**
      * 콜백 → 토큰 발급 후 프론트로 리다이렉트.
      * 토큰은 URL fragment(#)로 전달(서버 로그/Referer 비노출). 프론트가 저장 후 URL 정리.
      */
-    @GetMapping("/login/oauth2/code/chzzk")
-    public void callback(@RequestParam String code,
+    @GetMapping("/login/oauth2/code/{provider}")
+    public void callback(@PathVariable String provider,
+                         @RequestParam String code,
                          @RequestParam(required = false) String state,
                          HttpServletResponse response) throws IOException {
         try {
-            TokenPair tokens = authService.handleCallback(code, state);
+            TokenPair tokens = authService.handleCallback(
+                    com.chzikon.member.domain.Provider.fromPath(provider), code, state);
             String target = frontendRedirectBase + "/oauth/callback#accessToken="
                     + enc(tokens.accessToken()) + "&refreshToken=" + enc(tokens.refreshToken());
             response.sendRedirect(target);

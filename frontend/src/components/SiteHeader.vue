@@ -64,7 +64,11 @@ onUnmounted(() => {
           <RouterLink to="/mypage" class="nav-link">마이페이지</RouterLink>
           <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link admin">관리자</RouterLink>
         </template>
-        <button v-else class="btn orange sm" @click="auth.login()">치지직 로그인</button>
+        <div v-else class="login-group">
+          <button class="btn orange sm" @click="auth.login('chzzk')">치지직 로그인</button>
+          <button class="btn ghost sm" @click="auth.login('cime')">씨미 로그인</button>
+          <button class="btn ghost sm" @click="auth.login('soop')">SOOP 로그인</button>
+        </div>
       </div>
     </div>
   </header>
@@ -123,6 +127,7 @@ onUnmounted(() => {
 .nav-link.admin { color: var(--label-red); }
 .nav-link.admin:hover { background: rgba(220, 50, 50, 0.08); color: var(--label-red); }
 .account { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+.login-group { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .me { font-weight: 700; color: var(--text-strong); text-align: center; }
 .btn.sm { padding: 8px 14px; font-size: 13px; }
 
@@ -150,5 +155,6 @@ onUnmounted(() => {
   .nav-link:hover { transform: none; }
   .nav-link.router-link-exact-active { border-left: none; border-radius: 8px; background: rgba(255, 138, 0, 0.12); }
   .account { flex-direction: row; align-items: center; gap: 14px; margin-left: auto; }
+  .login-group { flex-direction: row; gap: 6px; }
 }
 </style>

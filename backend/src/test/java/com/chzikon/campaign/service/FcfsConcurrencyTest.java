@@ -5,6 +5,7 @@ import com.chzikon.campaign.repository.CampaignApplicationRepository;
 import com.chzikon.campaign.repository.CampaignRepository;
 import com.chzikon.global.error.BusinessException;
 import com.chzikon.member.domain.Member;
+import com.chzikon.member.domain.Provider;
 import com.chzikon.member.domain.Role;
 import com.chzikon.member.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
@@ -39,8 +40,8 @@ class FcfsConcurrencyTest {
                 .totalSlots(1)
                 .build());
 
-        Member m1 = memberRepository.save(Member.create("ch-1", "스트리머1", null, 100, Role.STREAMER));
-        Member m2 = memberRepository.save(Member.create("ch-2", "스트리머2", null, 100, Role.STREAMER));
+        Member m1 = memberRepository.save(Member.create(Provider.CHZZK, "ch-1", "스트리머1", null, 100, Role.STREAMER));
+        Member m2 = memberRepository.save(Member.create(Provider.CHZZK, "ch-2", "스트리머2", null, 100, Role.STREAMER));
 
         AtomicInteger success = new AtomicInteger();
         AtomicInteger full = new AtomicInteger();

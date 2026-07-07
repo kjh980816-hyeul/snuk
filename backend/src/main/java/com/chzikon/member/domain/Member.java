@@ -17,8 +17,13 @@ public class Member {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "chzzk_channel_id", nullable = false, unique = true, length = 128)
-    private String chzzkChannelId;
+    /** 로그인 플랫폼(치지직/씨미/숲). (provider, channel_id) 복합 유니크 — V7. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Provider provider = Provider.CHZZK;
+
+    @Column(name = "channel_id", nullable = false, length = 128)
+    private String channelId;
 
     @Column(nullable = false, length = 100)
     private String nickname;
@@ -45,9 +50,10 @@ public class Member {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    private Member(String chzzkChannelId, String nickname, String profileImageUrl,
+    private Member(Provider provider, String channelId, String nickname, String profileImageUrl,
                    Integer followerCount, Role role) {
-        this.chzzkChannelId = chzzkChannelId;
+        this.provider = provider;
+        this.channelId = channelId;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
         this.followerCount = followerCount;
@@ -57,9 +63,9 @@ public class Member {
         this.updatedAt = now;
     }
 
-    public static Member create(String chzzkChannelId, String nickname, String profileImageUrl,
-                                Integer followerCount, Role role) {
-        return new Member(chzzkChannelId, nickname, profileImageUrl, followerCount, role);
+    public static Member create(Provider provider, String channelId, String nickname,
+                                String profileImageUrl, Integer followerCount, Role role) {
+        return new Member(provider, channelId, nickname, profileImageUrl, followerCount, role);
     }
 
     /** 매 로그인 시 프로필/팔로워 갱신. role 자동 재산정은 오버라이드 안 된 경우만, 프사는 수동 변경 안 한 경우만. */
@@ -95,9 +101,9 @@ public class Member {
         this.updatedAt = LocalDateTime.now();
     }
 
-    /** 치지직 프사로 복원(동기화 재개). */
-    public void resetProfileImage(String chzzkImageUrl) {
-        this.profileImageUrl = chzzkImageUrl;
+    /** 플랫폼 프사로 복원(동기화 재개). 플랫폼이 조회 미지원(숲)이면 null → 다음 로그인 때 채워짐. */
+    public void resetProfileImage(String platformImageUrl) {
+        this.profileImageUrl = platformImageUrl;
         this.profileImageOverridden = false;
         this.updatedAt = LocalDateTime.now();
     }

@@ -1,6 +1,6 @@
 package com.chzikon.auth.client;
 
-import com.chzikon.auth.config.ChzzkProperties;
+import com.chzikon.auth.config.CimeProperties;
 import com.chzikon.global.error.BusinessException;
 import com.chzikon.global.error.ErrorCode;
 import com.chzikon.member.domain.Provider;
@@ -10,28 +10,31 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 치지직 OAuth 토큰 교환 + 프로필/채널 조회. (공식문서 chzzk.gitbook.io 대조 완료 2026-07-05)
- * - users/me(Bearer): channelId·channelName 만 반환 — 프로필 이미지는 없음.
- * - channels(Client-Id/Client-Secret 헤더): followerCount + channelImageUrl → 등급 산정·프사 자동 수집.
- * - 채널 응답은 인메모리 캐시(followerCacheSeconds)로 429 quota 방어.
- * - 조회 실패/채널 없음 → null 필드로 반환(로그인은 성공 처리, VIEWER 폴백).
+ * 씨미(CIME, ci.me) OAuth 토큰 교환 + 프로필/채널 조회. (공식문서 developers.ci.me 대조 2026-07-07)
+ * 치지직과 사실상 동일 구조:
+ * - authorize: /auth/openapi/account-interlock?clientId&redirectUri&state
+ * - token: POST /api/openapi/auth/v1/token (JSON camelCase: grantType/clientId/clientSecret/code)
+ * - users/me(Bearer): channelId·channelName·channelImageUrl (치지직과 달리 프사가 여기 바로 있음)
+ * - channels(Client-Id/Client-Secret 헤더): followerCount → 등급 산정. 인메모리 캐시로 quota 방어.
+ * ⚠️ 실키 발급 전 미실측 — 채널 조회 헤더명(Client-Id/Client-Secret)은 치지직 관례 준용, 실연동 시 1회 검증.
  */
 @Slf4j
 @Component
-public class ChzzkOAuthClient implements OAuthProviderClient {
+public class CimeOAuthClient implements OAuthProviderClient {
 
-    private final ChzzkProperties props;
+    private final CimeProperties props;
     private final RestClient tokenClient;
     private final RestClient apiClient;
 
     // channelId -> (팔로워/채널이미지, expiryMillis)
     private final Map<String, ChannelCacheEntry> channelCache = new ConcurrentHashMap<>();
 
-    public ChzzkOAuthClient(ChzzkProperties props, RestClient.Builder builder) {
+    public CimeOAuthClient(CimeProperties props, RestClient.Builder builder) {
         this.props = props;
         this.tokenClient = builder.clone().baseUrl(props.tokenUri()).build();
         this.apiClient = builder.clone().baseUrl(props.apiBaseUri()).build();
@@ -39,10 +42,9 @@ public class ChzzkOAuthClient implements OAuthProviderClient {
 
     @Override
     public Provider provider() {
-        return Provider.CHZZK;
+        return Provider.CIME;
     }
 
-    /** 인가 시작 URL. */
     @Override
     public String buildAuthorizationUrl(String state) {
         return props.authorizationUri()
@@ -51,7 +53,6 @@ public class ChzzkOAuthClient implements OAuthProviderClient {
                 + "&state=" + enc(state);
     }
 
-    /** Authorization Code → Access Token 교환 후, 프로필+팔로워 정규화 반환. */
     @Override
     public OAuthProfile exchangeAndFetchProfile(String code, String state) {
         String accessToken = exchangeToken(code, state);
@@ -60,18 +61,20 @@ public class ChzzkOAuthClient implements OAuthProviderClient {
 
     private String exchangeToken(String code, String state) {
         try {
+            Map<String, String> body = new HashMap<>();
+            body.put("grantType", "authorization_code");
+            body.put("clientId", props.clientId());
+            body.put("clientSecret", props.clientSecret());
+            body.put("code", code);
+            if (state != null && !state.isBlank()) {
+                body.put("state", state);
+            }
             JsonNode res = tokenClient.post()
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of(
-                            "grantType", "authorization_code",
-                            "clientId", props.clientId(),
-                            "clientSecret", props.clientSecret(),
-                            "code", code,
-                            "state", state))
+                    .body(body)
                     .retrieve()
                     .body(JsonNode.class);
             String token = textAtAny(res, "accessToken", "access_token");
-            // content.accessToken 형태 대비
             if (token == null && res != null && res.has("content")) {
                 token = textAtAny(res.get("content"), "accessToken", "access_token");
             }
@@ -82,7 +85,7 @@ public class ChzzkOAuthClient implements OAuthProviderClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.warn("chzzk token exchange failed: {}", e.getMessage());
+            log.warn("cime token exchange failed: {}", e.getMessage());
             throw new BusinessException(ErrorCode.OAUTH_FAILED);
         }
     }
@@ -91,21 +94,23 @@ public class ChzzkOAuthClient implements OAuthProviderClient {
         JsonNode me;
         try {
             me = apiClient.get()
-                    .uri("/open/v1/users/me")
+                    .uri("/api/openapi/open/v1/users/me")
                     .header("Authorization", "Bearer " + accessToken)
                     .retrieve()
                     .body(JsonNode.class);
         } catch (Exception e) {
-            log.warn("chzzk user info failed: {}", e.getMessage());
+            log.warn("cime user info failed: {}", e.getMessage());
             throw new BusinessException(ErrorCode.OAUTH_FAILED);
         }
         JsonNode content = (me != null && me.has("content")) ? me.get("content") : me;
-        String channelId = textAtAny(content, "channelId", "userIdHash", "id");
-        String nickname = firstNonBlank(textAtAny(content, "nickname", "channelName"), "스트리머");
+        JsonNode data = (content != null && content.has("data")) ? content.get("data") : content;
+        String channelId = textAtAny(data, "channelId", "id");
+        String nickname = firstNonBlank(textAtAny(data, "channelName", "nickname"), "스트리머");
+        String meImage = textAtAny(data, "channelImageUrl", "profileImageUrl");
 
-        // 프사·팔로워는 채널 API에서 (users/me 엔 이미지 필드 없음)
         ChannelInfo channel = (channelId != null) ? fetchChannelInfo(channelId) : ChannelInfo.EMPTY;
-        return new OAuthProfile(Provider.CHZZK, channelId, nickname, channel.imageUrl(), channel.followerCount());
+        String imageUrl = firstNonBlank(meImage, channel.imageUrl());
+        return new OAuthProfile(Provider.CIME, channelId, nickname, imageUrl, channel.followerCount());
     }
 
     /** 채널 이미지 URL 조회(프사 복원용). 실패 → null. */
@@ -124,7 +129,7 @@ public class ChzzkOAuthClient implements OAuthProviderClient {
         ChannelInfo info = ChannelInfo.EMPTY;
         try {
             JsonNode res = apiClient.get()
-                    .uri(uriBuilder -> uriBuilder.path("/open/v1/channels")
+                    .uri(uriBuilder -> uriBuilder.path("/api/openapi/open/v1/channels")
                             .queryParam("channelIds", channelId).build())
                     .header("Client-Id", props.clientId())
                     .header("Client-Secret", props.clientSecret())
@@ -139,7 +144,7 @@ public class ChzzkOAuthClient implements OAuthProviderClient {
                 info = new ChannelInfo(followers, textAtAny(first, "channelImageUrl", "profileImageUrl"));
             }
         } catch (Exception e) {
-            log.warn("chzzk channel info failed (fallback VIEWER): {}", e.getMessage());
+            log.warn("cime channel info failed (fallback VIEWER): {}", e.getMessage());
         }
         channelCache.put(channelId,
                 new ChannelCacheEntry(info, now + props.followerCacheSeconds() * 1000));

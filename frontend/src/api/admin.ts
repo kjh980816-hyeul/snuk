@@ -78,7 +78,7 @@ export const adminApi = {
   updateSetting: (key: string, value: string) =>
     api.put(`/api/admin/settings/${key}`, { value }),
   members: (page = 0, size = 50) =>
-    api.get<{ content: Array<{ id: number; chzzkChannelId: string; nickname: string; profileImageUrl: string | null; followerCount: number | null; role: string; roleOverridden: boolean; createdAt: string }> }>(
+    api.get<{ content: Array<{ id: number; provider: string; channelId: string; nickname: string; profileImageUrl: string | null; followerCount: number | null; role: string; roleOverridden: boolean; createdAt: string }> }>(
       '/api/admin/members', { params: { page, size } },
     ).then((r) => r.data),
   overrideRole: (memberId: number, role: string) =>

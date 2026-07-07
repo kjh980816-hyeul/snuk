@@ -1,10 +1,12 @@
 package com.chzikon.member.service;
 
-import com.chzikon.auth.client.ChzzkProfile;
+import com.chzikon.auth.client.OAuthProfile;
+import com.chzikon.auth.client.OAuthProviderClient;
 import com.chzikon.auth.service.RoleCalculator;
 import com.chzikon.global.error.BusinessException;
 import com.chzikon.global.error.ErrorCode;
 import com.chzikon.member.domain.Member;
+import com.chzikon.member.domain.Provider;
 import com.chzikon.member.domain.Role;
 import com.chzikon.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,38 +14,41 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class MemberService {
 
     private final MemberRepository memberRepository;
     private final RoleCalculator roleCalculator;
-    private final com.chzikon.auth.client.ChzzkOAuthClient chzzkClient;
+    private final List<OAuthProviderClient> oauthClients;
     private final com.chzikon.global.util.ExternalUrlValidator urlValidator;
     private final com.chzikon.global.upload.FileStorageService fileStorage;
 
     @Value("${app.admin.channel-id:}")
     private String adminChannelId;
 
-    /** 로그인 콜백: 채널ID 기준 upsert. 권한 자동 재산정(오버라이드/ADMIN 제외). */
+    /** 로그인 콜백: (provider, 채널ID) 기준 upsert. 권한 자동 재산정(오버라이드/ADMIN 제외). */
     @Transactional
-    public Member upsertOnLogin(ChzzkProfile profile) {
+    public Member upsertOnLogin(OAuthProfile profile) {
         if (profile.channelId() == null || profile.channelId().isBlank()) {
-            throw new BusinessException(ErrorCode.OAUTH_FAILED, "치지직 채널 식별자를 확인할 수 없습니다.");
+            throw new BusinessException(ErrorCode.OAUTH_FAILED, "플랫폼 채널 식별자를 확인할 수 없습니다.");
         }
-        // 대표 채널이면 ADMIN 고정(ADM-01). 그 외에는 팔로워 기반 자동 산정.
-        boolean isDesignatedAdmin = adminChannelId != null && !adminChannelId.isBlank()
+        // 대표 치지직 채널이면 ADMIN 고정(ADM-01). 그 외에는 팔로워 기반 자동 산정.
+        boolean isDesignatedAdmin = profile.provider() == Provider.CHZZK
+                && adminChannelId != null && !adminChannelId.isBlank()
                 && adminChannelId.equals(profile.channelId());
         Role recomputed = isDesignatedAdmin ? Role.ADMIN : roleCalculator.compute(profile.followerCount());
-        return memberRepository.findByChzzkChannelId(profile.channelId())
+        return memberRepository.findByProviderAndChannelId(profile.provider(), profile.channelId())
                 .map(existing -> {
                     existing.refreshOnLogin(profile.nickname(), profile.profileImageUrl(),
                             profile.followerCount(), recomputed);
                     return existing;
                 })
                 .orElseGet(() -> memberRepository.save(Member.create(
-                        profile.channelId(), profile.nickname(), profile.profileImageUrl(),
-                        profile.followerCount(), recomputed)));
+                        profile.provider(), profile.channelId(), profile.nickname(),
+                        profile.profileImageUrl(), profile.followerCount(), recomputed)));
     }
 
     @Transactional(readOnly = true)
@@ -76,12 +81,17 @@ public class MemberService {
         return member;
     }
 
-    /** 치지직 프사로 복원 + 동기화 재개. 이전 업로드 파일은 정리. */
+    /** 플랫폼 프사로 복원 + 동기화 재개. 이전 업로드 파일은 정리. (숲은 재조회 미지원 → 다음 로그인 때 갱신) */
     @Transactional
     public Member resetProfileImage(Long memberId) {
         Member member = getById(memberId);
         String old = member.getProfileImageUrl();
-        member.resetProfileImage(chzzkClient.fetchChannelImageUrl(member.getChzzkChannelId()));
+        String restored = oauthClients.stream()
+                .filter(c -> c.provider() == member.getProvider())
+                .findFirst()
+                .map(c -> c.fetchChannelImageUrl(member.getChannelId()))
+                .orElse(null);
+        member.resetProfileImage(restored);
         fileStorage.deleteIfLocal(old);
         return member;
     }

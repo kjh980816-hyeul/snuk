@@ -247,7 +247,8 @@ function won(v: number) {
 // ----- members -----
 interface MemberRow {
   id: number
-  chzzkChannelId: string
+  provider: string
+  channelId: string
   nickname: string
   profileImageUrl: string | null
   followerCount: number | null
@@ -675,7 +676,7 @@ function onTab(t: Tab) {
     <!-- 회원 -->
     <section v-else-if="tab === 'members'">
       <table class="grid">
-        <thead><tr><th>ID</th><th>닉네임</th><th>채널ID</th><th>팔로워</th><th>등급</th><th>가입일</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>닉네임</th><th>플랫폼</th><th>채널ID</th><th>팔로워</th><th>등급</th><th>가입일</th><th></th></tr></thead>
         <tbody>
           <tr v-for="m in members" :key="m.id">
             <td>{{ m.id }}</td>
@@ -683,7 +684,8 @@ function onTab(t: Tab) {
               <img v-if="m.profileImageUrl" :src="m.profileImageUrl" class="avatar" alt="" />
               {{ m.nickname }}
             </td>
-            <td class="mono">{{ m.chzzkChannelId.slice(0, 12) }}…</td>
+            <td>{{ { CHZZK: '치지직', CIME: '씨미', SOOP: '숲' }[m.provider] ?? m.provider }}</td>
+            <td class="mono">{{ m.channelId.slice(0, 12) }}…</td>
             <td>{{ m.followerCount ?? '-' }}</td>
             <td>
               <select :value="m.role" @change="changeMemberRole(m, ($event.target as HTMLSelectElement).value)">
@@ -696,7 +698,7 @@ function onTab(t: Tab) {
               <button v-if="m.roleOverridden" @click="resetMemberRole(m)">자동 복귀</button>
             </td>
           </tr>
-          <tr v-if="!members.length"><td colspan="7" class="empty">회원이 없습니다.</td></tr>
+          <tr v-if="!members.length"><td colspan="8" class="empty">회원이 없습니다.</td></tr>
         </tbody>
       </table>
       <p class="hint">등급을 바꾸면 수동 고정(자동 재산정 제외)됩니다. "자동 복귀"를 누르면 다음 로그인부터 팔로워 기준으로 다시 계산돼요.</p>

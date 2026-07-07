@@ -4,6 +4,8 @@ import { authApi } from '@/api'
 import { clearTokens, getAccessToken } from '@/api/client'
 import type { Me } from '@/api/types'
 
+export type LoginProvider = 'chzzk' | 'cime' | 'soop'
+
 export const useAuthStore = defineStore('auth', () => {
   const me = ref<Me | null>(null)
   const loaded = ref(false)
@@ -38,9 +40,9 @@ export const useAuthStore = defineStore('auth', () => {
     me.value = null
   }
 
-  function login(): void {
+  function login(provider: LoginProvider = 'chzzk'): void {
     // 백엔드 OAuth 시작점으로 이동(전체 페이지 리다이렉트)
-    window.location.href = '/oauth2/authorization/chzzk'
+    window.location.href = `/oauth2/authorization/${provider}`
   }
 
   return { me, loaded, isLoggedIn, isStreamer, isAdmin, fetchMe, logout, login }
