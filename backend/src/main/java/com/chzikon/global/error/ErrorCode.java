@@ -46,7 +46,10 @@ public enum ErrorCode {
     ALREADY_JOINED(HttpStatus.CONFLICT, "T003", "이미 참가 신청한 대회입니다."),
 
     // 설정 (ADM)
-    SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "설정값을 찾을 수 없습니다.");
+    SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "설정값을 찾을 수 없습니다."),
+
+    // 스포트라이트 (SL)
+    SPOTLIGHT_ACTIVE_EXISTS(HttpStatus.CONFLICT, "SL001", "이미 노출 중인 스포트라이트가 있습니다. 만료 후 다시 등록해주세요.");
 
     private final HttpStatus status;
     private final String code;

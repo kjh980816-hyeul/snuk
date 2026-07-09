@@ -1,0 +1,679 @@
+
+
+<!-- ── 모바일 상단바 ── -->
+<div class="mobile-topbar" id="mobile-topbar">
+  <div class="mobile-logo">SNUK</div>
+  <div class="mobile-topbar-right">
+    <button class="mobile-login-btn" onclick="openLogin()">로그인</button>
+    <div class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</div>
+<!-- 오버레이 -->
+<div class="mobile-overlay" id="mobile-overlay" onclick="closeMobileMenu()"></div>
+<!-- 드로어 -->
+<div class="mobile-drawer" id="mobile-drawer">
+  <div class="mobile-drawer-search">
+    <input type="text" placeholder="검색..." onkeydown="if(event.key==='Enter'){showToast('검색: '+this.value);closeMobileMenu();}">
+  </div>
+  <div class="rs-nav">
+    <button class="rs-item" onclick="goSecMobile('hero')">HOME</button>
+    <button class="rs-item" onclick="goSecMobile('snuk-contents')">콘텐츠</button>
+    <button class="rs-item" onclick="goSecMobile('mugchamps')">대회</button>
+    <button class="rs-item" onclick="goSecMobile('streamers-channel')">스트리머</button>
+    <button class="rs-item" onclick="goSecMobile('goods')">굿즈샵</button>
+    <button class="rs-item" onclick="goSecMobile('events')">이벤트</button>
+    <button class="rs-item" onclick="goSecMobile('jobs')">구인/구직</button>
+    <button class="rs-item" onclick="goSecMobile('news-section')">뉴스</button>
+    <button class="rs-item" onclick="goSecMobile('game-trial')">게임체험단</button>
+    <button class="rs-item" onclick="goSecMobile('videos')">온에어</button>
+    <button class="rs-item" onclick="showToast('광고 문의: contact@snuk.kr');closeMobileMenu()">광고</button>
+  </div>
+</div>
+
+<!-- ── RIGHT SIDEBAR ── -->
+<aside class="rs" id="rs">
+  <div class="rs-top">
+    <div class="rs-top-row">
+      <div class="rs-logo">SNUK</div>
+      <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">라이트 모드</button>
+    </div>
+    <div class="rs-auth-btns" id="rs-auth-btns">
+      <button class="rs-auth-btn" onclick="openSignup()">회원가입</button>
+      <button class="rs-auth-btn primary" onclick="openLogin()">로그인</button>
+    </div>
+  </div>
+  <!-- 로그인 후 프로필 -->
+  <div class="rs-profile" id="rs-profile">
+    <div class="rs-profile-inner" onclick="openMypage()">
+      <div class="rs-avatar" id="rs-av">S</div>
+      <div><div class="rs-uname" id="rs-uname">SNUK유저</div><div class="rs-usub">● 온라인</div></div>
+    </div>
+    <button class="rs-mypage-btn" onclick="openMypage()">마이페이지</button>
+  </div>
+
+  <!-- 검색창 -->
+  <div class="rs-search">
+    <div class="rs-search-box">
+      <span class="rs-search-icon">🔍</span>
+      <input class="rs-search-input" type="text" placeholder="검색..."
+        onkeydown="if(event.key==='Enter')showToast('검색: '+this.value)">
+    </div>
+  </div>
+
+  <div class="rs-nav">
+    <button class="rs-item active" onclick="goSec('hero')">HOME</button>
+    <button class="rs-item" onclick="goSec('about-us')">ABOUT US</button>
+    <button class="rs-item" onclick="goSec('snuk-contents')">콘텐츠</button>
+    <button class="rs-item" onclick="goSec('mugchamps')">대회</button>
+    <button class="rs-item" onclick="goSec('goods')">굿즈샵</button>
+    <button class="rs-item" onclick="goSec('events')">이벤트<span class="ri-badge">4</span></button>
+    <button class="rs-item" onclick="goSec('news-section')">뉴스</button>
+    <button class="rs-item" onclick="goSec('game-trial')">게임체험단<span class="ri-badge">NEW</span></button>
+    <button class="rs-item" onclick="showToast('스트리머 페이지로 이동')">스트리머</button>
+    <button class="rs-item" onclick="showToast('구인/구직 페이지로 이동')">구인/구직</button>
+    <button class="rs-item" onclick="goSec('videos')">온에어</button>
+    <button class="rs-item" onclick="showToast('광고 문의: contact@snuk.kr')">광고</button>
+  </div>
+
+  <!-- 공지사항: 광고 바로 아래 고정 -->
+  <div class="rs-notice">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <span class="rs-notice-title" style="margin-bottom:0;">공지사항</span>
+      <span style="font-size:11px;color:var(--text2);cursor:pointer;font-weight:600;" onclick="showToast('공지사항 홈으로 이동')">공지사항 홈 &rsaquo;</span>
+    </div>
+    <div class="rs-ni" onclick="showToast('공지 상세 보기')"><div class="rs-ni-t">SNUK Championship S12 진행 중</div><div class="rs-ni-d">2025.05.01</div></div>
+    <div class="rs-ni" onclick="showToast('공지 상세 보기')"><div class="rs-ni-t">SNUK 굿즈샵 오픈 안내</div><div class="rs-ni-d">2025.04.15</div></div>
+    <div class="rs-ni" onclick="showToast('공지 상세 보기')"><div class="rs-ni-t">게임체험단 신규 게임 등록</div><div class="rs-ni-d">2025.04.10</div></div>
+  </div>
+
+  </div>
+
+  <!-- 스포트라이트 -->
+  <div class="rs-spotlight">
+    <!-- 제목 -->
+    <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
+      <span class="rs-spotlight-title">스포트라이트</span>
+      <span class="rs-spotlight-info" onclick="showToast('스포트라이트: 현재 방송 중인 채널을 홍보하세요')">ⓘ</span>
+    </div>
+    <!-- 신청하기 버튼 (제목 바로 아래) -->
+    <button onclick="openSpotlight()" style="width:100%;padding:8px 0;border-radius:8px;
+      background:#2a2a2e;color:#ffffff;border:none;cursor:pointer;
+      font-family:'Pretendard','Noto Sans KR',sans-serif;font-size:12px;font-weight:700;
+      margin-bottom:12px;transition:all .15s;letter-spacing:.3px;"
+      onmouseover="this.style.background='#1a1a1e'" onmouseout="this.style.background='#2a2a2e'">
+      내 방송 홍보하기 →
+    </button>
+    <div id="spotlight-list">
+      <!-- 빈 상태 -->
+      <div id="spotlight-empty" style="border:1px dashed var(--border2);border-radius:10px;padding:16px 12px;text-align:center;">
+        <div style="font-size:12px;color:var(--text3);line-height:1.6;">이 시간 스포트라이트가 비어있어요!</div>
+      </div>
+      <!-- 1줄에 1개씩 2줄 (최대 2개 노출) -->
+      <div id="spotlight-cards" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════════════════
+  1. HERO
+══════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-banner-wrap">
+    <div class="hero-banner-card">
+      <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600&q=85" alt="SNUK 메인 배너"
+        onerror="this.parentElement.style.background='#1c1c1f';this.style.display='none'">
+      <div class="hero-banner-overlay"></div>
+      <div class="hero-banner-content">
+        <div class="hero-eyebrow">STREAMER PLATFORM</div>
+        <h1 class="hero-title">스트리머의<br><span>새로운 무대</span></h1>
+        <p class="hero-desc">SNUK은 스트리머와 시청자를 연결하는<br>차세대 스트리밍 컨텐츠 플랫폼입니다.</p>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  2. SNUK 컨텐츠
+══════════════════════════════════════════ -->
+<section id="snuk-contents">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">SNUK 컨텐츠</h2>
+  </div>
+  <div id="snuk-featured" class="featured-card" style="margin-bottom:22px;cursor:pointer;" onclick="openApply('배틀로그 챌린지')">
+    <div class="featured-thumb" style="background:linear-gradient(135deg,#1a1040,#2d1060);">
+      <div style="font-size:56px;opacity:.5;">🎮</div>
+      <div style="position:absolute;top:14px;left:14px;"><span class="badge open">모집중</span></div>
+    </div>
+    <div class="featured-body">
+      <div class="featured-tag">FEATURED</div>
+      <h3 class="featured-title">배틀로그 챌린지 시즌 3</h3>
+      <p class="featured-desc">SNUK 대표 스트리머들이 참여하는 대규모 배틀로그 토너먼트.</p>
+      <div class="featured-stats">
+        <div class="featured-stat"><strong>128명</strong>참여 인원</div>
+        <div class="featured-stat"><strong>4월 30일</strong>마감일</div>
+        <div class="featured-stat"><strong>₩500,000</strong>상금</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;"><button class="btn-apply" onclick="event.stopPropagation();openApply('배틀로그 챌린지')">신청하기</button></div>
+    </div>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('snuk-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="snuk-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('snuk-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  3. 스트리머 컨텐츠 (SNUK 컨텐츠 바로 아래)
+══════════════════════════════════════════ -->
+<section id="streamer-contents">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">스트리머 컨텐츠</h2>
+  </div>
+  <div class="tabs" id="str-tabs">
+    <button class="tab active" onclick="filterStr('all',this)">전체</button>
+    <button class="tab" onclick="filterStr('open',this)">모집중</button>
+    <button class="tab" onclick="filterStr('closed',this)">마감</button>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('str-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="str-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('str-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  4. SNUK Championship
+══════════════════════════════════════════ -->
+<section id="mugchamps">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">SNUK Championship</h2>
+  </div>
+  <div class="tabs" id="mug-tabs">
+    <button class="tab active" onclick="filterMug('all',this)">전체</button>
+    <button class="tab" onclick="filterMug('open',this)">모집중</button>
+    <button class="tab" onclick="filterMug('ongoing',this)">진행중</button>
+    <button class="tab" onclick="filterMug('closed',this)">마감</button>
+  </div>
+
+  <!-- LIVE + 대진표 + 채팅 -->
+  <div id="mug-live-banner" style="margin-bottom:24px;">
+    <div class="live-banner-bar">
+      <div class="live-dot"></div>
+      <div style="flex:1;">
+        <div class="live-text">SNUK Championship 시즌 12 — 치지직 LIVE 방송 중</div>
+        <div class="live-sub">SNUK 공식 치지직 채널 실시간 방송</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="padding:7px 12px;border-radius:8px;background:rgba(255,64,64,.1);border:1px solid rgba(255,64,64,.3);color:#ff8080;font-size:12px;font-weight:600;">CH SNUK 공식채널</div>
+        <button class="btn btn-primary" style="background:linear-gradient(135deg,#ff4040,#fc5c7d);padding:7px 14px;font-size:12px;" onclick="loadChzzk()">라이브 보기</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:7px 12px;" onclick="window.open('https://chzzk.naver.com/live/e8451ea5461d1a5c92ebf11096d773bd','_blank')">치지직 ↗</button>
+      </div>
+    </div>
+    <div class="live-panel">
+      <!-- 플레이어+채팅 -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+        <div id="chzzk-player-wrap" style="background:#000;position:relative;flex-shrink:0;">
+          <div id="chzzk-placeholder" style="aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d0010,#1a0030);cursor:pointer;" onclick="loadChzzk()">
+            <div style="font-size:52px;margin-bottom:12px;animation:float 3s ease-in-out infinite;">🎵</div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">치지직 라이브 대기 중</div>
+            <div style="display:flex;align-items:center;gap:7px;background:rgba(255,64,64,.15);border:1px solid rgba(255,64,64,.4);border-radius:8px;padding:8px 14px;margin-top:8px;">
+              <div class="live-dot"></div><span style="font-size:12px;font-weight:600;color:#ff8080;">라이브 보기 버튼을 눌러주세요</span>
+            </div>
+          </div>
+          <div id="chzzk-iframe-container" style="display:none;"></div>
+          <div id="chzzk-overlay" style="display:none;position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.85));padding:16px 14px 10px;pointer-events:none;">
+            <div style="display:flex;align-items:center;gap:7px;"><div class="live-dot"></div><span id="chzzk-channel-label" style="font-size:12px;font-weight:700;color:#fff;"></span><span style="font-size:10px;color:rgba(255,255,255,.55);">· 치지직 LIVE</span></div>
+          </div>
+        </div>
+        <!-- 채팅 -->
+        <div style="flex:1;display:flex;flex-direction:column;background:var(--bg2);border-top:1px solid rgba(255,64,64,.2);min-height:280px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:7px;"><div class="live-dot"></div><span style="font-size:13px;font-weight:700;">실시간 채팅</span><span id="chat-channel-badge" style="display:none;font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:1px 8px;"></span></div>
+            <div style="display:flex;gap:6px;">
+              <button onclick="toggleChatEmbed()" id="chat-toggle-btn" class="quick-chat-btn">채팅 임베드</button>
+              <button onclick="toggleChatMode()" id="chat-mode-btn" class="quick-chat-btn" style="background:var(--accent);color:#fff;border-color:var(--accent);">시뮬레이션</button>
+            </div>
+          </div>
+          <div id="chat-embed-view" style="flex:1;display:none;"><div id="chzzk-chat-container" style="height:100%;min-height:230px;"></div></div>
+          <div id="chat-sim-view" style="flex:1;display:flex;flex-direction:column;">
+            <div id="chat-messages" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-height:180px;max-height:280px;"></div>
+            <div style="padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0;">
+              <div style="display:flex;gap:7px;align-items:center;">
+                <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">나</div>
+                <input id="chat-input" type="text" placeholder="로그인 후 채팅 참여" style="flex:1;padding:7px 10px;border-radius:7px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:12px;outline:none;font-family:'Pretendard','Noto Sans KR',sans-serif;">
+                <button onclick="sendChat()" style="padding:7px 12px;border-radius:7px;font-size:12px;font-weight:600;background:var(--accent);border:none;color:#fff;cursor:pointer;flex-shrink:0;">전송</button>
+              </div>
+              <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;">
+                <button onclick="quickChat('불꽃')" class="quick-chat-btn">🔥</button>
+                <button onclick="quickChat('박수')" class="quick-chat-btn">👏</button>
+                <button onclick="quickChat('ㅋㅋㅋ')" class="quick-chat-btn">ㅋㅋㅋ</button>
+                <button onclick="quickChat('대박')" class="quick-chat-btn">대박</button>
+                <button onclick="quickChat('화이팅!')" class="quick-chat-btn">화이팅!</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 대진표: 데스크탑에서 숨김 (아래 가로 브라켓으로 대체) -->
+    </div>
+
+    <!-- 데스크탑 가로 토너먼트 브라켓 -->
+    <div id="desktop-bracket-wrap" style="margin-top:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden;">
+      <!-- 브라켓 헤더 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;">
+        <!-- 왼쪽: 강수 버튼 -->
+        <div style="display:flex;gap:5px;flex-wrap:wrap;" id="pc-bracket-tabs">
+          <button class="pc-bt active" onclick="switchPcTab('r16',this)">16강</button>
+          <button class="pc-bt" onclick="switchPcTab('qf',this)">8강</button>
+          <button class="pc-bt" onclick="switchPcTab('sf',this)">4강</button>
+          <button class="pc-bt" onclick="switchPcTab('final',this)">결승</button>
+          <button class="pc-bt" onclick="switchPcTab('winner',this)" style="color:#ffd700!important;">우승</button>
+        </div>
+        <!-- 오른쪽: 대진표 텍스트 -->
+        <span style="font-size:13px;font-weight:700;color:var(--text2);margin-left:auto;">대진표 — 시즌 12</span>
+      </div>
+      <!-- 경기 슬라이더 -->
+      <div style="position:relative;padding:14px 44px;" id="pc-bracket-body">
+        <button onclick="slidePcMatch(-1)" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:all .2s;" onmouseover="this.style.background='#2a2a2e';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">‹</button>
+        <div style="overflow:hidden;">
+          <div id="pc-match-track" style="display:flex;transition:transform .3s cubic-bezier(.4,0,.2,1);"></div>
+        </div>
+        <button onclick="slidePcMatch(1)" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:all .2s;" onmouseover="this.style.background='#2a2a2e';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">›</button>
+      </div>
+      <!-- 도트 인디케이터 -->
+      <div id="pc-dots" style="display:flex;justify-content:center;gap:6px;padding:0 18px 14px;"></div>
+    </div>
+
+    <!-- 모바일 대진표: 탭 + 경기 슬라이드 -->
+    <div class="mobile-bracket-wrap" id="mobile-bracket-wrap">
+      <!-- 라운드 탭 -->
+      <div class="mobile-bracket-tabs" style="overflow-x:auto;scrollbar-width:none;">
+        <button class="mb-tab active" onclick="switchMbTab('r16',this)" style="white-space:nowrap;flex:none;padding:10px 14px;">16강</button>
+        <button class="mb-tab" onclick="switchMbTab('qf',this)" style="white-space:nowrap;flex:none;padding:10px 14px;">8강</button>
+        <button class="mb-tab" onclick="switchMbTab('sf',this)" style="white-space:nowrap;flex:none;padding:10px 14px;">4강</button>
+        <button class="mb-tab" onclick="switchMbTab('final',this)" style="white-space:nowrap;flex:none;padding:10px 14px;">결승</button>
+        <button class="mb-tab" onclick="switchMbTab('winner',this)" style="white-space:nowrap;flex:none;padding:10px 14px;color:#ffd700;">우승</button>
+      </div>
+
+      <!-- 경기 슬라이더 -->
+      <div style="position:relative;padding:14px 36px;">
+        <!-- 이전 경기 -->
+        <button id="mb-prev" onclick="slideMbMatch(-1)" style="position:absolute;left:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:all .2s;" onmouseover="this.style.background='#2a2a2e';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">‹</button>
+
+        <!-- 경기 카드 영역 -->
+        <div id="mb-match-container" style="overflow:hidden;">
+          <div id="mb-match-track" style="display:flex;transition:transform .3s cubic-bezier(.4,0,.2,1);"></div>
+        </div>
+
+        <!-- 다음 경기 -->
+        <button id="mb-next" onclick="slideMbMatch(1)" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:all .2s;" onmouseover="this.style.background='#2a2a2e';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">›</button>
+      </div>
+
+      <!-- 경기 인디케이터 (도트) -->
+      <div id="mb-dots" style="display:flex;justify-content:center;gap:6px;padding:0 14px 14px;"></div>
+    </div>
+
+    <!-- 참여 스트리머 -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:18px 22px;margin-top:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <span style="font-size:13px;font-weight:700;color:var(--text2);">참여 스트리머</span>
+        <span style="font-size:11px;color:var(--text3);background:var(--bg4);border:1px solid var(--border);border-radius:20px;padding:2px 9px;">시즌 12 · 64명</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:auto;" id="roster-page-label">1 / 8</span>
+      </div>
+      <div style="position:relative;">
+        <button onclick="slideRoster(-1)" style="position:absolute;left:-14px;top:50%;transform:translateY(-50%);z-index:5;width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">‹</button>
+        <div style="overflow:hidden;">
+          <div id="roster-track" style="display:flex;gap:9px;transition:transform .35s cubic-bezier(.4,0,.2,1);"></div>
+        </div>
+        <button onclick="slideRoster(1)" style="position:absolute;right:-14px;top:50%;transform:translateY(-50%);z-index:5;width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">›</button>
+      </div>
+      <div id="roster-dots" style="display:flex;justify-content:center;gap:5px;margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <div id="mug-featured" class="featured-card" style="margin-bottom:22px;cursor:pointer;" onclick="openApply('SNUK Championship S12')">
+    <div class="featured-thumb" style="background:linear-gradient(135deg,#1a0830,#301060);">
+      <div style="font-size:56px;opacity:.5;">🎵</div>
+      <div style="position:absolute;top:14px;left:14px;"><span class="badge ongoing">진행중</span></div>
+    </div>
+    <div class="featured-body">
+      <div class="featured-tag" style="color:#fc5c7d;">SIGNATURE CONTENT</div>
+      <h3 class="featured-title">SNUK Championship 시즌 12</h3>
+      <p class="featured-desc">운과 실력이 공존하는 SNUK의 시그니처 음악 챔피언십.</p>
+      <div class="featured-stats">
+        <div class="featured-stat"><strong>64명</strong>참여 인원</div>
+        <div class="featured-stat"><strong>진행중</strong>현재 상태</div>
+        <div class="featured-stat"><strong>₩1,000,000</strong>우승 상금</div>
+      </div>
+      <div><button class="btn-apply" style="background:var(--bg4);color:var(--text3);cursor:default;" onclick="event.stopPropagation()">마감</button></div>
+    </div>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('mug-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="mug-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('mug-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  5. 굿즈샵 (이벤트 위)
+══════════════════════════════════════════ -->
+<section id="goods">
+  <div class="inner">
+    <!-- 제목 먼저 -->
+    <div class="section-header">
+      <h2 class="section-title">스트리머 굿즈샵</h2>
+    </div>
+    <!-- 배너: 제목 아래 -->
+    <div class="goods-banner" style="border-radius:var(--radius2);overflow:hidden;margin-bottom:28px;">
+      <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1600&q=80" alt="굿즈샵 배너" onerror="this.parentElement.style.background='#222226';this.remove()">
+      <div class="goods-banner-overlay" style="padding-left:40px;">
+        <div class="goods-banner-text">
+          <h2>SNUK 굿즈샵</h2>
+          <p>내가 좋아하는 스트리머의 굿즈를 만나보세요</p>
+        </div>
+      </div>
+    </div>
+    <!-- 슬라이더 -->
+    <div class="slider-wrap">
+      <div class="slider-nav prev" onclick="slide('goods-slider',-1)">‹</div>
+      <div class="slider-clip"><div class="slider-track" id="goods-slider"></div></div>
+      <div class="slider-nav next" onclick="slide('goods-slider',1)">›</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  스트리머
+══════════════════════════════════════════ -->
+<section id="streamers-channel" style="background:var(--bg2);">
+  <div class="inner">
+    <div class="section-header" style="margin-bottom:6px;">
+      <h2 class="section-title">스트리머</h2>
+      <span style="font-size:13px;color:var(--text2);cursor:pointer;margin-left:auto;" onclick="showToast('스트리머 전체 보기')">전체 보기 ›</span>
+    </div>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:22px;">SNUK 공식 파트너 스트리머</p>
+    <div class="slider-wrap">
+      <div class="slider-nav prev" onclick="slideStreamers(-1)">‹</div>
+      <div class="slider-clip">
+        <div class="streamer-ch-track" id="streamer-ch-track"></div>
+      </div>
+      <div class="slider-nav next" onclick="slideStreamers(1)">›</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  6. 커뮤니티 이벤트
+══════════════════════════════════════════ -->
+<section id="events">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">커뮤니티 이벤트</h2>
+  </div>
+  <div class="tabs" id="evt-tabs">
+    <button class="tab active" onclick="filterEvt('all',this)">전체</button>
+    <button class="tab" onclick="filterEvt('ongoing',this)">진행중</button>
+    <button class="tab" onclick="filterEvt('closed',this)">마감</button>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('event-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="event-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('event-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  7. 게임체험단 (영상 위)
+══════════════════════════════════════════ -->
+<section id="game-trial">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">게임체험단</h2>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('game-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="game-grid"></div></div>
+    <div class="slider-nav next" onclick="slide('game-slider',1)">›</div>
+  </div>
+
+  <!-- 게임 플레이 영상 슬라이더 -->
+  <div style="margin-top:32px;">
+    <div style="margin-bottom:16px;">
+    <div class="slider-wrap">
+      <div class="slider-nav prev" onclick="slide('game-videos-slider',-1)">‹</div>
+      <div class="slider-clip"><div class="slider-track" id="game-videos-slider"></div></div>
+      <div class="slider-nav next" onclick="slide('game-videos-slider',1)">›</div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  8. 온에어 (컨텐츠 영상)
+══════════════════════════════════════════ -->
+<section id="videos">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">온에어</h2>
+  </div>
+  <div class="video-layout" id="video-layout">
+    <div class="video-list" id="video-list"></div>
+    <div style="flex:1;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="display:flex;flex-direction:column;">
+          <div class="video-player" id="main-player"><div style="text-align:center;color:var(--text3);"><div style="font-size:40px;opacity:.3;margin-bottom:8px;">▶</div><div style="font-size:12px;">영상을 선택하세요</div></div></div>
+          <div class="video-info-bar"><div style="font-size:13px;font-weight:700;color:var(--text);" id="main-title">영상을 선택하세요</div><div style="font-size:11px;color:var(--text3);margin-top:3px;" id="main-meta">—</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;">
+          <div class="video-player" id="sub-player"><div style="text-align:center;color:var(--text3);"><div style="font-size:32px;opacity:.2;margin-bottom:6px;">▶</div><div style="font-size:11px;">두 번째 영상</div></div></div>
+          <div class="video-info-bar"><div style="font-size:13px;font-weight:700;color:var(--text);" id="sub-title">영상을 선택하세요</div><div style="font-size:11px;color:var(--text3);margin-top:3px;" id="sub-meta">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  구인구직
+══════════════════════════════════════════ -->
+<section id="jobs" style="background:var(--bg);">
+  <div class="inner">
+    <div class="section-header" style="margin-bottom:6px;">
+      <h2 class="section-title">구인구직</h2>
+      <span style="font-size:13px;color:var(--text2);cursor:pointer;margin-left:auto;" onclick="showToast('구인구직 전체 보기')">전체 보기 ›</span>
+    </div>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:22px;">스트리머 크루 모집 · 제작팀 구인 · 파트너 구직</p>
+    <div class="tabs" id="job-tabs">
+      <button class="tab active" onclick="filterJobs('all',this)">전체</button>
+      <button class="tab" onclick="filterJobs('recruit',this)">모집중</button>
+      <button class="tab" onclick="filterJobs('closed',this)">마감</button>
+    </div>
+    <div class="slider-wrap">
+      <div class="slider-nav prev" onclick="slide('job-slider',-1)">‹</div>
+      <div class="slider-clip"><div class="slider-track" id="job-slider"></div></div>
+      <div class="slider-nav next" onclick="slide('job-slider',1)">›</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  9. 뉴스 (협력사 위)
+══════════════════════════════════════════ -->
+<section id="news-section">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">SNUK 뉴스</h2>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-20px;margin-bottom:20px;">SNUK 뉴스 최신 기사</p>
+  <div class="news-layout" id="news-layout"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  10. 협력사
+══════════════════════════════════════════ -->
+<section id="partners">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">협력사</h2>
+  </div>
+  <div style="position:relative;padding:0 24px;">
+    <div class="slider-nav prev" onclick="slidePartners(-1)">‹</div>
+    <div class="partners-rows-container">
+      <div class="partners-track" id="partners-row1"></div>
+      <div class="partners-track" id="partners-row2" style="margin-top:10px;"></div>
+    </div>
+    <div class="slider-nav next" onclick="slidePartners(1)">›</div>
+  </div>
+  </div>
+</section>
+
+<footer>
+  <div class="inner">
+  <div class="footer-logo">SNUK</div>
+  <p>© 2025 SNUK. All rights reserved. | 문의: contact@snuk.kr</p>
+  <p style="margin-top:6px;">치지직 · 유튜브 연동 스트리머 플랫폼</p>
+  </div>
+</footer>
+
+<!-- ══ MODALS ══ -->
+<!-- 스포트라이트 등록 모달 -->
+<div class="modal-overlay" id="spotlight-modal">
+  <div class="modal" style="width:420px;">
+    <button class="modal-close" onclick="closeModal('spotlight-modal')">✕</button>
+    <div class="modal-title">스포트라이트 등록</div>
+    <div class="modal-sub">지금 방송 중인 채널을 홍보해보세요</div>
+    <div class="form-group">
+      <label class="form-label">방송 제목</label>
+      <input class="form-input" id="sp-title" type="text" placeholder="예) 발로란트 내전 중">
+    </div>
+    <div class="form-group">
+      <label class="form-label">플랫폼</label>
+      <div style="display:flex;gap:8px;">
+        <button onclick="selectPlatform(this,'chz')" class="sp-plat-btn active" style="flex:1;padding:8px;border-radius:8px;border:1px solid #00c73c;background:rgba(0,199,60,.1);color:#00c73c;font-size:12px;font-weight:600;cursor:pointer;font-family:'Pretendard','Noto Sans KR',sans-serif;">치지직</button>
+        <button onclick="selectPlatform(this,'soop')" class="sp-plat-btn" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:'Pretendard','Noto Sans KR',sans-serif;">숲</button>
+        <button onclick="selectPlatform(this,'yt')" class="sp-plat-btn" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:'Pretendard','Noto Sans KR',sans-serif;">유튜브</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">방송 링크</label>
+      <input class="form-input" id="sp-url" type="text" placeholder="https://chzzk.naver.com/...">
+    </div>
+    <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:16px;font-size:11px;color:var(--text3);line-height:1.6;">
+      스포트라이트는 <strong style="color:var(--text2);">최대 2시간</strong> 노출됩니다.<br>승인된 스트리머만 등록할 수 있습니다.
+    </div>
+    <button class="btn-apply" style="width:100%;padding:11px;font-size:13px;border-radius:8px;"
+      onclick="submitSpotlight()">스포트라이트 등록하기</button>
+  </div>
+</div>
+<!-- 게임 플레이 영상 모달 -->
+<div class="modal-overlay" id="game-video-modal">
+  <div class="modal" style="width:680px;padding:0;overflow:hidden;">
+    <button class="modal-close" style="top:10px;right:10px;z-index:10;background:rgba(0,0,0,.6);color:#fff;border:none;" onclick="closeGameVideo()">✕</button>
+    <div style="aspect-ratio:16/9;background:#000;">
+      <iframe id="gv-iframe" src="" style="width:100%;height:100%;border:none;" allowfullscreen allow="autoplay;fullscreen"></iframe>
+    </div>
+    <div style="padding:16px 20px;background:var(--bg2);">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">🎮 <span id="gv-game"></span></div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);"><span id="gv-streamer"></span>의 플레이 영상</div>
+    </div>
+  </div>
+</div>
+<!-- 로그인 -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <div class="modal-title">SNUK 로그인</div>
+    <div class="modal-sub">소셜 계정으로 간편하게 로그인하세요</div>
+    <button class="login-big-btn chz" onclick="doLogin('치지직')">🎮 치지직으로 로그인</button>
+    <button class="login-big-btn yt" onclick="doLogin('씨미')">🟢 씨미(CIME)로 로그인</button>
+    <button class="login-big-btn google" onclick="doLogin('숲')"><img src="https://www.google.com/favicon.ico" width="16"> 숲(SOOP)로 로그인</button>
+    <div class="login-divider">로그인 시 이용약관에 동의합니다</div>
+  </div>
+</div>
+<!-- 회원가입 -->
+<div class="modal-overlay" id="signup-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('signup-modal')">✕</button>
+    <div class="modal-title">SNUK 회원가입</div>
+    <div class="modal-sub">소셜 계정으로 간편하게 가입하세요</div>
+    <button class="login-big-btn chz" onclick="doLogin('치지직')">🎮 치지직으로 가입</button>
+    <button class="login-big-btn yt" onclick="doLogin('씨미')">🟢 씨미(CIME)로 가입</button>
+    <button class="login-big-btn google" onclick="doLogin('숲')"><img src="https://www.google.com/favicon.ico" width="16"> 숲(SOOP)로 가입</button>
+  </div>
+</div>
+<!-- 마이페이지 -->
+<div class="modal-overlay" id="mypage-modal">
+  <div class="modal" style="width:520px;">
+    <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+      <div class="rs-avatar" style="width:52px;height:52px;font-size:20px;" id="mp-avatar">S</div>
+      <div><div style="font-size:17px;font-weight:700;" id="mp-uname">SNUK유저</div><div style="font-size:12px;color:var(--text3);">● 온라인</div></div>
+      <button class="btn btn-outline" style="margin-left:auto;font-size:12px;" onclick="doLogout()">로그아웃</button>
+    </div>
+    <div class="mypage-tabs">
+      <button class="mypage-tab active" onclick="mpTab('apply',this)">신청 현황</button>
+      <button class="mypage-tab" onclick="mpTab('codes',this)">게임 코드</button>
+      <button class="mypage-tab" onclick="mpTab('wish',this)">찜 목록</button>
+    </div>
+    <div class="mypage-panel active" id="mp-apply">
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;">신청한 컨텐츠가 없습니다.<br>컨텐츠에 신청해보세요!</div>
+    </div>
+    <div class="mypage-panel" id="mp-codes">
+      <div class="code-item"><div class="code-game">🚀 스페이스 랜더스</div><div class="code-val">SL-DEMO-XXXX-1234</div><div class="code-date">2025.05.01 수령</div></div>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;">관리자가 코드를 전달하면 여기서 확인할 수 있습니다.</div>
+    </div>
+    <div class="mypage-panel" id="mp-wish">
+      <div style="font-size:13px;color:var(--text2);">찜한 굿즈가 없습니다.</div>
+    </div>
+  </div>
+</div>
+<!-- 신청 -->
+<div class="modal-overlay" id="apply-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('apply-modal')">✕</button>
+    <div class="modal-title">컨텐츠 신청</div>
+    <div class="modal-sub" id="apply-modal-sub">신청 정보를 입력해주세요</div>
+    <div class="form-group"><label class="form-label">닉네임</label><input class="form-input" type="text" placeholder="닉네임 입력"></div>
+    <div class="form-group"><label class="form-label">연락처 (선택)</label><input class="form-input" type="text" placeholder="연락 가능한 채널"></div>
+    <div class="form-group"><label class="form-label">신청 사유</label><textarea class="form-textarea" placeholder="간단히 적어주세요"></textarea></div>
+    <button class="btn-apply" style="width:100%;padding:11px;font-size:13px;border-radius:8px;" onclick="showToast('신청 완료!');closeModal('apply-modal')">신청 완료</button>
+  </div>
+</div>
+<!-- 게임 상세 -->
+<div class="modal-overlay" id="game-modal">
+  <div class="modal" style="width:540px;">
+    <button class="modal-close" onclick="closeModal('game-modal')">✕</button>
+    <div class="modal-title" id="gm-title">게임명</div>
+    <div class="modal-sub" id="gm-pub">게임사</div>
+    <p id="gm-desc" style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.7;"></p>
+    <div style="display:flex;gap:10px;margin-bottom:18px;">
+      <div style="flex:1;background:var(--bg3);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">신청 / 모집</div><div id="gm-members" style="font-size:17px;font-weight:700;"></div></div>
+      <div style="flex:1;background:var(--bg3);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">평균 별점</div><div id="gm-stars" style="font-size:17px;font-weight:700;color:var(--gold);"></div></div>
+    </div>
+    <div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:600;margin-bottom:8px;">별점 선택</div>
+      <div id="star-select" style="display:flex;gap:4px;font-size:22px;cursor:pointer;margin-bottom:8px;">
+        <span onclick="setStars(1)">☆</span><span onclick="setStars(2)">☆</span><span onclick="setStars(3)">☆</span><span onclick="setStars(4)">☆</span><span onclick="setStars(5)">☆</span>
+      </div>
+      <textarea class="form-textarea" id="review-input" placeholder="리뷰를 작성해주세요" style="height:60px;"></textarea>
+    </div>
+    <button class="btn-apply" style="width:100%;margin-bottom:7px;padding:11px;font-size:13px;border-radius:8px;" onclick="showToast('체험단 신청 완료!');closeModal('game-modal')">체험단 신청하기</button>
+    <button class="btn btn-outline" style="width:100%;" onclick="showToast('리뷰 등록 완료!');closeModal('game-modal')">리뷰 등록</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span>✓</span><span id="toast-msg"></span></div>
+

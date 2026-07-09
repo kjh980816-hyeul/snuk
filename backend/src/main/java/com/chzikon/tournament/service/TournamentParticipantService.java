@@ -4,11 +4,13 @@ import com.chzikon.admin.service.AdminLogService;
 import com.chzikon.global.error.BusinessException;
 import com.chzikon.global.error.ErrorCode;
 import com.chzikon.member.domain.Member;
+import com.chzikon.member.repository.MemberRepository;
 import com.chzikon.member.service.MemberService;
 import com.chzikon.tournament.domain.Tournament;
 import com.chzikon.tournament.domain.TournamentParticipant;
 import com.chzikon.tournament.dto.MyParticipationResponse;
 import com.chzikon.tournament.dto.ParticipantAdminView;
+import com.chzikon.tournament.dto.ParticipantPublicView;
 import com.chzikon.tournament.repository.TournamentParticipantRepository;
 import com.chzikon.tournament.repository.TournamentRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +31,7 @@ public class TournamentParticipantService {
     private final TournamentRepository tournamentRepository;
     private final TournamentParticipantRepository participantRepository;
     private final MemberService memberService;
+    private final MemberRepository memberRepository;
     private final AdminLogService adminLogService;
 
     /**
@@ -90,6 +96,21 @@ public class TournamentParticipantService {
     public List<ParticipantAdminView> listParticipants(Long tournamentId) {
         return participantRepository.findByTournamentIdOrderByAppliedAtAsc(tournamentId).stream()
                 .map(ParticipantAdminView::from)
+                .toList();
+    }
+
+    /** 공개 로스터 — 승인된 참가자만(닉네임·프사). 대진표/참여 스트리머 표시용. */
+    @Transactional(readOnly = true)
+    public List<ParticipantPublicView> listApprovedPublic(Long tournamentId) {
+        List<TournamentParticipant> approved =
+                participantRepository.findByTournamentIdOrderByAppliedAtAsc(tournamentId).stream()
+                        .filter(TournamentParticipant::isApproved)
+                        .toList();
+        Map<Long, Member> members = memberRepository.findAllById(
+                        approved.stream().map(TournamentParticipant::getMemberId).distinct().toList())
+                .stream().collect(Collectors.toMap(Member::getId, Function.identity()));
+        return approved.stream()
+                .map(p -> ParticipantPublicView.of(p, members.get(p.getMemberId())))
                 .toList();
     }
 

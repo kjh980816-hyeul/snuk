@@ -102,6 +102,65 @@ export interface MyParticipation {
   appliedAt: string
 }
 
+/** 공개 로스터(승인된 참가자만). */
+export interface ParticipantPublic {
+  participantId: number
+  nickname: string
+  profileImageUrl: string | null
+  provider: 'CHZZK' | 'CIME' | 'SOOP'
+}
+
+// ----- 스트리머(공개) -----
+export interface StreamerPublic {
+  id: number
+  nickname: string
+  profileImageUrl: string | null
+  provider: 'CHZZK' | 'CIME' | 'SOOP'
+  followerCount: number | null
+  channelUrl: string | null
+}
+
+export interface StreamerProfile {
+  streamer: StreamerPublic
+  followCount: number
+  following: boolean
+}
+
+export interface StreamerPost {
+  id: number
+  streamerId: number
+  authorId: number
+  authorName: string
+  authorImageUrl: string | null
+  title: string
+  content: string | null
+  createdAt: string
+  deletable: boolean
+}
+
+// ----- 공지 -----
+export interface Notice {
+  id: number
+  title: string
+  content: string | null
+  pinned: boolean
+  createdAt: string
+}
+
+// ----- 스포트라이트 -----
+export type SpotlightPlatform = 'CHZZK' | 'SOOP' | 'YOUTUBE'
+
+export interface Spotlight {
+  id: number
+  title: string
+  platform: SpotlightPlatform
+  streamUrl: string
+  streamerName: string
+  streamerImageUrl: string | null
+  createdAt: string
+  expiresAt: string
+}
+
 // ----- 마이페이지 -----
 export interface MypageSummary {
   applications: Array<{

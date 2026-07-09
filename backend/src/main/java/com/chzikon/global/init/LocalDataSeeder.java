@@ -11,6 +11,8 @@ import com.chzikon.collab.repository.ContentVideoRepository;
 import com.chzikon.goods.domain.Goods;
 import com.chzikon.goods.domain.GoodsStatus;
 import com.chzikon.goods.repository.GoodsRepository;
+import com.chzikon.notice.domain.Notice;
+import com.chzikon.notice.repository.NoticeRepository;
 import com.chzikon.tournament.domain.Tournament;
 import com.chzikon.tournament.domain.TournamentStatus;
 import com.chzikon.tournament.repository.TournamentRepository;
@@ -46,6 +48,7 @@ public class LocalDataSeeder implements ApplicationRunner {
     private final ClientLogoRepository clientLogoRepository;
     private final GoodsRepository goodsRepository;
     private final TournamentRepository tournamentRepository;
+    private final NoticeRepository noticeRepository;
 
     @Override
     @Transactional
@@ -56,6 +59,7 @@ public class LocalDataSeeder implements ApplicationRunner {
         seedClients();
         seedCampaigns();
         seedTournaments();
+        seedNotices();
     }
 
     private void seedGoods() {
@@ -183,5 +187,17 @@ public class LocalDataSeeder implements ApplicationRunner {
                 .resultText("우승: 팀 알파 / 준우승: 팀 브라보 / MVP: 스트리머A")
                 .featured(false).sortOrder(2).build());
         log.info("[seed] tournament 3건 삽입");
+    }
+
+    private void seedNotices() {
+        if (noticeRepository.count() > 0) return;
+        // created_by=0 → 시더 표기(어드민 로그인 전이라 실제 member 없음, FK 없음)
+        noticeRepository.save(new Notice("SNUK 컵 시즌1 참가 신청 오픈",
+                "스트리머 16인 초청 배틀로얄 대회 참가 신청을 받습니다. 대회·생방송 메뉴에서 신청해주세요.", true, 0L));
+        noticeRepository.save(new Notice("게임체험단 신규 게임 등록 안내",
+                "네온 서바이벌 / 픽셀 던전 러시 체험단이 열렸습니다.", false, 0L));
+        noticeRepository.save(new Notice("굿즈샵 오픈 준비 중",
+                "SNUK 공식 굿즈샵이 곧 오픈합니다. 많은 기대 부탁드려요!", false, 0L));
+        log.info("[seed] notice 3건 삽입");
     }
 }

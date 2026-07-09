@@ -1,7 +1,9 @@
 import api from './client'
 import type {
   Campaign, ClientLogo, CollabGame, ContentVideo, Goods, Me, MyApplication,
-  MyParticipation, MypageSummary, OrderCreateRequest, OrderResponse, OrderView, Review, Tournament,
+  MyParticipation, MypageSummary, Notice, OrderCreateRequest, OrderResponse, OrderView,
+  ParticipantPublic, Review, Spotlight, SpotlightPlatform, StreamerPost, StreamerProfile,
+  StreamerPublic, Tournament,
 } from './types'
 
 // ----- auth -----
@@ -49,6 +51,34 @@ export const tournamentApi = {
     api.post<{ participantId: number; status: string }>(`/api/tournaments/${id}/apply`).then((r) => r.data),
   myParticipation: (id: number) =>
     api.get<MyParticipation>(`/api/tournaments/${id}/my-participation`).then((r) => r.data),
+  participants: (id: number) =>
+    api.get<ParticipantPublic[]>(`/api/tournaments/${id}/participants`).then((r) => r.data),
+}
+
+// ----- 스트리머 (public + 프로필/팔로우/개인 게시판) -----
+export const streamerApi = {
+  list: () => api.get<StreamerPublic[]>('/api/streamers').then((r) => r.data),
+  profile: (id: number) => api.get<StreamerProfile>(`/api/streamers/${id}`).then((r) => r.data),
+  follow: (id: number) =>
+    api.post<{ following: boolean; followCount: number }>(`/api/streamers/${id}/follow`).then((r) => r.data),
+  unfollow: (id: number) =>
+    api.delete<{ following: boolean; followCount: number }>(`/api/streamers/${id}/follow`).then((r) => r.data),
+  posts: (id: number) => api.get<StreamerPost[]>(`/api/streamers/${id}/posts`).then((r) => r.data),
+  writePost: (id: number, body: { title: string; content: string }) =>
+    api.post<StreamerPost>(`/api/streamers/${id}/posts`, body).then((r) => r.data),
+  deletePost: (postId: number) => api.delete(`/api/streamer-posts/${postId}`),
+}
+
+// ----- 공지 (public) -----
+export const noticeApi = {
+  list: (limit = 5) => api.get<Notice[]>('/api/notices', { params: { limit } }).then((r) => r.data),
+}
+
+// ----- 스포트라이트 -----
+export const spotlightApi = {
+  active: () => api.get<Spotlight[]>('/api/spotlights/active').then((r) => r.data),
+  create: (body: { title: string; platform: SpotlightPlatform; streamUrl: string }) =>
+    api.post<Spotlight>('/api/spotlights', body).then((r) => r.data),
 }
 
 // ----- goods (public storefront) -----

@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import SnukSections from '@/components/SnukSections.vue'
 import { goodsApi } from '@/api'
 import type { Goods } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 import { useCheckout } from '@/composables/useCheckout'
+import { GOODS_READY } from '@/config'
 
-// 사업자 등록 + PortOne 발급 전까지 상점 비노출. 준비되면 true 로만 바꾸면 됨.
-const GOODS_READY = false
+// 굿즈샵: 시안 goods 섹션(카드/슬라이더는 시안 렌더러) + 실 결제 패널(PortOne)
+// 카드의 "구매하기" → __snukActions.buyGoods → /goods?buy={id} → 이 패널 오픈
+const show = ['goods']
 
 const auth = useAuthStore()
-const goods = ref<Goods[]>([])
-const loading = ref(true)
+const route = useRoute()
+const router = useRouter()
 const selected = ref<Goods | null>(null)
 
 const form = reactive({
@@ -23,20 +27,31 @@ const form = reactive({
   memo: '',
 })
 
-async function reload() {
-  goods.value = await goodsApi.list()
-}
-const { processing, message, doneOrder, checkout } = useCheckout(reload)
+const { processing, message, doneOrder, checkout } = useCheckout()
 
 function won(v: number) {
   return v.toLocaleString('ko-KR') + '원'
 }
 
-function open(g: Goods) {
-  selected.value = g
-  form.quantity = 1
-  message.value = ''
-  doneOrder.value = null
+async function openByQuery() {
+  const buyId = Number(route.query.buy)
+  if (!GOODS_READY || !buyId) return
+  try {
+    const g = await goodsApi.detail(buyId)
+    if (g.purchasable) {
+      selected.value = g
+      form.quantity = 1
+      message.value = ''
+      doneOrder.value = null
+    }
+  } catch {
+    /* 없는 상품 — 무시 */
+  }
+}
+
+function closePanel() {
+  selected.value = null
+  if (route.query.buy) router.replace({ path: '/goods' })
 }
 
 async function buy() {
@@ -50,109 +65,67 @@ async function buy() {
     addressDetail: form.addressDetail,
     memo: form.memo,
   })
-  if (doneOrder.value?.status === 'PAID') selected.value = null
+  if (doneOrder.value?.status === 'PAID') closePanel()
 }
 
-onMounted(async () => {
-  if (!GOODS_READY) {
-    loading.value = false
-    return
-  }
-  try {
-    await reload()
-  } finally {
-    loading.value = false
-  }
-})
+onMounted(openByQuery)
+watch(() => route.query.buy, openByQuery)
 </script>
 
 <template>
-  <div class="wrap section">
-    <h2 class="section-label">굿즈</h2>
+  <SnukSections :show="show" />
 
-    <div v-if="!GOODS_READY" class="empty-state">
-      <p style="font-size: 18px; font-weight: 800; margin: 0 0 6px">굿즈 준비중입니다</p>
-      <p style="margin: 0">SNUK 공식 굿즈를 준비하고 있어요. 조금만 기다려주세요!</p>
-    </div>
-    <div v-else-if="loading" class="empty-state">불러오는 중…</div>
-    <div v-else-if="!goods.length" class="empty-state">아직 등록된 굿즈가 없습니다.</div>
-    <div v-else class="card-grid">
-      <div v-for="g in goods" :key="g.id" class="goods-card">
-        <div class="thumb">
-          <img v-if="g.imageUrl" :src="g.imageUrl" :alt="g.name" />
-          <div v-else class="placeholder">굿즈 사진</div>
-          <span v-if="!g.purchasable" class="soldout">품절</span>
-        </div>
-        <div class="body">
-          <h3>{{ g.name }}</h3>
-          <p class="price">{{ won(g.price) }}</p>
-          <p class="stock">재고 {{ g.stock }}개</p>
-          <button class="btn" :disabled="!g.purchasable" @click="open(g)">
-            {{ g.purchasable ? '구매하기' : '품절' }}
-          </button>
-        </div>
-      </div>
-    </div>
+  <!-- 구매 패널 (다크 테마) -->
+  <div v-if="selected" class="buy-overlay" @click.self="closePanel">
+    <div class="buy-panel">
+      <button class="buy-close" @click="closePanel">✕</button>
+      <h3>{{ selected.name }} 주문</h3>
+      <p class="buy-price">{{ won(selected.price) }} · 재고 {{ selected.stock }}개</p>
 
-    <!-- 구매 패널 -->
-    <div v-if="selected" class="overlay" @click.self="selected = null">
-      <div class="panel">
-        <button class="close" @click="selected = null">✕</button>
-        <h3>{{ selected.name }} 주문</h3>
-        <p class="price">{{ won(selected.price) }} · 재고 {{ selected.stock }}개</p>
+      <template v-if="!auth.isLoggedIn">
+        <p class="buy-notice">구매하려면 로그인이 필요합니다.</p>
+        <button class="buy-btn" @click="auth.login()">로그인</button>
+      </template>
 
-        <template v-if="!auth.isLoggedIn">
-          <p class="notice">구매하려면 로그인이 필요합니다.</p>
-          <button class="btn orange" @click="auth.login()">치지직 로그인</button>
-        </template>
+      <template v-else>
+        <label class="buy-field">
+          수량
+          <input type="number" v-model.number="form.quantity" min="1" :max="selected.stock" />
+        </label>
+        <label class="buy-field">받는 분<input v-model="form.receiverName" placeholder="이름" /></label>
+        <label class="buy-field">연락처<input v-model="form.receiverPhone" placeholder="010-0000-0000" /></label>
+        <label class="buy-field">우편번호<input v-model="form.zipcode" placeholder="선택" /></label>
+        <label class="buy-field">주소<input v-model="form.address" placeholder="배송지 주소" /></label>
+        <label class="buy-field">상세주소<input v-model="form.addressDetail" placeholder="동/호수 등" /></label>
+        <label class="buy-field">메모<input v-model="form.memo" placeholder="배송 요청사항(선택)" /></label>
 
-        <template v-else>
-          <label class="field">
-            수량
-            <input type="number" v-model.number="form.quantity" min="1" :max="selected.stock" />
-          </label>
-          <label class="field">받는 분<input v-model="form.receiverName" placeholder="이름" /></label>
-          <label class="field">연락처<input v-model="form.receiverPhone" placeholder="010-0000-0000" /></label>
-          <label class="field">우편번호<input v-model="form.zipcode" placeholder="선택" /></label>
-          <label class="field">주소<input v-model="form.address" placeholder="배송지 주소" /></label>
-          <label class="field">상세주소<input v-model="form.addressDetail" placeholder="동/호수 등" /></label>
-          <label class="field">메모<input v-model="form.memo" placeholder="배송 요청사항(선택)" /></label>
+        <p class="buy-total">결제금액 <b>{{ won(selected.price * (form.quantity || 0)) }}</b></p>
+        <button
+          class="buy-btn"
+          :disabled="processing || !form.receiverName || !form.receiverPhone || !form.address || form.quantity < 1"
+          @click="buy"
+        >
+          {{ processing ? '처리 중…' : '결제하기' }}
+        </button>
+      </template>
 
-          <p class="total">결제금액 <b>{{ won(selected.price * (form.quantity || 0)) }}</b></p>
-          <button
-            class="btn orange"
-            :disabled="processing || !form.receiverName || !form.receiverPhone || !form.address || form.quantity < 1"
-            @click="buy"
-          >
-            {{ processing ? '처리 중…' : '결제하기' }}
-          </button>
-        </template>
-
-        <p v-if="message" class="msg">{{ message }}</p>
-      </div>
+      <p v-if="message" class="buy-msg">{{ message }}</p>
     </div>
   </div>
 </template>
 
 <style scoped>
-.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-.goods-card { border: 1px solid #eee; border-radius: var(--radius); overflow: hidden; background: #fff; }
-.thumb { position: relative; aspect-ratio: 1 / 1; background: #f6f6f6; }
-.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
-.soldout { position: absolute; top: 10px; left: 10px; background: #1a1a1a; color: #fff; padding: 3px 10px; border-radius: 4px; font-size: 12px; }
-.body { padding: 14px; }
-.body h3 { font-size: 16px; color: var(--text-strong); margin: 0 0 6px; }
-.price { font-weight: 800; color: var(--text-strong); }
-.stock { font-size: 13px; color: var(--text-muted); margin: 4px 0 12px; }
-
-.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-.panel { position: relative; background: #fff; border-radius: var(--radius); padding: 26px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
-.close { position: absolute; top: 14px; right: 16px; background: none; font-size: 18px; cursor: pointer; }
-.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-body); margin-top: 12px; }
-.field input { padding: 9px 11px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-.total { margin: 18px 0 12px; font-size: 15px; }
-.total b { color: var(--accent-orange); font-size: 18px; }
-.notice { margin: 14px 0; color: var(--text-body); }
-.msg { margin-top: 14px; color: var(--accent-orange); font-weight: 700; }
+.buy-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.buy-panel { position: relative; background: #1c1c1f; color: #e8e8e8; border: 1px solid #2e2e33; border-radius: 14px; padding: 26px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+.buy-panel h3 { margin: 0 0 6px; font-size: 17px; }
+.buy-close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: #aaa; font-size: 16px; cursor: pointer; }
+.buy-price { color: #ffb300; font-weight: 700; margin: 0 0 10px; }
+.buy-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #b8b8c0; margin-top: 12px; }
+.buy-field input { padding: 9px 11px; border: 1px solid #2e2e33; background: #131316; color: #e8e8e8; border-radius: 8px; font-size: 14px; outline: none; }
+.buy-total { margin: 18px 0 12px; font-size: 15px; }
+.buy-total b { color: #ffb300; font-size: 18px; }
+.buy-btn { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #6a5cff, #8c5cff); cursor: pointer; }
+.buy-btn:disabled { opacity: .5; cursor: not-allowed; }
+.buy-notice { margin: 14px 0; color: #b8b8c0; }
+.buy-msg { margin-top: 14px; color: #ffb300; font-weight: 700; }
 </style>

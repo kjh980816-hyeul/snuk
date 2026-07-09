@@ -1,0 +1,133 @@
+<footer>
+  <div class="inner">
+  <div class="footer-logo">SNUK</div>
+  <p>© 2025 SNUK. All rights reserved. | 문의: contact@snuk.kr</p>
+  <p style="margin-top:6px;">치지직 · 씨미 · 숲 연동 스트리머 플랫폼</p>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="spotlight-modal">
+  <div class="modal" style="width:420px;">
+    <button class="modal-close" onclick="closeModal('spotlight-modal')">✕</button>
+    <div class="modal-title">스포트라이트 등록</div>
+    <div class="modal-sub">지금 방송 중인 채널을 홍보해보세요</div>
+    <div class="form-group">
+      <label class="form-label">방송 제목</label>
+      <input class="form-input" id="sp-title" type="text" placeholder="예) 발로란트 내전 중">
+    </div>
+    <div class="form-group">
+      <label class="form-label">플랫폼</label>
+      <div style="display:flex;gap:8px;">
+        <button onclick="selectPlatform(this,'chz')" class="sp-plat-btn active" style="flex:1;padding:8px;border-radius:8px;border:1px solid #00c73c;background:rgba(0,199,60,.1);color:#00c73c;font-size:12px;font-weight:600;cursor:pointer;font-family:'Pretendard','Noto Sans KR',sans-serif;">치지직</button>
+        <button onclick="selectPlatform(this,'soop')" class="sp-plat-btn" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:'Pretendard','Noto Sans KR',sans-serif;">숲</button>
+        <button onclick="selectPlatform(this,'yt')" class="sp-plat-btn" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:'Pretendard','Noto Sans KR',sans-serif;">유튜브</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">방송 링크</label>
+      <input class="form-input" id="sp-url" type="text" placeholder="https://chzzk.naver.com/...">
+    </div>
+    <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:16px;font-size:11px;color:var(--text3);line-height:1.6;">
+      스포트라이트는 <strong style="color:var(--text2);">최대 2시간</strong> 노출됩니다.<br>승인된 스트리머만 등록할 수 있습니다.
+    </div>
+    <button class="btn-apply" style="width:100%;padding:11px;font-size:13px;border-radius:8px;"
+      onclick="submitSpotlight()">스포트라이트 등록하기</button>
+  </div>
+</div>
+<!-- 게임 플레이 영상 모달 -->
+<div class="modal-overlay" id="game-video-modal">
+  <div class="modal" style="width:680px;padding:0;overflow:hidden;">
+    <button class="modal-close" style="top:10px;right:10px;z-index:10;background:rgba(0,0,0,.6);color:#fff;border:none;" onclick="closeGameVideo()">✕</button>
+    <div style="aspect-ratio:16/9;background:#000;">
+      <iframe id="gv-iframe" src="" style="width:100%;height:100%;border:none;" allowfullscreen allow="autoplay;fullscreen"></iframe>
+    </div>
+    <div style="padding:16px 20px;background:var(--bg2);">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">🎮 <span id="gv-game"></span></div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);"><span id="gv-streamer"></span>의 플레이 영상</div>
+    </div>
+  </div>
+</div>
+<!-- 로그인 -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <div class="modal-title">SNUK 로그인</div>
+    <div class="modal-sub">소셜 계정으로 간편하게 로그인하세요</div>
+    <button class="login-big-btn chz" onclick="doLogin('치지직')">🎮 치지직으로 로그인</button>
+    <button class="login-big-btn yt" onclick="doLogin('씨미')">🟣 씨미(CIME)로 로그인</button>
+    <button class="login-big-btn google" onclick="doLogin('숲')">🌲 숲(SOOP)으로 로그인</button>
+    <div class="login-divider">로그인 시 이용약관에 동의합니다</div>
+  </div>
+</div>
+<!-- 회원가입 -->
+<div class="modal-overlay" id="signup-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('signup-modal')">✕</button>
+    <div class="modal-title">SNUK 회원가입</div>
+    <div class="modal-sub">소셜 계정으로 간편하게 가입하세요</div>
+    <button class="login-big-btn chz" onclick="doLogin('치지직')">🎮 치지직으로 가입</button>
+    <button class="login-big-btn yt" onclick="doLogin('씨미')">🟣 씨미(CIME)로 가입</button>
+    <button class="login-big-btn google" onclick="doLogin('숲')">🌲 숲(SOOP)으로 가입</button>
+  </div>
+</div>
+<!-- 마이페이지 -->
+<div class="modal-overlay" id="mypage-modal">
+  <div class="modal" style="width:520px;">
+    <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+      <div class="rs-avatar" style="width:52px;height:52px;font-size:20px;" id="mp-avatar">S</div>
+      <div><div style="font-size:17px;font-weight:700;" id="mp-uname">SNUK유저</div><div style="font-size:12px;color:var(--text3);">● 온라인</div></div>
+      <button class="btn btn-outline" style="margin-left:auto;font-size:12px;" onclick="doLogout()">로그아웃</button>
+    </div>
+    <div class="mypage-tabs">
+      <button class="mypage-tab active" onclick="mpTab('apply',this)">신청 현황</button>
+      <button class="mypage-tab" onclick="mpTab('codes',this)">게임 코드</button>
+      <button class="mypage-tab" onclick="mpTab('wish',this)">찜 목록</button>
+    </div>
+    <div class="mypage-panel active" id="mp-apply">
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;">신청한 컨텐츠가 없습니다.<br>컨텐츠에 신청해보세요!</div>
+    </div>
+    <div class="mypage-panel" id="mp-codes">
+      <div class="code-item"><div class="code-game">🚀 스페이스 랜더스</div><div class="code-val">SL-DEMO-XXXX-1234</div><div class="code-date">2025.05.01 수령</div></div>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;">관리자가 코드를 전달하면 여기서 확인할 수 있습니다.</div>
+    </div>
+    <div class="mypage-panel" id="mp-wish">
+      <div style="font-size:13px;color:var(--text2);">찜한 굿즈가 없습니다.</div>
+    </div>
+  </div>
+</div>
+<!-- 신청 -->
+<div class="modal-overlay" id="apply-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('apply-modal')">✕</button>
+    <div class="modal-title">신청하기</div>
+    <div class="modal-sub" id="apply-modal-sub">신청 내용을 확인해주세요</div>
+    <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px;color:var(--text2);line-height:1.7;">
+      로그인한 계정으로 신청이 접수됩니다.<br>
+      승인제 컨텐츠는 운영자 승인 후 확정되며, 마이페이지에서 신청 현황을 확인할 수 있습니다.
+    </div>
+    <button id="apply-confirm-btn" class="btn-apply" style="width:100%;padding:11px;font-size:13px;border-radius:8px;" onclick="confirmApply()">신청하기</button>
+  </div>
+</div>
+<!-- 게임 상세 -->
+<div class="modal-overlay" id="game-modal">
+  <div class="modal" style="width:540px;">
+    <button class="modal-close" onclick="closeModal('game-modal')">✕</button>
+    <div class="modal-title" id="gm-title">게임명</div>
+    <div class="modal-sub" id="gm-pub">게임사</div>
+    <p id="gm-desc" style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.7;"></p>
+    <div style="display:flex;gap:10px;margin-bottom:18px;">
+      <div style="flex:1;background:var(--bg3);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">신청 / 모집</div><div id="gm-members" style="font-size:17px;font-weight:700;"></div></div>
+      <div style="flex:1;background:var(--bg3);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">스트리머 후기</div><div id="gm-reviews-count" style="font-size:17px;font-weight:700;color:var(--gold);"></div></div>
+    </div>
+    <button class="btn-apply" style="width:100%;margin-bottom:8px;padding:11px;font-size:13px;border-radius:8px;" onclick="applyGame()">체험단 신청하기</button>
+    <button class="btn btn-outline" id="gm-review-link" style="width:100%;">후기 게시판 가기</button>
+    <div style="margin-top:12px;font-size:11px;color:var(--text3);line-height:1.7;">
+      선착순 키 배포 컨텐츠는 신청 즉시 게임 키가 발급되며, 마이페이지 &gt; 게임 코드에서 다시 확인할 수 있습니다.<br>
+      후기는 체험단 참가자만 후기 게시판에서 작성할 수 있습니다.
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span>✓</span><span id="toast-msg"></span></div>
+

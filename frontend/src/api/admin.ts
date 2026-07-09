@@ -1,5 +1,5 @@
 import api from './client'
-import type { Campaign, CollabGame, ClientLogo, ContentVideo, Goods, OrderView, Tournament } from './types'
+import type { Campaign, CollabGame, ClientLogo, ContentVideo, Goods, Notice, OrderView, Spotlight, Tournament } from './types'
 
 /** 어드민 API (ADMIN 토큰 필요). */
 export const adminApi = {
@@ -70,6 +70,17 @@ export const adminApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then((r) => r.data)
   },
+
+  // notices
+  createNotice: (body: { title: string; content: string; pinned: boolean }) =>
+    api.post<Notice>('/api/admin/notices', body).then((r) => r.data),
+  updateNotice: (id: number, body: { title: string; content: string; pinned: boolean }) =>
+    api.patch<Notice>(`/api/admin/notices/${id}`, body).then((r) => r.data),
+  deleteNotice: (id: number) => api.delete(`/api/admin/notices/${id}`),
+
+  // spotlights
+  spotlights: () => api.get<Spotlight[]>('/api/admin/spotlights').then((r) => r.data),
+  deleteSpotlight: (id: number) => api.delete(`/api/admin/spotlights/${id}`),
 
   // settings / members / logs
   settings: () => api.get<Array<{ settingKey: string; settingValue: string; description: string | null }>>(

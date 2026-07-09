@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { authApi, mypageApi } from '@/api'
 import type { MypageSummary } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
@@ -7,6 +7,9 @@ import { useAuthStore } from '@/stores/auth'
 const auth = useAuthStore()
 const summary = ref<MypageSummary | null>(null)
 const loading = ref(true)
+
+type MpTab = 'apply' | 'tour' | 'codes' | 'reviews' | 'orders'
+const tab = ref<MpTab>('apply')
 
 // ----- 프사 변경 (파일 업로드) -----
 const fileEl = ref<HTMLInputElement | null>(null)
@@ -52,6 +55,9 @@ const orderStatusLabel: Record<string, string> = {
   PENDING: '결제 대기', PAID: '결제 완료', CANCELLED: '취소', FAILED: '실패',
 }
 
+const keyItems = computed(() =>
+  (summary.value?.applications ?? []).filter((a) => a.hasAssignedKey))
+
 function dt(v: string | null | undefined) {
   return v ? v.slice(0, 16).replace('T', ' ') : '-'
 }
@@ -69,115 +75,187 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="wrap mypage section" v-if="auth.me">
-    <h2 class="section-label">마이페이지</h2>
-    <div class="profile">
-      <div class="avatar">
-        <img v-if="auth.me.profileImageUrl" :src="auth.me.profileImageUrl" alt="프로필" />
-        <div v-else class="placeholder">프로필</div>
+  <section v-if="auth.me" class="mypage">
+    <div class="inner">
+      <div class="section-header">
+        <h2 class="section-title">마이페이지</h2>
       </div>
-      <div class="info">
-        <p class="nick">{{ auth.me.nickname }}</p>
-        <p class="row">등급 · <strong>{{ roleLabel[auth.me.role] ?? auth.me.role }}</strong></p>
-        <p class="row" v-if="auth.me.followerCount !== null">팔로워 · {{ auth.me.followerCount?.toLocaleString() }}</p>
-        <div class="pic-edit">
-          <input ref="fileEl" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden-file" @change="onPicFile" />
-          <button class="btn sm" :disabled="picSaving" @click="fileEl?.click()">
-            {{ picSaving ? '업로드 중…' : '프사 변경' }}
-          </button>
-          <button v-if="auth.me.profileImageOverridden" class="btn ghost sm" :disabled="picSaving" @click="resetPic">
-            치지직 프사로
-          </button>
+
+      <!-- 프로필 카드 -->
+      <div class="mp-profile-card">
+        <div class="mp-avatar">
+          <img v-if="auth.me.profileImageUrl" :src="auth.me.profileImageUrl" alt="프로필" />
+          <span v-else>{{ auth.me.nickname.slice(0, 1) }}</span>
+        </div>
+        <div class="mp-info">
+          <div class="mp-name-row">
+            <span class="mp-nick">{{ auth.me.nickname }}</span>
+            <span class="mp-role" :class="auth.me.role">{{ roleLabel[auth.me.role] ?? auth.me.role }}</span>
+          </div>
+          <div class="mp-sub" v-if="auth.me.followerCount !== null">
+            팔로워 {{ auth.me.followerCount?.toLocaleString('ko-KR') }}
+          </div>
+          <div class="mp-pic-edit">
+            <input ref="fileEl" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden-file" @change="onPicFile" />
+            <button class="mp-btn" :disabled="picSaving" @click="fileEl?.click()">
+              {{ picSaving ? '업로드 중…' : '프사 변경' }}
+            </button>
+            <button v-if="auth.me.profileImageOverridden" class="mp-btn ghost" :disabled="picSaving" @click="resetPic">
+              플랫폼 프사로
+            </button>
+          </div>
+        </div>
+        <!-- 활동 요약 타일 -->
+        <div class="mp-stats" v-if="summary">
+          <div class="mp-stat"><strong>{{ summary.applications.length }}</strong><span>컨텐츠 신청</span></div>
+          <div class="mp-stat"><strong>{{ summary.tournaments.length }}</strong><span>대회 참가</span></div>
+          <div class="mp-stat"><strong>{{ summary.reviews.length }}</strong><span>작성 후기</span></div>
+          <div class="mp-stat"><strong>{{ summary.orders.length }}</strong><span>굿즈 주문</span></div>
         </div>
       </div>
+
+      <div v-if="loading" class="mp-empty">불러오는 중…</div>
+      <template v-else-if="summary">
+        <!-- 탭 -->
+        <div class="tabs mp-tabs">
+          <button class="tab" :class="{ active: tab === 'apply' }" @click="tab = 'apply'">신청 현황</button>
+          <button class="tab" :class="{ active: tab === 'tour' }" @click="tab = 'tour'">대회 참가</button>
+          <button class="tab" :class="{ active: tab === 'codes' }" @click="tab = 'codes'">게임 코드</button>
+          <button class="tab" :class="{ active: tab === 'reviews' }" @click="tab = 'reviews'">내 후기</button>
+          <button class="tab" :class="{ active: tab === 'orders' }" @click="tab = 'orders'">굿즈 주문</button>
+        </div>
+
+        <!-- 신청 현황 -->
+        <div v-if="tab === 'apply'">
+          <div v-if="!summary.applications.length" class="mp-empty">신청한 컨텐츠가 없습니다.<br>컨텐츠에 신청해보세요!</div>
+          <div v-for="a in summary.applications" :key="a.applicationId" class="mp-item">
+            <div class="mp-item-main">
+              <div class="mp-item-title">{{ a.campaignTitle }}</div>
+              <div class="mp-item-sub">신청일 {{ dt(a.appliedAt) }}</div>
+            </div>
+            <span class="mp-pill" :class="a.status">{{ appStatusLabel[a.status] }}</span>
+          </div>
+        </div>
+
+        <!-- 대회 참가 -->
+        <div v-else-if="tab === 'tour'">
+          <div v-if="!summary.tournaments.length" class="mp-empty">참가 신청한 대회가 없습니다.</div>
+          <div v-for="t in summary.tournaments" :key="t.participantId" class="mp-item">
+            <div class="mp-item-main">
+              <div class="mp-item-title">{{ t.tournamentTitle }}</div>
+              <div class="mp-item-sub">신청일 {{ dt(t.appliedAt) }}</div>
+            </div>
+            <span class="mp-pill" :class="t.status">{{ appStatusLabel[t.status] }}</span>
+          </div>
+        </div>
+
+        <!-- 게임 코드 -->
+        <div v-else-if="tab === 'codes'">
+          <div v-if="!keyItems.length" class="mp-empty">배정받은 게임 코드가 없습니다.<br>운영자가 코드를 전달하면 여기서 확인할 수 있습니다.</div>
+          <div v-for="a in keyItems" :key="'k' + a.applicationId" class="mp-item">
+            <div class="mp-item-main">
+              <div class="mp-item-title">{{ a.campaignTitle }}</div>
+              <div class="mp-item-code">{{ a.maskedKey }}</div>
+              <div class="mp-item-sub">코드 전체 보기는 해당 컨텐츠 페이지에서 본인 확인 후 가능합니다.</div>
+            </div>
+            <span class="mp-pill APPROVED">코드 배정</span>
+          </div>
+        </div>
+
+        <!-- 내 후기 -->
+        <div v-else-if="tab === 'reviews'">
+          <div v-if="!summary.reviews.length" class="mp-empty">작성한 후기가 없습니다.</div>
+          <div v-for="r in summary.reviews" :key="r.postId" class="mp-item">
+            <div class="mp-item-main">
+              <div class="mp-item-title">{{ r.title }}</div>
+              <div class="mp-item-sub">{{ dt(r.createdAt) }} · {{ r.hidden ? '숨김(운영자)' : '공개' }}</div>
+            </div>
+            <RouterLink v-if="r.campaignId" :to="`/campaigns/${r.campaignId}/reviews`" class="mp-link">게시판 ›</RouterLink>
+          </div>
+        </div>
+
+        <!-- 굿즈 주문 -->
+        <div v-else-if="tab === 'orders'">
+          <div v-if="!summary.orders.length" class="mp-empty">주문 내역이 없습니다.</div>
+          <div v-for="o in summary.orders" :key="o.orderId" class="mp-item">
+            <div class="mp-item-main">
+              <div class="mp-item-title">{{ o.goodsName }} × {{ o.quantity }}</div>
+              <div class="mp-item-sub">{{ dt(o.createdAt) }} · {{ won(o.totalAmount) }}</div>
+            </div>
+            <span class="mp-pill" :class="o.status">{{ orderStatusLabel[o.status] }}</span>
+          </div>
+        </div>
+      </template>
     </div>
-
-    <div v-if="loading" class="empty-state">불러오는 중…</div>
-    <template v-else-if="summary">
-      <!-- 내 캠페인 신청 -->
-      <h4 class="sub">내 컨텐츠 신청</h4>
-      <table class="grid" v-if="summary.applications.length">
-        <thead><tr><th>캠페인</th><th>상태</th><th>배정 키</th><th>신청일</th></tr></thead>
-        <tbody>
-          <tr v-for="a in summary.applications" :key="a.applicationId">
-            <td>{{ a.campaignTitle }}</td>
-            <td><span class="pill" :class="a.status">{{ appStatusLabel[a.status] }}</span></td>
-            <td class="key">{{ a.hasAssignedKey ? a.maskedKey : '-' }}</td>
-            <td>{{ dt(a.appliedAt) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="empty-line">신청한 컨텐츠가 없습니다.</p>
-      <p class="hint" v-if="summary.applications.some((a) => a.hasAssignedKey)">
-        키 전체 보기는 해당 컨텐츠 페이지에서 본인 확인 후 가능합니다.
-      </p>
-
-      <!-- 내 대회 참가 -->
-      <h4 class="sub">내 대회 참가</h4>
-      <table class="grid" v-if="summary.tournaments.length">
-        <thead><tr><th>대회</th><th>상태</th><th>신청일</th></tr></thead>
-        <tbody>
-          <tr v-for="t in summary.tournaments" :key="t.participantId">
-            <td>{{ t.tournamentTitle }}</td>
-            <td><span class="pill" :class="t.status">{{ appStatusLabel[t.status] }}</span></td>
-            <td>{{ dt(t.appliedAt) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="empty-line">참가 신청한 대회가 없습니다.</p>
-
-      <!-- 내 후기 -->
-      <h4 class="sub">내 후기</h4>
-      <table class="grid" v-if="summary.reviews.length">
-        <thead><tr><th>제목</th><th>상태</th><th>작성일</th></tr></thead>
-        <tbody>
-          <tr v-for="r in summary.reviews" :key="r.postId">
-            <td>{{ r.title }}</td>
-            <td>{{ r.hidden ? '숨김(운영자)' : '공개' }}</td>
-            <td>{{ dt(r.createdAt) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="empty-line">작성한 후기가 없습니다.</p>
-
-      <!-- 내 굿즈 주문 -->
-      <h4 class="sub">내 굿즈 주문</h4>
-      <table class="grid" v-if="summary.orders.length">
-        <thead><tr><th>상품</th><th>수량</th><th>금액</th><th>상태</th><th>주문일</th></tr></thead>
-        <tbody>
-          <tr v-for="o in summary.orders" :key="o.orderId">
-            <td>{{ o.goodsName }}</td><td>{{ o.quantity }}</td><td>{{ won(o.totalAmount) }}</td>
-            <td><span class="pill" :class="o.status">{{ orderStatusLabel[o.status] }}</span></td>
-            <td>{{ dt(o.createdAt) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="empty-line">주문 내역이 없습니다.</p>
-    </template>
-  </div>
+  </section>
 </template>
 
 <style scoped>
-.profile { display: flex; gap: 20px; align-items: center; margin-bottom: 12px; }
-.avatar { width: 88px; height: 88px; border-radius: 50%; overflow: hidden; flex: none; }
-.avatar img { width: 100%; height: 100%; object-fit: cover; }
-.avatar .placeholder { width: 100%; height: 100%; border-radius: 50%; }
-.info .nick { font-size: 22px; font-weight: 800; color: var(--text-strong); margin: 0 0 6px; }
-.info .row { margin: 2px 0; color: var(--text-body); }
-
-.sub { margin: 34px 0 10px; color: var(--text-strong); }
-.grid { width: 100%; border-collapse: collapse; font-size: 14px; }
-.grid th, .grid td { border-bottom: 1px solid #eee; padding: 9px 10px; text-align: left; }
-.grid th { color: var(--text-muted); font-weight: 600; }
-.key { font-family: monospace; }
-.empty-line { color: var(--text-muted); font-size: 14px; }
-.hint { margin-top: 8px; color: var(--text-muted); font-size: 13px; }
-
-.pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #f0f0f0; color: var(--text-body); }
-.pill.APPROVED, .pill.PAID { background: #e8f5e9; color: #2e7d32; }
-.pill.PENDING { background: #fff3e0; color: #e65100; }
-.pill.REJECTED, .pill.CANCELLED, .pill.FAILED { background: #fdecea; color: #c62828; }
-.pic-edit { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+/* 시안 다크 테마 — home-snuk.css 변수 사용 */
+.mp-profile-card {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+  padding: 22px 24px; margin-bottom: 24px;
+}
+.mp-avatar {
+  width: 84px; height: 84px; border-radius: 50%; overflow: hidden; flex: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 700; color: #fff; border: 2px solid var(--border2);
+}
+.mp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.mp-info { min-width: 200px; }
+.mp-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mp-nick { font-size: 20px; font-weight: 800; color: var(--text); }
+.mp-role {
+  font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+  background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
+}
+.mp-role.STREAMER { background: rgba(0, 199, 60, .12); color: #00c73c; border-color: rgba(0, 199, 60, .35); }
+.mp-role.ADMIN { background: rgba(255, 179, 0, .12); color: #ffb300; border-color: rgba(255, 179, 0, .35); }
+.mp-sub { font-size: 13px; color: var(--text3); margin-top: 5px; }
+.mp-pic-edit { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .hidden-file { display: none; }
-.btn.sm { padding: 8px 14px; font-size: 13px; }
+.mp-btn {
+  padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+}
+.mp-btn.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.mp-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.mp-stats { display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+.mp-stat {
+  min-width: 84px; background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; text-align: center;
+}
+.mp-stat strong { display: block; font-size: 20px; font-weight: 800; color: var(--text); }
+.mp-stat span { font-size: 11px; color: var(--text3); }
+
+.mp-tabs { margin-bottom: 16px; }
+
+.mp-item {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 18px; margin-bottom: 10px;
+}
+.mp-item-main { flex: 1; min-width: 0; }
+.mp-item-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.mp-item-sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
+.mp-item-code {
+  font-family: monospace; font-size: 13px; color: var(--gold, #ffb300);
+  background: var(--bg3); border-radius: 6px; padding: 4px 10px; display: inline-block; margin-top: 6px;
+}
+.mp-pill {
+  flex: none; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+  background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
+}
+.mp-pill.APPROVED, .mp-pill.PAID { background: rgba(52, 199, 120, .12); color: #34c878; border-color: rgba(52, 199, 120, .35); }
+.mp-pill.PENDING { background: rgba(255, 179, 0, .12); color: #ffb300; border-color: rgba(255, 179, 0, .35); }
+.mp-pill.REJECTED, .mp-pill.CANCELLED, .mp-pill.FAILED { background: rgba(239, 68, 68, .12); color: #ef4444; border-color: rgba(239, 68, 68, .35); }
+.mp-link { flex: none; font-size: 12px; font-weight: 700; color: var(--accent3, #5cf0fc); text-decoration: none; }
+
+.mp-empty {
+  border: 1px dashed var(--border2); border-radius: 12px; padding: 36px 16px;
+  text-align: center; color: var(--text3); font-size: 13px; line-height: 1.8;
+}
 </style>

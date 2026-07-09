@@ -54,9 +54,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="wrap section">
+  <section>
+    <div class="inner">
     <RouterLink to="/campaigns" class="back">&lt; 컨텐츠 목록</RouterLink>
-    <h2 class="section-label">{{ campaign ? `‘${campaign.title}’ 후기 게시판` : '후기 게시판' }}</h2>
+    <div class="section-header">
+      <h2 class="section-title">{{ campaign ? `‘${campaign.title}’ 후기 게시판` : '후기 게시판' }}</h2>
+    </div>
     <p v-if="campaign" class="game">게임 · {{ campaign.gameName }}</p>
 
     <div class="board-head">
@@ -84,22 +87,30 @@ onMounted(async () => {
       </div>
       <p v-if="r.content" class="content">{{ r.content }}</p>
     </article>
-  </div>
+    </div>
+  </section>
 </template>
 
 <style scoped>
-.back { font-size: 13px; color: var(--text-muted); display: inline-block; margin-bottom: 8px; }
-.game { color: var(--text-muted); margin: -8px 0 18px; font-size: 14px; }
+/* 시안 다크 테마 정합 — home-snuk.css 변수 사용 */
+.back { font-size: 13px; color: var(--text3); display: inline-block; margin-bottom: 8px; }
+.game { color: var(--text3); margin: -8px 0 18px; font-size: 14px; }
 .board-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.count { font-weight: 700; color: var(--text-strong); }
-.write-card { border: 1px solid #eee; border-radius: var(--radius); padding: 16px; margin-bottom: 18px;
+.count { font-weight: 700; color: var(--text); }
+.write-card { border: 1px solid var(--border); background: var(--bg2); border-radius: 12px; padding: 16px; margin-bottom: 18px;
   display: flex; flex-direction: column; gap: 10px; }
-.write-card input, .write-card textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.write-card input, .write-card textarea { width: 100%; padding: 10px; border: 1px solid var(--border); background: var(--bg3); color: var(--text); border-radius: 8px; font-size: 14px; outline: none; }
 .write-card button { align-self: flex-end; }
-.review { border-bottom: 1px solid #eee; padding: 16px 4px; }
+.review { border-bottom: 1px solid var(--border); padding: 16px 4px; }
 .review-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.review-head h4 { margin: 0; color: var(--text-strong); }
-.review-head .meta { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
-.review .content { margin: 8px 0 0; color: var(--text-body); white-space: pre-wrap; }
-.btn.sm { padding: 8px 14px; font-size: 13px; }
+.review-head h4 { margin: 0; color: var(--text); }
+.review-head .meta { font-size: 12px; color: var(--text3); white-space: nowrap; }
+.review .content { margin: 8px 0 0; color: var(--text2); white-space: pre-wrap; }
+.btn.sm, .btn.orange.sm, .btn.ghost.sm {
+  padding: 8px 14px; font-size: 13px; border-radius: 8px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none;
+}
+.btn.ghost.sm { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.btn.sm:disabled { opacity: .5; cursor: not-allowed; }
+.empty-state { padding: 40px 20px; text-align: center; color: var(--text3); background: transparent; border: 1px dashed var(--border2); border-radius: 12px; }
 </style>

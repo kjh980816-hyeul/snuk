@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { adminApi } from '@/api/admin'
-import { campaignApi, collabApi, tournamentApi } from '@/api'
-import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, OrderView, Tournament } from '@/api/types'
+import { campaignApi, collabApi, noticeApi, tournamentApi } from '@/api'
+import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, Notice, OrderView, Spotlight, Tournament } from '@/api/types'
 
-type Tab = 'campaigns' | 'tournaments' | 'collab' | 'goods' | 'members' | 'settings' | 'logs'
+type Tab = 'campaigns' | 'tournaments' | 'collab' | 'goods' | 'notices' | 'members' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
 
 // 화면 표기용 한글 라벨 (저장값은 영문 enum 그대로)
@@ -287,6 +287,43 @@ async function doOverride() {
   alert('권한이 변경되었습니다.')
 }
 
+// ----- notices / spotlights -----
+const notices = ref<Notice[]>([])
+const noticeEditing = ref<{ id?: number; title: string; content: string; pinned: boolean } | null>(null)
+const spotlights = ref<Spotlight[]>([])
+
+async function loadNotices() {
+  notices.value = await noticeApi.list(20)
+  spotlights.value = await adminApi.spotlights()
+}
+function newNotice() {
+  noticeEditing.value = { title: '', content: '', pinned: false }
+}
+function editNotice(n: Notice) {
+  noticeEditing.value = { id: n.id, title: n.title, content: n.content ?? '', pinned: n.pinned }
+}
+async function saveNotice() {
+  if (!noticeEditing.value || !noticeEditing.value.title.trim()) return
+  const b = noticeEditing.value
+  if (b.id) await adminApi.updateNotice(b.id, { title: b.title, content: b.content, pinned: b.pinned })
+  else await adminApi.createNotice({ title: b.title, content: b.content, pinned: b.pinned })
+  noticeEditing.value = null
+  await loadNotices()
+}
+async function removeNotice(n: Notice) {
+  if (!confirm(`'${n.title}' 공지를 삭제할까요?`)) return
+  await adminApi.deleteNotice(n.id)
+  await loadNotices()
+}
+async function removeSpotlight(s: Spotlight) {
+  if (!confirm(`'${s.title}' 스포트라이트를 내릴까요?`)) return
+  await adminApi.deleteSpotlight(s.id)
+  await loadNotices()
+}
+function spotActive(s: Spotlight) {
+  return new Date(s.expiresAt).getTime() > Date.now()
+}
+
 // ----- logs -----
 const logs = ref<{ content: Array<Record<string, unknown>> } | null>(null)
 async function loadLogs() {
@@ -300,6 +337,7 @@ function onTab(t: Tab) {
   if (t === 'tournaments') loadTournaments()
   if (t === 'collab') loadCollab()
   if (t === 'goods') loadGoods()
+  if (t === 'notices') loadNotices()
   if (t === 'members') loadMembers()
   if (t === 'settings') loadSettings()
   if (t === 'logs') loadLogs()
@@ -314,6 +352,7 @@ function onTab(t: Tab) {
       <button :class="{ on: tab === 'tournaments' }" @click="onTab('tournaments')">대회</button>
       <button :class="{ on: tab === 'collab' }" @click="onTab('collab')">콜라보/노출</button>
       <button :class="{ on: tab === 'goods' }" @click="onTab('goods')">굿즈/주문</button>
+      <button :class="{ on: tab === 'notices' }" @click="onTab('notices')">공지/스포트라이트</button>
       <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
       <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정/권한</button>
       <button :class="{ on: tab === 'logs' }" @click="onTab('logs')">감사로그</button>
@@ -670,6 +709,56 @@ function onTab(t: Tab) {
           </tbody>
         </table>
       </div>
+    </section>
+
+    <!-- 공지/스포트라이트 -->
+    <section v-else-if="tab === 'notices'">
+      <h3>공지사항</h3>
+      <button class="btn orange sm" @click="newNotice">+ 새 공지</button>
+      <table class="grid">
+        <thead><tr><th>제목</th><th>고정</th><th>등록일</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="n in notices" :key="n.id">
+            <td>{{ n.title }}</td>
+            <td>{{ n.pinned ? '📌' : '' }}</td>
+            <td>{{ n.createdAt?.slice(0, 10) }}</td>
+            <td class="acts">
+              <button @click="editNotice(n)">수정</button>
+              <button class="danger" @click="removeNotice(n)">삭제</button>
+            </td>
+          </tr>
+          <tr v-if="!notices.length"><td colspan="4" class="empty">등록된 공지가 없습니다.</td></tr>
+        </tbody>
+      </table>
+
+      <div v-if="noticeEditing" class="form-card">
+        <h4>{{ noticeEditing.id ? '공지 수정' : '새 공지' }}</h4>
+        <label>제목<input v-model="noticeEditing.title" maxlength="200" /></label>
+        <label>내용<textarea v-model="noticeEditing.content" rows="5"></textarea></label>
+        <label class="chk"><input type="checkbox" v-model="noticeEditing.pinned" /> 상단 고정</label>
+        <div class="acts">
+          <button class="btn sm" :disabled="!noticeEditing.title.trim()" @click="saveNotice">저장</button>
+          <button class="btn ghost sm" @click="noticeEditing = null">취소</button>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 32px">스포트라이트 (최근 50건)</h3>
+      <p class="hint">스트리머가 등록한 방송 홍보 — 등록 후 2시간 노출, 사이드바 최대 2개.</p>
+      <table class="grid">
+        <thead><tr><th>제목</th><th>스트리머</th><th>플랫폼</th><th>링크</th><th>상태</th><th>등록</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="s in spotlights" :key="s.id">
+            <td>{{ s.title }}</td>
+            <td>{{ s.streamerName }}</td>
+            <td>{{ s.platform }}</td>
+            <td><a :href="s.streamUrl" target="_blank" rel="noopener">링크 ↗</a></td>
+            <td>{{ spotActive(s) ? '노출중' : '만료' }}</td>
+            <td>{{ s.createdAt?.slice(5, 16).replace('T', ' ') }}</td>
+            <td class="acts"><button class="danger" @click="removeSpotlight(s)">내리기</button></td>
+          </tr>
+          <tr v-if="!spotlights.length"><td colspan="7" class="empty">등록된 스포트라이트가 없습니다.</td></tr>
+        </tbody>
+      </table>
     </section>
 
     <!-- 설정/권한 -->

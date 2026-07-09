@@ -2,6 +2,7 @@ package com.chzikon.tournament.controller;
 
 import com.chzikon.global.security.MemberPrincipal;
 import com.chzikon.tournament.dto.MyParticipationResponse;
+import com.chzikon.tournament.dto.ParticipantPublicView;
 import com.chzikon.tournament.dto.TournamentResponse;
 import com.chzikon.tournament.service.TournamentParticipantService;
 import com.chzikon.tournament.service.TournamentService;
@@ -31,6 +32,12 @@ public class TournamentController {
     @GetMapping("/{id}")
     public ResponseEntity<TournamentResponse> detail(@PathVariable Long id) {
         return ResponseEntity.ok(TournamentResponse.from(tournamentService.getById(id)));
+    }
+
+    /** 공개 로스터 — 승인된 참가자(닉네임·프사)만 노출. */
+    @GetMapping("/{id}/participants")
+    public ResponseEntity<List<ParticipantPublicView>> participants(@PathVariable Long id) {
+        return ResponseEntity.ok(participantService.listApprovedPublic(id));
     }
 
     /** 참가 신청 — STREAMER+ (서비스에서 권한·상태·중복 백엔드 재검증). */

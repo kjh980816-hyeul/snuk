@@ -1,0 +1,395 @@
+<section id="hero">
+  <div class="hero-banner-wrap">
+    <div class="hero-banner-card">
+      <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600&q=85" alt="SNUK 메인 배너"
+        onerror="this.parentElement.style.background='#1c1c1f';this.style.display='none'">
+      <div class="hero-banner-overlay"></div>
+      <div class="hero-banner-content">
+        <div class="hero-eyebrow">STREAMER PLATFORM</div>
+        <h1 class="hero-title">스트리머의<br><span>새로운 무대</span></h1>
+        <p class="hero-desc">SNUK은 스트리머와 시청자를 연결하는<br>차세대 스트리밍 컨텐츠 플랫폼입니다.</p>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  2. SNUK 컨텐츠
+══════════════════════════════════════════ -->
+<section id="snuk-contents">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">SNUK 컨텐츠</h2>
+  </div>
+  <!-- FEATURED 캠페인 — JS 가 실데이터로 채움(없으면 숨김) -->
+  <div id="snuk-featured" class="featured-card" style="margin-bottom:22px;cursor:pointer;display:none;"></div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('snuk-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="snuk-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('snuk-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  3. 스트리머 컨텐츠 (SNUK 컨텐츠 바로 아래)
+══════════════════════════════════════════ -->
+<section id="streamer-contents">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">스트리머 컨텐츠</h2>
+  </div>
+  <div class="tabs" id="str-tabs">
+    <button class="tab active" onclick="filterStr('all',this)">전체</button>
+    <button class="tab" onclick="filterStr('open',this)">모집중</button>
+    <button class="tab" onclick="filterStr('closed',this)">마감</button>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('str-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="str-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('str-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  4. SNUK Championship
+══════════════════════════════════════════ -->
+<section id="mugchamps">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">SNUK Championship</h2>
+  </div>
+  <div class="tabs" id="mug-tabs">
+    <button class="tab active" onclick="filterMug('all',this)">전체</button>
+    <button class="tab" onclick="filterMug('open',this)">모집중</button>
+    <button class="tab" onclick="filterMug('ongoing',this)">진행중</button>
+    <button class="tab" onclick="filterMug('closed',this)">마감</button>
+  </div>
+
+  <!-- LIVE + 대진표 + 채팅 -->
+  <div id="mug-live-banner" style="margin-bottom:24px;">
+    <div id="mug-live-embed">
+    <div class="live-banner-bar">
+      <div class="live-dot"></div>
+      <div style="flex:1;">
+        <div class="live-text">SNUK 공식 채널 — 치지직 LIVE</div>
+        <div class="live-sub">SNUK 공식 치지직 채널 실시간 방송</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="padding:7px 12px;border-radius:8px;background:rgba(255,64,64,.1);border:1px solid rgba(255,64,64,.3);color:#ff8080;font-size:12px;font-weight:600;">CH SNUK 공식채널</div>
+        <button class="btn btn-primary" style="background:linear-gradient(135deg,#ff4040,#fc5c7d);padding:7px 14px;font-size:12px;" onclick="loadChzzk()">라이브 보기</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:7px 12px;" onclick="openChzzkSite()">치지직 ↗</button>
+      </div>
+    </div>
+    <div class="live-panel">
+      <!-- 플레이어+채팅 -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+        <div id="chzzk-player-wrap" style="background:#000;position:relative;flex-shrink:0;">
+          <div id="chzzk-placeholder" style="aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d0010,#1a0030);cursor:pointer;" onclick="loadChzzk()">
+            <div style="font-size:52px;margin-bottom:12px;animation:float 3s ease-in-out infinite;">🎵</div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">치지직 라이브 대기 중</div>
+            <div style="display:flex;align-items:center;gap:7px;background:rgba(255,64,64,.15);border:1px solid rgba(255,64,64,.4);border-radius:8px;padding:8px 14px;margin-top:8px;">
+              <div class="live-dot"></div><span style="font-size:12px;font-weight:600;color:#ff8080;">라이브 보기 버튼을 눌러주세요</span>
+            </div>
+          </div>
+          <div id="chzzk-iframe-container" style="display:none;"></div>
+          <div id="chzzk-overlay" style="display:none;position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.85));padding:16px 14px 10px;pointer-events:none;">
+            <div style="display:flex;align-items:center;gap:7px;"><div class="live-dot"></div><span id="chzzk-channel-label" style="font-size:12px;font-weight:700;color:#fff;"></span><span style="font-size:10px;color:rgba(255,255,255,.55);">· 치지직 LIVE</span></div>
+          </div>
+        </div>
+        <!-- 채팅 -->
+        <div style="flex:1;display:flex;flex-direction:column;background:var(--bg2);border-top:1px solid rgba(255,64,64,.2);min-height:280px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:7px;"><div class="live-dot"></div><span style="font-size:13px;font-weight:700;">실시간 채팅</span><span id="chat-channel-badge" style="display:none;font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:1px 8px;"></span></div>
+            <div style="display:flex;gap:6px;">
+              <button onclick="toggleChatEmbed()" id="chat-toggle-btn" class="quick-chat-btn">채팅 임베드</button>
+              <button onclick="toggleChatMode()" id="chat-mode-btn" class="quick-chat-btn" style="background:var(--accent);color:#fff;border-color:var(--accent);">시뮬레이션</button>
+            </div>
+          </div>
+          <div id="chat-embed-view" style="flex:1;display:none;"><div id="chzzk-chat-container" style="height:100%;min-height:230px;"></div></div>
+          <div id="chat-sim-view" style="flex:1;display:flex;flex-direction:column;">
+            <div id="chat-messages" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-height:180px;max-height:280px;"></div>
+            <div style="padding:8px 12px;border-top:1px solid var(--border);flex-shrink:0;">
+              <div style="display:flex;gap:7px;align-items:center;">
+                <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">나</div>
+                <input id="chat-input" type="text" placeholder="로그인 후 채팅 참여" style="flex:1;padding:7px 10px;border-radius:7px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:12px;outline:none;font-family:'Pretendard','Noto Sans KR',sans-serif;">
+                <button onclick="sendChat()" style="padding:7px 12px;border-radius:7px;font-size:12px;font-weight:600;background:var(--accent);border:none;color:#fff;cursor:pointer;flex-shrink:0;">전송</button>
+              </div>
+              <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;">
+                <button onclick="quickChat('불꽃')" class="quick-chat-btn">🔥</button>
+                <button onclick="quickChat('박수')" class="quick-chat-btn">👏</button>
+                <button onclick="quickChat('ㅋㅋㅋ')" class="quick-chat-btn">ㅋㅋㅋ</button>
+                <button onclick="quickChat('대박')" class="quick-chat-btn">대박</button>
+                <button onclick="quickChat('화이팅!')" class="quick-chat-btn">화이팅!</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 대진표: 데스크탑에서 숨김 (아래 가로 브라켓으로 대체) -->
+    </div>
+    </div><!-- /mug-live-embed -->
+
+    <!-- 데스크탑 가로 토너먼트 브라켓 -->
+    <div id="desktop-bracket-wrap" style="margin-top:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);overflow:hidden;">
+      <!-- 브라켓 헤더 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;">
+        <!-- 왼쪽: 강수 버튼 -->
+        <div style="display:flex;gap:5px;flex-wrap:wrap;" id="pc-bracket-tabs">
+          <button class="pc-bt active" onclick="switchPcTab('r16',this)">16강</button>
+          <button class="pc-bt" onclick="switchPcTab('qf',this)">8강</button>
+          <button class="pc-bt" onclick="switchPcTab('sf',this)">4강</button>
+          <button class="pc-bt" onclick="switchPcTab('final',this)">결승</button>
+          <button class="pc-bt" onclick="switchPcTab('winner',this)" style="color:#ffd700!important;">우승</button>
+        </div>
+        <!-- 오른쪽: 대진표 텍스트 -->
+        <span id="bracket-title-label" style="font-size:13px;font-weight:700;color:var(--text2);margin-left:auto;">대진표</span>
+      </div>
+      <!-- 경기 슬라이더 -->
+      <div style="position:relative;padding:14px 44px;" id="pc-bracket-body">
+        <button onclick="slidePcMatch(-1)" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:all .2s;" onmouseover="this.style.background='#2a2a2e';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">‹</button>
+        <div style="overflow:hidden;">
+          <div id="pc-match-track" style="display:flex;transition:transform .3s cubic-bezier(.4,0,.2,1);"></div>
+        </div>
+        <button onclick="slidePcMatch(1)" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:all .2s;" onmouseover="this.style.background='#2a2a2e';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">›</button>
+      </div>
+      <!-- 도트 인디케이터 -->
+      <div id="pc-dots" style="display:flex;justify-content:center;gap:6px;padding:0 18px 14px;"></div>
+    </div>
+
+    <!-- 모바일 대진표: 탭 + 경기 슬라이드 -->
+    <div class="mobile-bracket-wrap" id="mobile-bracket-wrap">
+      <!-- 라운드 탭 -->
+      <div class="mobile-bracket-tabs" style="overflow-x:auto;scrollbar-width:none;">
+        <button class="mb-tab active" onclick="switchMbTab('r16',this)" style="white-space:nowrap;flex:none;padding:10px 14px;">16강</button>
+        <button class="mb-tab" onclick="switchMbTab('qf',this)" style="white-space:nowrap;flex:none;padding:10px 14px;">8강</button>
+        <button class="mb-tab" onclick="switchMbTab('sf',this)" style="white-space:nowrap;flex:none;padding:10px 14px;">4강</button>
+        <button class="mb-tab" onclick="switchMbTab('final',this)" style="white-space:nowrap;flex:none;padding:10px 14px;">결승</button>
+        <button class="mb-tab" onclick="switchMbTab('winner',this)" style="white-space:nowrap;flex:none;padding:10px 14px;color:#ffd700;">우승</button>
+      </div>
+
+      <!-- 경기 슬라이더 -->
+      <div style="position:relative;padding:14px 36px;">
+        <!-- 이전 경기 -->
+        <button id="mb-prev" onclick="slideMbMatch(-1)" style="position:absolute;left:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:all .2s;" onmouseover="this.style.background='#2a2a2e';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">‹</button>
+
+        <!-- 경기 카드 영역 -->
+        <div id="mb-match-container" style="overflow:hidden;">
+          <div id="mb-match-track" style="display:flex;transition:transform .3s cubic-bezier(.4,0,.2,1);"></div>
+        </div>
+
+        <!-- 다음 경기 -->
+        <button id="mb-next" onclick="slideMbMatch(1)" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:all .2s;" onmouseover="this.style.background='#2a2a2e';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">›</button>
+      </div>
+
+      <!-- 경기 인디케이터 (도트) -->
+      <div id="mb-dots" style="display:flex;justify-content:center;gap:6px;padding:0 14px 14px;"></div>
+    </div>
+
+    <!-- 참여 스트리머 -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:18px 22px;margin-top:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <span style="font-size:13px;font-weight:700;color:var(--text2);">참여 스트리머</span>
+        <span id="roster-count-label" style="font-size:11px;color:var(--text3);background:var(--bg4);border:1px solid var(--border);border-radius:20px;padding:2px 9px;"></span>
+        <span style="font-size:11px;color:var(--text3);margin-left:auto;" id="roster-page-label">1 / 8</span>
+      </div>
+      <div style="position:relative;">
+        <button onclick="slideRoster(-1)" style="position:absolute;left:-14px;top:50%;transform:translateY(-50%);z-index:5;width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">‹</button>
+        <div style="overflow:hidden;">
+          <div id="roster-track" style="display:flex;gap:9px;transition:transform .35s cubic-bezier(.4,0,.2,1);"></div>
+        </div>
+        <button onclick="slideRoster(1)" style="position:absolute;right:-14px;top:50%;transform:translateY(-50%);z-index:5;width:28px;height:28px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;" onmouseover="this.style.background='var(--accent)';this.style.color='#fff'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text2)'">›</button>
+      </div>
+      <div id="roster-dots" style="display:flex;justify-content:center;gap:5px;margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <!-- FEATURED 대회 — JS 가 실데이터로 채움(없으면 숨김) -->
+  <div id="mug-featured" class="featured-card" style="margin-bottom:22px;cursor:pointer;display:none;"></div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('mug-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="mug-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('mug-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  5. 굿즈샵 (이벤트 위)
+══════════════════════════════════════════ -->
+<section id="goods">
+  <div class="inner">
+    <!-- 제목 먼저 -->
+    <div class="section-header">
+      <h2 class="section-title">스트리머 굿즈샵</h2>
+    </div>
+    <!-- 배너: 제목 아래 -->
+    <div class="goods-banner" style="border-radius:var(--radius2);overflow:hidden;margin-bottom:28px;">
+      <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1600&q=80" alt="굿즈샵 배너" onerror="this.parentElement.style.background='#222226';this.remove()">
+      <div class="goods-banner-overlay" style="padding-left:40px;">
+        <div class="goods-banner-text">
+          <h2>SNUK 굿즈샵</h2>
+          <p>내가 좋아하는 스트리머의 굿즈를 만나보세요</p>
+        </div>
+      </div>
+    </div>
+    <!-- 슬라이더 -->
+    <div class="slider-wrap">
+      <div class="slider-nav prev" onclick="slide('goods-slider',-1)">‹</div>
+      <div class="slider-clip"><div class="slider-track" id="goods-slider"></div></div>
+      <div class="slider-nav next" onclick="slide('goods-slider',1)">›</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  스트리머
+══════════════════════════════════════════ -->
+<section id="streamers-channel" style="background:var(--bg2);">
+  <div class="inner">
+    <div class="section-header" style="margin-bottom:6px;">
+      <h2 class="section-title">스트리머</h2>
+      <span style="font-size:13px;color:var(--text2);cursor:pointer;margin-left:auto;" onclick="window.__snukNav('/streamers')">전체 보기 ›</span>
+    </div>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:22px;">SNUK 공식 파트너 스트리머</p>
+    <div class="slider-wrap">
+      <div class="slider-nav prev" onclick="slideStreamers(-1)">‹</div>
+      <div class="slider-clip">
+        <div class="streamer-ch-track" id="streamer-ch-track"></div>
+      </div>
+      <div class="slider-nav next" onclick="slideStreamers(1)">›</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  6. 커뮤니티 이벤트
+══════════════════════════════════════════ -->
+<section id="events">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">커뮤니티 이벤트</h2>
+  </div>
+  <div class="tabs" id="evt-tabs">
+    <button class="tab active" onclick="filterEvt('all',this)">전체</button>
+    <button class="tab" onclick="filterEvt('ongoing',this)">진행중</button>
+    <button class="tab" onclick="filterEvt('closed',this)">마감</button>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('event-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="event-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('event-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  7. 게임체험단 (영상 위)
+══════════════════════════════════════════ -->
+<section id="game-trial">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">게임체험단</h2>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('game-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="game-grid"></div></div>
+    <div class="slider-nav next" onclick="slide('game-slider',1)">›</div>
+  </div>
+
+  <!-- 게임 플레이 영상 슬라이더 -->
+  <div style="margin-top:32px;" data-gv-wrap>
+    <div style="margin-bottom:16px;">
+    <div class="slider-wrap">
+      <div class="slider-nav prev" onclick="slide('game-videos-slider',-1)">‹</div>
+      <div class="slider-clip"><div class="slider-track" id="game-videos-slider"></div></div>
+      <div class="slider-nav next" onclick="slide('game-videos-slider',1)">›</div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  8. 온에어 (컨텐츠 영상)
+══════════════════════════════════════════ -->
+<section id="videos">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">온에어</h2>
+  </div>
+  <div class="video-layout" id="video-layout">
+    <div class="video-list" id="video-list"></div>
+    <div style="flex:1;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="display:flex;flex-direction:column;">
+          <div class="video-player" id="main-player"><div style="text-align:center;color:var(--text3);"><div style="font-size:40px;opacity:.3;margin-bottom:8px;">▶</div><div style="font-size:12px;">영상을 선택하세요</div></div></div>
+          <div class="video-info-bar"><div style="font-size:13px;font-weight:700;color:var(--text);" id="main-title">영상을 선택하세요</div><div style="font-size:11px;color:var(--text3);margin-top:3px;" id="main-meta">—</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;">
+          <div class="video-player" id="sub-player"><div style="text-align:center;color:var(--text3);"><div style="font-size:32px;opacity:.2;margin-bottom:6px;">▶</div><div style="font-size:11px;">두 번째 영상</div></div></div>
+          <div class="video-info-bar"><div style="font-size:13px;font-weight:700;color:var(--text);" id="sub-title">영상을 선택하세요</div><div style="font-size:11px;color:var(--text3);margin-top:3px;" id="sub-meta">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  구인구직
+══════════════════════════════════════════ -->
+<section id="jobs" style="background:var(--bg);">
+  <div class="inner">
+    <div class="section-header" style="margin-bottom:6px;">
+      <h2 class="section-title">구인구직</h2>
+      <span style="font-size:13px;color:var(--text2);cursor:pointer;margin-left:auto;" onclick="showToast('구인구직 전체 보기')">전체 보기 ›</span>
+    </div>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:22px;">스트리머 크루 모집 · 제작팀 구인 · 파트너 구직</p>
+    <div class="tabs" id="job-tabs">
+      <button class="tab active" onclick="filterJobs('all',this)">전체</button>
+      <button class="tab" onclick="filterJobs('recruit',this)">모집중</button>
+      <button class="tab" onclick="filterJobs('closed',this)">마감</button>
+    </div>
+    <div class="slider-wrap">
+      <div class="slider-nav prev" onclick="slide('job-slider',-1)">‹</div>
+      <div class="slider-clip"><div class="slider-track" id="job-slider"></div></div>
+      <div class="slider-nav next" onclick="slide('job-slider',1)">›</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  9. 뉴스 (협력사 위)
+══════════════════════════════════════════ -->
+<section id="news-section">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">SNUK 뉴스</h2>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-20px;margin-bottom:20px;">SNUK 뉴스 최신 기사</p>
+  <div class="news-layout" id="news-layout"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  10. 협력사
+══════════════════════════════════════════ -->
+<section id="partners">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">협력사</h2>
+  </div>
+  <div style="position:relative;padding:0 24px;">
+    <div class="slider-nav prev" onclick="slidePartners(-1)">‹</div>
+    <div class="partners-rows-container">
+      <div class="partners-track" id="partners-row1"></div>
+      <div class="partners-track" id="partners-row2" style="margin-top:10px;"></div>
+    </div>
+    <div class="slider-nav next" onclick="slidePartners(1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- 푸터는 shell-bottom 으로 이동 (전 페이지 공통 + 바닥 고정) -->
