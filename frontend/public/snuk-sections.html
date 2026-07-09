@@ -15,6 +15,22 @@
 </section>
 
 <!-- ══════════════════════════════════════════
+  1.5 홈 통합 빅그리드 — 컨텐츠 + 대회 (홈 전용)
+══════════════════════════════════════════ -->
+<section id="big-contents">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">SNUK 컨텐츠 &amp; 대회</h2>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slide('big-slider',-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="big-slider"></div></div>
+    <div class="slider-nav next" onclick="slide('big-slider',1)">›</div>
+  </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
   2. SNUK 컨텐츠
 ══════════════════════════════════════════ -->
 <section id="snuk-contents">
@@ -312,6 +328,24 @@
 </section>
 
 <!-- ══════════════════════════════════════════
+  7.5 굿즈 베스트 10 (홈 전용 — 5개×2슬라이드)
+══════════════════════════════════════════ -->
+<section id="goods-best">
+  <div class="inner">
+  <div class="section-header">
+    <h2 class="section-title">굿즈 베스트 10</h2>
+    <span style="font-size:13px;color:var(--text2);cursor:pointer;margin-left:auto;" onclick="window.__snukNav('/goods')">굿즈샵 가기 ›</span>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-nav prev" onclick="slideGoodsBest(-1)">‹</div>
+    <div class="slider-clip"><div class="slider-track" id="goods-best-track"></div></div>
+    <div class="slider-nav next" onclick="slideGoodsBest(1)">›</div>
+  </div>
+  <div id="goods-best-dots" style="display:flex;justify-content:center;gap:6px;margin-top:14px;"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
   8. 온에어 (컨텐츠 영상)
 ══════════════════════════════════════════ -->
 <section id="videos">
@@ -334,6 +368,20 @@
       </div>
     </div>
   </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+  8.5 스트리머 드래그 스트립 (홈 전용 — 푸터 바로 위)
+══════════════════════════════════════════ -->
+<section id="streamer-strip" style="background:var(--bg2);">
+  <div class="inner">
+  <div class="section-header" style="margin-bottom:6px;">
+    <h2 class="section-title">SNUK 스트리머</h2>
+    <span style="font-size:13px;color:var(--text2);cursor:pointer;margin-left:auto;" onclick="window.__snukNav('/streamers')">전체 보기 ›</span>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-bottom:22px;">옆으로 드래그해서 더 많은 스트리머를 만나보세요</p>
+  <div class="strip-scroll" id="streamer-strip-scroll"></div>
   </div>
 </section>
 
@@ -381,14 +429,8 @@
   <div class="section-header">
     <h2 class="section-title">협력사</h2>
   </div>
-  <div style="position:relative;padding:0 24px;">
-    <div class="slider-nav prev" onclick="slidePartners(-1)">‹</div>
-    <div class="partners-rows-container">
-      <div class="partners-track" id="partners-row1"></div>
-      <div class="partners-track" id="partners-row2" style="margin-top:10px;"></div>
-    </div>
-    <div class="slider-nav next" onclick="slidePartners(1)">›</div>
-  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-20px;margin-bottom:24px;">SNUK과 함께하는 파트너</p>
+  <div class="partner-grid" id="partner-grid"></div>
   </div>
 </section>
 

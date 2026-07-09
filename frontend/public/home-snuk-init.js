@@ -75,6 +75,51 @@ function renderContentSliders() {
   initSlider('job-slider', emptyCard('등록된 공고가 없습니다.'));
 }
 
+// ════════════════════════════════════════════
+// 홈 통합 빅그리드 — 캠페인 + 대회 큰 카드 (3열 슬라이드)
+// ════════════════════════════════════════════
+function makeBigCard(d, w, i) {
+  const canApply = d.status === 'open';
+  const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
+  const kindLabel = d.kind === 'tournament' ? '대회' : '컨텐츠';
+  const slots = d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
+  const sub = [slots, d.eventDate].filter(Boolean).join(' · ');
+  return `<div class="content-card big-card" style="width:${w};min-width:${w};" ${canApply ? `onclick="openApply('${d.kind}',${d.id})"` : `onclick="window.__snukNav('${d.kind === 'tournament' ? '/championship' : '/campaigns'}')"`}>
+    <div class="card-thumb" style="background:${bgOf(i)};position:relative;">
+      ${thumbHtml(d.img, i, d.kind === 'tournament' ? '🏆' : '🎮')}
+      <div class="big-card-grad"></div>
+      <div class="big-card-top">
+        <span class="badge ${badgeCls}">${esc(d.statusLabel)}</span>
+        <span class="big-kind">${kindLabel}</span>
+      </div>
+      <div class="big-card-caption">
+        <div class="big-title">${esc(d.title)}</div>
+        ${sub ? `<div class="big-sub">${esc(sub)}</div>` : ''}
+      </div>
+    </div>
+    <div class="big-card-foot">
+      <div class="card-desc">${esc(d.desc)}</div>
+      ${canApply ? `<button class="btn-apply" onclick="event.stopPropagation();openApply('${d.kind}',${d.id})">신청하기</button>`
+        : d.kind === 'tournament' && d.resultText ? `<button class="btn btn-outline" style="padding:6px 12px;font-size:11px;flex-shrink:0;" onclick="event.stopPropagation();showResult(${d.id})">결과 보기</button>`
+        : `<span style="font-size:11px;color:var(--text3);flex-shrink:0;">${esc(d.statusLabel)}</span>`}
+    </div>
+  </div>`;
+}
+
+function initBigContents() {
+  const track = document.getElementById('big-slider');
+  if (!track) return;
+  const items = [...(D().snukContents || []), ...(D().mugContents || [])];
+  if (!items.length) {
+    track.innerHTML = emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
+    return;
+  }
+  // 모집중 먼저, 나머지는 원래 순서 유지
+  const sorted = [...items].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
+  const w = cardWidth(3);
+  track.innerHTML = sorted.map((d, i) => makeBigCard(d, w, i)).join('');
+}
+
 // ── FEATURED 카드 (SNUK 컨텐츠/챔피언십 상단)
 function renderFeatured(elId, d, tagText) {
   const el = document.getElementById(elId);
@@ -194,13 +239,16 @@ function initGameTrial() {
     return `<div class="game-card" style="width:${cardWidth(3)};min-width:${cardWidth(3)};">
       <div class="game-thumb" style="position:relative;background:${bgOf(i)};">
         ${g.img ? `<img src="${esc(g.img)}" alt="${esc(g.name)}" onerror="this.remove()">` : `<div style="font-size:64px;opacity:.4;">${esc(g.name.slice(0, 1))}</div>`}
-        <div style="position:absolute;top:10px;left:10px;">
+        <div class="game-thumb-grad"></div>
+        <div style="position:absolute;top:12px;left:12px;z-index:1;">
           <span class="${canApply ? 'badge open' : 'badge closed'}">${canApply ? '모집중' : '마감'}</span>
+        </div>
+        <div class="game-thumb-caption">
+          <div class="game-name">${esc(g.name)}</div>
+          ${g.publisher ? `<div class="game-publisher">${esc(g.publisher)}</div>` : ''}
         </div>
       </div>
       <div class="game-body">
-        <div class="game-name">${esc(g.name)}</div>
-        <div class="game-publisher" style="margin-bottom:8px;">${esc(g.publisher)}</div>
         <div class="game-desc">${esc(g.desc)}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:0;">
           <span style="font-size:11px;color:var(--text3);">${g.max > 0 ? `신청 ${g.members}/${g.max}` : ''}</span>
@@ -414,38 +462,153 @@ function buyGoods(id) {
 }
 
 // ════════════════════════════════════════════
-// 협력사 (실 클라이언트 로고)
+// 굿즈 베스트 10 (홈 전용 — 5개×2슬라이드, 부족분은 표시용 더미 패딩)
 // ════════════════════════════════════════════
-function initPartners() {
-  const r1 = document.getElementById('partners-row1'), r2 = document.getElementById('partners-row2');
-  if (!r1 || !r2) return;
-  const partners = D().partners || [];
-  if (!partners.length) {
-    r1.innerHTML = emptyCard('등록된 협력사가 없습니다.');
-    r2.innerHTML = '';
-    return;
+let goodsBestPage = 0;
+
+function goodsBestTotalPages() { return window._goodsBestPages || 1; }
+
+function initGoodsBest() {
+  const track = document.getElementById('goods-best-track');
+  if (!track) return;
+  const real = (D().goods || []).slice(0, 10).map((g) => ({ ...g, dummy: false }));
+  // 실 굿즈가 10개 미만이면 표시용 더미로 채움 (운영 요청 — 실 데이터 등록 시 자동 대체)
+  const items = [...real];
+  for (let i = items.length; i < 10; i++) {
+    items.push({ dummy: true, id: null, name: `SNUK 굿즈 ${i + 1}`, streamer: '오픈 준비중', price: null, img: null });
   }
-  const vw = window.innerWidth;
-  const perRow = vw <= 1024 ? 4 : 7;
-  const all = partners.map((p) => {
-    const inner = `<img src="${esc(p.logoUrl)}" alt="${esc(p.name)}" style="max-width:100%;max-height:40px;object-fit:contain;" onerror="this.replaceWith(document.createTextNode('${esc(p.name)}'))">`;
-    return p.linkUrl
-      ? `<a class="partner-logo" href="${esc(p.linkUrl)}" target="_blank" rel="noopener" style="text-decoration:none;">${inner}</a>`
-      : `<div class="partner-logo">${inner}</div>`;
-  });
-  r1.innerHTML = all.slice(0, perRow).join('');
-  r2.innerHTML = all.slice(perRow, perRow * 2).join('');
+  const perPage = window.innerWidth <= 768 ? 3 : 5;
+  const gap = 12;
+  const w = `calc((100% - ${(perPage - 1) * gap}px) / ${perPage})`;
+  const pages = [];
+  for (let i = 0; i < items.length; i += perPage) pages.push(items.slice(i, i + perPage));
+
+  track.innerHTML = pages.map((page, pi) => `<div class="goods-best-page" style="gap:${gap}px;">
+    ${page.map((g, gi) => {
+      const rank = pi * perPage + gi + 1;
+      if (g.dummy) {
+        return `<div class="goods-card dummy" style="width:${w};min-width:${w};" onclick="showToast('오픈 준비 중인 굿즈입니다')">
+          <div class="goods-thumb" style="background:${bgOf(rank)};display:flex;align-items:center;justify-content:center;">
+            <div class="goods-rank${rank <= 3 ? ' top3' : ''}">${rank}</div>
+            <div style="font-size:40px;opacity:.35;">🎁</div>
+          </div>
+          <div class="goods-body">
+            <div class="goods-name">${esc(g.name)}</div>
+            <div class="goods-streamer">${esc(g.streamer)}</div>
+            <div class="goods-price" style="color:var(--text3);">오픈 준비중</div>
+          </div>
+        </div>`;
+      }
+      return `<div class="goods-card" style="width:${w};min-width:${w};" onclick="${g.purchasable ? `buyGoods(${g.id})` : `window.__snukNav('/goods')`}">
+        <div class="goods-thumb" style="background:${bgOf(rank)};">
+          <div class="goods-rank${rank <= 3 ? ' top3' : ''}">${rank}</div>
+          ${g.img ? `<img src="${esc(g.img)}" alt="${esc(g.name)}" onerror="this.remove()">` : ''}
+        </div>
+        <div class="goods-body">
+          <div class="goods-name">${esc(g.name)}</div>
+          <div class="goods-streamer">${esc(g.streamer)}</div>
+          <div class="goods-price">₩${esc(g.price)}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`).join('');
+
+  window._goodsBestPages = pages.length;
+  goodsBestPage = 0;
+  track.style.transform = 'translateX(0)';
+  renderGoodsBestDots();
 }
 
-let partnerPos = 0;
-function slidePartners(dir) {
-  const r1 = document.getElementById('partners-row1'), r2 = document.getElementById('partners-row2');
-  if (!r1 || !r2) return;
-  const step = r1.parentElement.offsetWidth;
-  const max = Math.max(0, r1.scrollWidth - step);
-  partnerPos = dir > 0 ? Math.min(max, partnerPos + step) : Math.max(0, partnerPos - step);
-  r1.style.transform = `translateX(-${partnerPos}px)`;
-  r2.style.transform = `translateX(-${partnerPos}px)`;
+function renderGoodsBestDots() {
+  const dots = document.getElementById('goods-best-dots');
+  if (!dots) return;
+  dots.innerHTML = Array.from({ length: goodsBestTotalPages() }, (_, i) =>
+    `<div onclick="goGoodsBest(${i})" style="width:${i === goodsBestPage ? '18px' : '6px'};height:6px;border-radius:3px;background:${i === goodsBestPage ? 'var(--text)' : 'var(--border2)'};cursor:pointer;transition:all .3s;"></div>`).join('');
+}
+
+function slideGoodsBest(dir) { goGoodsBest(goodsBestPage + dir); }
+function goGoodsBest(n) {
+  const track = document.getElementById('goods-best-track');
+  if (!track) return;
+  goodsBestPage = Math.max(0, Math.min(goodsBestTotalPages() - 1, n));
+  track.style.transform = `translateX(-${goodsBestPage * 100}%)`;
+  renderGoodsBestDots();
+}
+
+// ════════════════════════════════════════════
+// 스트리머 드래그 스트립 (홈 전용 — 푸터 위)
+// ════════════════════════════════════════════
+const STRIP_DUMMY_CHAMPS = ['Ahri', 'Yasuo', 'Jinx', 'Ezreal', 'Lux', 'LeeSin', 'Akali', 'Garen', 'Kaisa', 'Zed', 'Sona', 'Teemo'];
+
+function initStreamerStrip() {
+  const box = document.getElementById('streamer-strip-scroll');
+  if (!box) return;
+  const real = D().streamers || [];
+  // 실 스트리머 없으면 표시용 더미(운영 요청 — 시안 방식 ddragon 아바타)
+  const items = real.length
+    ? real.map((s) => ({ id: s.id, name: s.name, img: s.img, platform: s.platform, followers: s.followers, dummy: false }))
+    : STRIP_DUMMY_CHAMPS.map((c, i) => ({
+        id: null, name: `스트리머${i + 1}`, platform: 'chz', followers: null, dummy: true,
+        img: `https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/${c}.png`,
+      }));
+  box.innerHTML = items.map((s) => {
+    const avatar = s.img
+      ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" draggable="false" onerror="this.parentElement.textContent='${esc(s.name.slice(0, 1))}';">`
+      : `<span style="font-size:24px;font-weight:700;color:${platColor[s.platform] || 'var(--text2)'};">${esc(s.name.slice(0, 1))}</span>`;
+    return `<div class="strip-card" onclick="${s.dummy ? `showToast('파트너 스트리머를 기다리고 있어요!')` : `window.__snukNav('/streamers/${s.id}')`}">
+      <div class="strip-avatar" style="border:2px solid ${platColor[s.platform] || '#555'}55;">${avatar}</div>
+      <div class="strip-name">${esc(s.name)}</div>
+      <div class="strip-sub" style="color:${platColor[s.platform] || 'var(--text3)'};">${s.followers != null ? `팔로워 ${Number(s.followers).toLocaleString('ko-KR')}` : (platLabel[s.platform] || '')}</div>
+    </div>`;
+  }).join('');
+  bindStripDrag(box);
+}
+
+function bindStripDrag(box) {
+  if (box.dataset.dragBound) return;
+  box.dataset.dragBound = '1';
+  let down = false, moved = false, startX = 0, scrollStart = 0;
+  box.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse') return; // 터치는 네이티브 스크롤 사용
+    down = true; moved = false; startX = e.clientX; scrollStart = box.scrollLeft;
+    box.classList.add('dragging');
+  });
+  box.addEventListener('pointermove', (e) => {
+    if (!down) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 6) moved = true;
+    box.scrollLeft = scrollStart - dx;
+  });
+  const up = () => { down = false; box.classList.remove('dragging'); };
+  box.addEventListener('pointerup', up);
+  box.addEventListener('pointerleave', up);
+  box.addEventListener('pointercancel', up);
+  // 드래그였다면 카드 클릭 무시
+  box.addEventListener('click', (e) => {
+    if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+  }, true);
+}
+
+// ════════════════════════════════════════════
+// 협력사 (실 클라이언트 로고 — 카드 그리드, 흑백→호버 컬러)
+// ════════════════════════════════════════════
+function initPartners() {
+  const grid = document.getElementById('partner-grid');
+  if (!grid) return;
+  const partners = D().partners || [];
+  if (!partners.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;">${emptyCard('등록된 협력사가 없습니다.')}</div>`;
+    return;
+  }
+  grid.innerHTML = partners.map((p) => {
+    const logo = `<div class="partner-card-logo">
+      <img src="${esc(p.logoUrl)}" alt="${esc(p.name)}" onerror="this.replaceWith(document.createTextNode('${esc(p.name)}'))">
+    </div>`;
+    const inner = `${logo}<div class="partner-card-name">${esc(p.name)}</div>`;
+    return p.linkUrl
+      ? `<a class="partner-card" href="${esc(p.linkUrl)}" target="_blank" rel="noopener">${inner}</a>`
+      : `<div class="partner-card">${inner}</div>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════════
@@ -945,9 +1108,11 @@ window.addEventListener('resize', function () {
   clearTimeout(_resizeTimer);
   _resizeTimer = setTimeout(function () {
     renderContentSliders();
+    initBigContents();
     initGameTrial();
     initGameVideos();
     if (window._rerenderGoods) window._rerenderGoods();
+    initGoodsBest();
     initPartners();
     initRoster();
     streamerChanPos = 0;
@@ -967,12 +1132,15 @@ function __snukInit() {
   }
   bindOverlayClose();
   renderContentSliders();
+  initBigContents();
   renderFeatured('snuk-featured', D().snukFeatured, 'FEATURED');
   renderFeatured('mug-featured', D().mugFeatured, 'SIGNATURE CONTENT');
   initGameTrial();
   initGameVideos();
   initVideos();
   if (window._rerenderGoods) window._rerenderGoods();
+  initGoodsBest();
+  initStreamerStrip();
   initPartners();
   initBracket();
   initRoster();

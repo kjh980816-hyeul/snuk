@@ -497,6 +497,69 @@
 /* ── FLUID TYPOGRAPHY ── */
 .snuk-page{ font-size: clamp(13px, 1.1vw, 16px); }
 
+/* ── 홈 3차 개편 (2026-07-09) ── */
+
+/* 홈 통합 빅그리드 — 컨텐츠+대회 큰 카드 */
+.big-card .card-thumb{aspect-ratio:4/3;}
+.big-card-grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.06) 30%,rgba(6,6,9,.88) 100%);pointer-events:none;}
+.big-card-top{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;z-index:1;}
+.big-kind{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:1px;color:#fff;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:3px 10px;}
+.big-card-caption{position:absolute;left:16px;right:16px;bottom:14px;z-index:1;}
+.big-card-caption .big-title{font-size:17px;font-weight:700;color:#fff;line-height:1.35;margin-bottom:4px;text-shadow:0 2px 8px rgba(0,0,0,.5);}
+.big-card-caption .big-sub{font-size:12px;color:rgba(255,255,255,.78);}
+.big-card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;}
+.big-card-foot .card-desc{margin:0;flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.big-card:hover{box-shadow:0 14px 40px rgba(0,0,0,.35);}
+
+/* 게임체험단 카드 고급화 — 큰 썸네일 + 그라데이션 + 호버 줌 */
+.game-thumb{aspect-ratio:16/9;}
+.game-thumb img{transition:transform .35s ease;}
+.game-card:hover .game-thumb img{transform:scale(1.06);}
+.game-card:hover{box-shadow:0 14px 40px rgba(0,0,0,.35);}
+.game-thumb-grad{position:absolute;inset:0;background:linear-gradient(180deg,transparent 38%,rgba(6,6,9,.92) 100%);pointer-events:none;}
+.game-thumb-caption{position:absolute;left:16px;right:16px;bottom:12px;z-index:1;}
+.game-thumb-caption .game-name{margin:0 0 2px;color:#fff;font-size:17px;text-shadow:0 2px 8px rgba(0,0,0,.55);}
+.game-thumb-caption .game-publisher{margin:0;color:rgba(255,255,255,.72);}
+
+/* 굿즈 베스트 10 — 5개×2슬라이드 + 랭킹 뱃지 */
+.goods-best-page{display:flex;flex-shrink:0;width:100%;min-width:100%;}
+.goods-rank{position:absolute;top:8px;left:8px;min-width:24px;height:24px;border-radius:7px;background:rgba(8,8,10,.72);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;z-index:1;}
+.goods-rank.top3{background:linear-gradient(135deg,#ffb300,#ff7a00);border-color:transparent;color:#1a1205;}
+.goods-card.dummy{cursor:default;}
+.goods-card.dummy:hover{transform:none;border-color:var(--border);}
+.goods-card.dummy .goods-thumb > div:not(.goods-rank),
+.goods-card.dummy .goods-name,.goods-card.dummy .goods-streamer{opacity:.75;}
+
+/* 스트리머 드래그 스트립 */
+.strip-scroll{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;cursor:grab;scrollbar-width:thin;-webkit-overflow-scrolling:touch;}
+.strip-scroll.dragging{cursor:grabbing;user-select:none;}
+.strip-scroll::-webkit-scrollbar{height:6px;}
+.strip-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.strip-card{flex:0 0 auto;width:132px;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px 10px 14px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .2s;cursor:pointer;user-select:none;}
+.strip-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 10px 28px rgba(0,0,0,.3);}
+.strip-avatar{width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--bg4);display:flex;align-items:center;justify-content:center;margin-bottom:6px;flex-shrink:0;}
+.strip-avatar img{width:100%;height:100%;object-fit:cover;pointer-events:none;}
+.strip-name{font-size:13px;font-weight:700;color:var(--text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.strip-sub{font-size:10px;font-weight:600;}
+
+/* 협력사 카드 그리드 — 로고 흑백→호버 컬러 + 리프트 */
+.partner-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;}
+.partner-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:26px 14px 20px;transition:all .25s;text-decoration:none;cursor:pointer;}
+.partner-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 12px 32px rgba(0,0,0,.28);}
+.partner-card-logo{height:44px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--text2);}
+.partner-card-logo img{max-width:130px;max-height:44px;object-fit:contain;filter:grayscale(1);opacity:.65;transition:all .25s;}
+.partner-card:hover .partner-card-logo img{filter:none;opacity:1;}
+.partner-card-name{font-size:12px;font-weight:600;color:var(--text3);transition:color .25s;}
+.partner-card:hover .partner-card-name{color:var(--text);}
+
+@media(max-width:768px){
+  .goods-best-page .goods-card .goods-price{font-size:13px;}
+  .partner-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .strip-card{width:112px;}
+  .strip-avatar{width:60px;height:60px;}
+  .big-card-caption .big-title{font-size:15px;}
+}
+
 /* ── 1400px ~ ── */
 @media(max-width:1400px){
   .snuk-page{--sidebar:200px;}
