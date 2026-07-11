@@ -53,7 +53,7 @@ function liveUrl() {
           <div style="font-size: 14px; font-weight: 700;">라이브 보기 버튼을 눌러주세요</div>
         </div>
         <div v-else class="live-frames">
-          <iframe :src="liveUrl()" class="live-video" allowfullscreen allow="autoplay;fullscreen"></iframe>
+          <iframe :src="liveUrl()" class="live-video" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
           <iframe :src="`https://chzzk.naver.com/chat/${channelId}`" class="live-chat"></iframe>
         </div>
       </div>

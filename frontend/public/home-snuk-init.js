@@ -107,14 +107,18 @@ function makeBigCard(d, w, i) {
 }
 
 function initBigContents() {
-  const track = document.getElementById('big-slider');
+  // 홈 컨텐츠/대회 분리 그리드 (모집중 먼저, 나머지는 원래 순서 유지)
+  fillBigTrack('big-slider', D().snukContents || [], '진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
+  fillBigTrack('big-tour-slider', D().mugContents || [], '예정된 대회가 없습니다. 새 대회 소식을 기다려주세요!');
+}
+
+function fillBigTrack(trackId, items, emptyMsg) {
+  const track = document.getElementById(trackId);
   if (!track) return;
-  const items = [...(D().snukContents || []), ...(D().mugContents || [])];
   if (!items.length) {
-    track.innerHTML = emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
+    track.innerHTML = emptyCard(emptyMsg);
     return;
   }
-  // 모집중 먼저, 나머지는 원래 순서 유지
   const sorted = [...items].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
   const w = cardWidth(3);
   track.innerHTML = sorted.map((d, i) => makeBigCard(d, w, i)).join('');
