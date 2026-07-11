@@ -28,9 +28,10 @@ function thumbHtml(img, i, emoji) {
 // ════════════════════════════════════════════
 // CARD WIDTH HELPER
 // ════════════════════════════════════════════
-function cardWidth(n) {
+function cardWidth(n, mobileN) {
   const w = window.innerWidth;
-  if (w <= 480) n = Math.min(n, 2);
+  // 모바일에서 카드가 좁아지면 뱃지/버튼이 세로로 꺾이므로 카드별로 모바일 열수를 지정 가능
+  if (w <= 480) n = Math.min(n, mobileN ?? 2);
   else if (w <= 1024) n = Math.min(n, 3);
   return `calc((100% - ${Math.max(0, n - 1) * 16}px) / ${n})`;
 }
@@ -64,10 +65,10 @@ function renderContentSliders() {
   const snuk = D().snukContents || [];
   const mug = D().mugContents || [];
   initSlider('snuk-slider', snuk.length
-    ? snuk.map((d, i) => makeContentCard(d, cardWidth(6), i)).join('')
+    ? snuk.map((d, i) => makeContentCard(d, cardWidth(5, 1), i)).join('')
     : emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!'));
   initSlider('mug-slider', mug.length
-    ? mug.map((d, i) => makeContentCard(d, cardWidth(6), i)).join('')
+    ? mug.map((d, i) => makeContentCard(d, cardWidth(5, 1), i)).join('')
     : emptyCard('등록된 대회가 없습니다.'));
   // 스트리머 컨텐츠/이벤트/구인구직 — 데이터 소스 없음(향후 오픈)
   initSlider('str-slider', emptyCard('스트리머 컨텐츠는 준비 중입니다.'));
@@ -120,7 +121,7 @@ function fillBigTrack(trackId, items, emptyMsg) {
     return;
   }
   const sorted = [...items].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
-  const w = cardWidth(3);
+  const w = cardWidth(3, 1);
   track.innerHTML = sorted.map((d, i) => makeBigCard(d, w, i)).join('');
 }
 
@@ -240,7 +241,7 @@ function initGameTrial() {
       </div>`).join('');
     const full = g.max > 0 && g.members >= g.max;
     const canApply = g.applyOpen && !full && g.campaignId != null;
-    return `<div class="game-card" style="width:${cardWidth(3)};min-width:${cardWidth(3)};">
+    return `<div class="game-card" style="width:${cardWidth(3, 1)};min-width:${cardWidth(3, 1)};">
       <div class="game-thumb" style="position:relative;background:${bgOf(i)};">
         ${g.img ? `<img src="${esc(g.img)}" alt="${esc(g.name)}" onerror="this.remove()">` : `<div style="font-size:64px;opacity:.4;">${esc(g.name.slice(0, 1))}</div>`}
         <div class="game-thumb-grad"></div>
@@ -395,11 +396,11 @@ function selectVideo(i) {
   if (videoSlot === 0) {
     document.getElementById('main-player').innerHTML = `<iframe src="${src}" allowfullscreen></iframe>`;
     document.getElementById('main-title').textContent = v.title;
-    document.getElementById('main-meta').textContent = v.meta || '—';
+    document.getElementById('main-meta').textContent = v.meta || '';
   } else {
     document.getElementById('sub-player').innerHTML = `<iframe src="${src}" allowfullscreen></iframe>`;
     document.getElementById('sub-title').textContent = v.title;
-    document.getElementById('sub-meta').textContent = v.meta || '—';
+    document.getElementById('sub-meta').textContent = v.meta || '';
   }
   videoSlot = 1 - videoSlot;
 }
@@ -430,12 +431,13 @@ function selectVideo(i) {
       const renderRow = (items) => items.map((g, gi) => {
         const canBuy = g.purchasable;
         const label = g.status === 'ongoing' ? (D().goodsReady === false ? '오픈 준비중' : '판매중') : '품절/종료';
-        const color = g.status === 'ongoing' ? '#34c878' : 'var(--text3)';
-        const bg = g.status === 'ongoing' ? 'rgba(52,199,120,.14)' : 'rgba(100,100,130,.15)';
+        // 밝은 상품 이미지 위에서도 읽히도록 불투명 다크 칩 고정
+        const color = g.status === 'ongoing' ? '#4fdb92' : '#c9c9d2';
+        const bg = 'rgba(10,10,14,.78)';
         return `<div class="goods-card" style="width:${w};min-width:${w};">
           <div class="goods-thumb" style="background:${bgOf(gi)};">
             ${g.img ? `<img src="${esc(g.img)}" alt="${esc(g.name)}" onerror="this.remove()">` : ''}
-            <div style="position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:${bg};color:${color};border:1px solid ${color}55;">${label}</div>
+            <div style="position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:${bg};color:${color};border:1px solid ${color}55;white-space:nowrap;">${label}</div>
           </div>
           <div class="goods-body">
             <div class="goods-name">${esc(g.name)}</div>
@@ -542,23 +544,21 @@ function goGoodsBest(n) {
 // ════════════════════════════════════════════
 // 스트리머 드래그 스트립 (홈 전용 — 푸터 위)
 // ════════════════════════════════════════════
-const STRIP_DUMMY_CHAMPS = ['Ahri', 'Yasuo', 'Jinx', 'Ezreal', 'Lux', 'LeeSin', 'Akali', 'Garen', 'Kaisa', 'Zed', 'Sona', 'Teemo'];
-
 function initStreamerStrip() {
   const box = document.getElementById('streamer-strip-scroll');
   if (!box) return;
   const real = D().streamers || [];
   // 실 스트리머 없으면 표시용 더미(운영 요청 — 시안 방식 ddragon 아바타)
+  // 실 스트리머 없으면 표시용 더미(이니셜 아바타 — 외부 IP 이미지 사용 금지)
   const items = real.length
     ? real.map((s) => ({ id: s.id, name: s.name, img: s.img, platform: s.platform, followers: s.followers, dummy: false }))
-    : STRIP_DUMMY_CHAMPS.map((c, i) => ({
-        id: null, name: `스트리머${i + 1}`, platform: 'chz', followers: null, dummy: true,
-        img: `https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/${c}.png`,
+    : Array.from({ length: 12 }, (_, i) => ({
+        id: null, name: `스트리머${i + 1}`, platform: 'chz', followers: null, dummy: true, img: null, initial: String(i + 1),
       }));
   box.innerHTML = items.map((s) => {
     const avatar = s.img
       ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" draggable="false" onerror="this.parentElement.textContent='${esc(s.name.slice(0, 1))}';">`
-      : `<span style="font-size:24px;font-weight:700;color:${platColor[s.platform] || 'var(--text2)'};">${esc(s.name.slice(0, 1))}</span>`;
+      : `<span style="font-size:24px;font-weight:700;color:${platColor[s.platform] || 'var(--text2)'};">${esc(s.initial || s.name.slice(0, 1))}</span>`;
     return `<div class="strip-card" onclick="${s.dummy ? `showToast('파트너 스트리머를 기다리고 있어요!')` : `window.__snukNav('/streamers/${s.id}')`}">
       <div class="strip-avatar" style="border:2px solid ${platColor[s.platform] || '#555'}55;">${avatar}</div>
       <div class="strip-name">${esc(s.name)}</div>
@@ -1141,20 +1141,52 @@ function __snukInit() {
   initSpotlight();
   renderNotices();
   applySiteImages();
+  initHeroStats();
   setActiveNav(location.pathname);
 }
 
-// 어드민 "설정" 탭에서 바꾼 히어로/배너 이미지 적용 ('-'=미설정 → 마크업 기본 이미지 유지)
+// 히어로 실데이터 스탯 (파트너 스트리머 / 모집중 컨텐츠 / 대회)
+function initHeroStats() {
+  const el = document.getElementById('hero-stats');
+  if (!el) return;
+  const d = D() || {};
+  const streamers = (d.streamers || []).length;
+  const openContents = (d.snukContents || []).filter((c) => c.status === 'open').length;
+  const activeTours = (d.mugContents || []).filter((t) => t.status === 'open' || t.status === 'ongoing').length;
+  const stat = (n, label) => `<div class="hero-stat"><strong>${n}</strong><span>${label}</span></div>`;
+  el.innerHTML = stat(streamers, '파트너 스트리머') + stat(openContents, '모집중 컨텐츠') + stat(activeTours, '진행 · 예정 대회');
+}
+
+// 어드민 "설정" 탭에서 바꾼 히어로/배너 이미지·문구 적용 ('-'=미설정 → 마크업 기본값 유지)
 function applySiteImages() {
   const ss = (D() && D().siteSettings) || {};
-  const apply = (sel, url) => {
-    if (!url || url === '-') return;
+  const set = (v) => v && v !== '-';
+  const applyImg = (sel, url) => {
+    if (!set(url)) return;
     const el = document.querySelector(sel);
     if (el && el.getAttribute('src') !== url) el.setAttribute('src', url);
   };
-  apply('#hero .hero-banner-card > img', ss.HERO_IMAGE_URL);
-  apply('#goods .goods-banner img', ss.BANNER_GOODS_URL);
-  apply('#partners .goods-banner img', ss.BANNER_PARTNERS_URL);
+  const applyText = (sel, text) => {
+    if (!set(text)) return;
+    const el = document.querySelector(sel);
+    if (el) el.textContent = text;
+  };
+  applyImg('#hero .hero-banner-card > img', ss.HERO_IMAGE_URL);
+  // 페이지 배너: 이미지 + 제목 + 문구 (키=BANNER_{PAGE}_{URL|TITLE|SUB}, V12 시드)
+  const BANNER_SECTIONS = {
+    CONTENTS: '#snuk-contents .page-banner',
+    CHAMPIONSHIP: '#mugchamps .page-banner',
+    GAMES: '#game-trial .page-banner',
+    VIDEOS: '#videos .page-banner',
+    STREAMERS: '#streamers-channel .page-banner',
+    GOODS: '#goods .goods-banner',
+    PARTNERS: '#partners .goods-banner',
+  };
+  for (const [page, sel] of Object.entries(BANNER_SECTIONS)) {
+    applyImg(`${sel} img`, ss[`BANNER_${page}_URL`]);
+    applyText(`${sel} .goods-banner-text h2`, ss[`BANNER_${page}_TITLE`]);
+    applyText(`${sel} .goods-banner-text p`, ss[`BANNER_${page}_SUB`]);
+  }
 }
 
 ;(function () { try { if (typeof __snukInit === 'function') __snukInit(); } catch (e) { console.error('[snuk init]', e); } })();

@@ -25,6 +25,12 @@ onMounted(async () => {
       const el = document.getElementById(id)
       if (el) el.style.display = 'none'
     }
+    // 단독 페이지(섹션 1개)일 때만 페이지 배너 노출 — 홈처럼 여러 섹션이 겹칠 땐 유지(숨김)
+    if (props.show.length === 1) {
+      root.querySelectorAll<HTMLElement>('.page-banner').forEach((el) => {
+        el.style.display = ''
+      })
+    }
   }
   // 실데이터 렌더러 재실행 (스크립트 로드 전이면 no-op — SnukShell 이 로드 후 실행)
   ;(window as unknown as Record<string, undefined | (() => void)>).__snukInit?.()

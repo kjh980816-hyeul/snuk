@@ -1,0 +1,25 @@
+-- 페이지 배너 이미지·문구 설정 시드 — 어드민 "설정" 탭에서 코드 수정 없이 변경.
+-- 값 '-' = 미설정(프론트 마크업 기본 이미지/문구 사용). setting_value NOT NULL 이라 '-' 사용.
+INSERT INTO app_setting (setting_key, setting_value, description, updated_at) VALUES
+  ('BANNER_CONTENTS_URL', '-', '컨텐츠 페이지 배너 이미지 URL', CURRENT_TIMESTAMP),
+  ('BANNER_CONTENTS_TITLE', '-', '컨텐츠 페이지 배너 제목', CURRENT_TIMESTAMP),
+  ('BANNER_CONTENTS_SUB', '-', '컨텐츠 페이지 배너 문구', CURRENT_TIMESTAMP),
+  ('BANNER_CHAMPIONSHIP_URL', '-', '대회 페이지 배너 이미지 URL', CURRENT_TIMESTAMP),
+  ('BANNER_CHAMPIONSHIP_TITLE', '-', '대회 페이지 배너 제목', CURRENT_TIMESTAMP),
+  ('BANNER_CHAMPIONSHIP_SUB', '-', '대회 페이지 배너 문구', CURRENT_TIMESTAMP),
+  ('BANNER_GAMES_URL', '-', '게임체험단 페이지 배너 이미지 URL', CURRENT_TIMESTAMP),
+  ('BANNER_GAMES_TITLE', '-', '게임체험단 페이지 배너 제목', CURRENT_TIMESTAMP),
+  ('BANNER_GAMES_SUB', '-', '게임체험단 페이지 배너 문구', CURRENT_TIMESTAMP),
+  ('BANNER_VIDEOS_URL', '-', '영상 페이지 배너 이미지 URL', CURRENT_TIMESTAMP),
+  ('BANNER_VIDEOS_TITLE', '-', '영상 페이지 배너 제목', CURRENT_TIMESTAMP),
+  ('BANNER_VIDEOS_SUB', '-', '영상 페이지 배너 문구', CURRENT_TIMESTAMP),
+  ('BANNER_STREAMERS_URL', '-', '스트리머 페이지 배너 이미지 URL', CURRENT_TIMESTAMP),
+  ('BANNER_STREAMERS_TITLE', '-', '스트리머 페이지 배너 제목', CURRENT_TIMESTAMP),
+  ('BANNER_STREAMERS_SUB', '-', '스트리머 페이지 배너 문구', CURRENT_TIMESTAMP),
+  ('BANNER_LIVE_URL', '-', '생방송 페이지 배너 이미지 URL', CURRENT_TIMESTAMP),
+  ('BANNER_LIVE_TITLE', '-', '생방송 페이지 배너 제목', CURRENT_TIMESTAMP),
+  ('BANNER_LIVE_SUB', '-', '생방송 페이지 배너 문구', CURRENT_TIMESTAMP),
+  ('BANNER_GOODS_TITLE', '-', '굿즈샵 배너 제목', CURRENT_TIMESTAMP),
+  ('BANNER_GOODS_SUB', '-', '굿즈샵 배너 문구', CURRENT_TIMESTAMP),
+  ('BANNER_PARTNERS_TITLE', '-', '협력사 배너 제목', CURRENT_TIMESTAMP),
+  ('BANNER_PARTNERS_SUB', '-', '협력사 배너 문구', CURRENT_TIMESTAMP);

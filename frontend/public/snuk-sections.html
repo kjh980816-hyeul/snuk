@@ -5,10 +5,14 @@
         onerror="this.parentElement.style.background='#1c1c1f';this.style.display='none'">
       <div class="hero-banner-overlay"></div>
       <div class="hero-banner-content">
-        <div class="hero-eyebrow">STREAMER PLATFORM</div>
-        <h1 class="hero-title">스트리머의<br><span>새로운 무대</span></h1>
+        <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>STREAMER PLATFORM</div>
+        <h1 class="hero-title">스트리머의<br><span class="hero-title-accent">새로운 무대</span></h1>
         <p class="hero-desc">SNUK은 스트리머와 시청자를 연결하는<br>차세대 스트리밍 컨텐츠 플랫폼입니다.</p>
-
+        <div class="hero-btns">
+          <button class="hero-cta primary" onclick="window.__snukNav('/campaigns')">컨텐츠 보러가기</button>
+          <button class="hero-cta" onclick="window.__snukNav('/streamers')">파트너 스트리머</button>
+        </div>
+        <div class="hero-stats" id="hero-stats"></div>
       </div>
     </div>
   </div>
@@ -53,6 +57,16 @@
   <div class="section-header">
     <h2 class="section-title">SNUK 컨텐츠</h2>
   </div>
+  <!-- 페이지 배너: 단독 페이지에서만 노출(SnukSections 가 show 1개일 때 해제) -->
+  <div class="goods-banner page-banner" style="border-radius:var(--radius2);overflow:hidden;margin-bottom:28px;display:none;">
+    <img src="https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=1600&q=80" alt="컨텐츠 배너" onerror="this.parentElement.style.background='#222226';this.remove()">
+    <div class="goods-banner-overlay" style="padding-left:40px;">
+      <div class="goods-banner-text">
+        <h2>SNUK 컨텐츠</h2>
+        <p>스트리머와 함께하는 체험단 · 키 배포 컨텐츠</p>
+      </div>
+    </div>
+  </div>
   <!-- FEATURED 캠페인 — JS 가 실데이터로 채움(없으면 숨김) -->
   <div id="snuk-featured" class="featured-card" style="margin-bottom:22px;cursor:pointer;display:none;"></div>
   <div class="slider-wrap">
@@ -91,6 +105,15 @@
   <div class="inner">
   <div class="section-header">
     <h2 class="section-title">SNUK Championship</h2>
+  </div>
+  <div class="goods-banner page-banner" style="border-radius:var(--radius2);overflow:hidden;margin-bottom:28px;display:none;">
+    <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600&q=80" alt="대회 배너" onerror="this.parentElement.style.background='#222226';this.remove()">
+    <div class="goods-banner-overlay" style="padding-left:40px;">
+      <div class="goods-banner-text">
+        <h2>SNUK Championship</h2>
+        <p>스트리머 대회, 그 열기의 중심</p>
+      </div>
+    </div>
   </div>
   <div class="tabs" id="mug-tabs">
     <button class="tab active" onclick="filterMug('all',this)">전체</button>
@@ -285,6 +308,15 @@
       <span style="font-size:13px;color:var(--text2);cursor:pointer;margin-left:auto;" onclick="window.__snukNav('/streamers')">전체 보기 ›</span>
     </div>
     <p style="font-size:13px;color:var(--text3);margin-bottom:22px;">SNUK 공식 파트너 스트리머</p>
+    <div class="goods-banner page-banner" style="border-radius:var(--radius2);overflow:hidden;margin-bottom:28px;display:none;">
+      <img src="https://images.unsplash.com/photo-1560253023-3ec5d502959f?w=1600&q=80" alt="스트리머 배너" onerror="this.parentElement.style.background='#222226';this.remove()">
+      <div class="goods-banner-overlay" style="padding-left:40px;">
+        <div class="goods-banner-text">
+          <h2>SNUK 스트리머</h2>
+          <p>SNUK과 함께하는 공식 파트너 스트리머를 만나보세요</p>
+        </div>
+      </div>
+    </div>
     <div class="slider-wrap">
       <div class="slider-nav prev" onclick="slideStreamers(-1)">‹</div>
       <div class="slider-clip">
@@ -323,6 +355,15 @@
   <div class="inner">
   <div class="section-header">
     <h2 class="section-title">게임체험단</h2>
+  </div>
+  <div class="goods-banner page-banner" style="border-radius:var(--radius2);overflow:hidden;margin-bottom:28px;display:none;">
+    <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1600&q=80" alt="게임체험단 배너" onerror="this.parentElement.style.background='#222226';this.remove()">
+    <div class="goods-banner-overlay" style="padding-left:40px;">
+      <div class="goods-banner-text">
+        <h2>게임체험단</h2>
+        <p>신작 게임을 가장 먼저 체험하고 후기를 남겨보세요</p>
+      </div>
+    </div>
   </div>
   <div class="slider-wrap">
     <div class="slider-nav prev" onclick="slide('game-slider',-1)">‹</div>
@@ -367,6 +408,15 @@
   <div class="inner">
   <div class="section-header">
     <h2 class="section-title">SNUK 영상</h2>
+  </div>
+  <div class="goods-banner page-banner" style="border-radius:var(--radius2);overflow:hidden;margin-bottom:28px;display:none;">
+    <img src="https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=1600&q=80" alt="영상 배너" onerror="this.parentElement.style.background='#222226';this.remove()">
+    <div class="goods-banner-overlay" style="padding-left:40px;">
+      <div class="goods-banner-text">
+        <h2>SNUK 영상</h2>
+        <p>하이라이트부터 비하인드까지 한눈에</p>
+      </div>
+    </div>
   </div>
   <div class="video-layout" id="video-layout">
     <div class="video-list" id="video-list"></div>

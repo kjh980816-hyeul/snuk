@@ -11,6 +11,10 @@ import com.chzikon.collab.repository.ContentVideoRepository;
 import com.chzikon.goods.domain.Goods;
 import com.chzikon.goods.domain.GoodsStatus;
 import com.chzikon.goods.repository.GoodsRepository;
+import com.chzikon.member.domain.Member;
+import com.chzikon.member.domain.Provider;
+import com.chzikon.member.domain.Role;
+import com.chzikon.member.repository.MemberRepository;
 import com.chzikon.notice.domain.Notice;
 import com.chzikon.notice.repository.NoticeRepository;
 import com.chzikon.tournament.domain.Tournament;
@@ -49,10 +53,12 @@ public class LocalDataSeeder implements ApplicationRunner {
     private final GoodsRepository goodsRepository;
     private final TournamentRepository tournamentRepository;
     private final NoticeRepository noticeRepository;
+    private final MemberRepository memberRepository;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        seedStreamers();
         seedGoods();
         seedVideos();
         seedCollabGames();
@@ -60,6 +66,32 @@ public class LocalDataSeeder implements ApplicationRunner {
         seedCampaigns();
         seedTournaments();
         seedNotices();
+    }
+
+    /**
+     * 파트너 스트리머 더미 — 홈 스트립/스트리머 목록/개인 프로필·게시판이 실데이터 파이프라인으로 돌게 함.
+     * 운영에서는 치지직 등 실로그인 시 팔로워 임계값으로 STREAMER 자동 부여되므로 시딩 불필요.
+     * STREAMER 가 하나도 없을 때만 삽입(멱등) — 실계정 로그인 후 재기동해도 중복·간섭 없음.
+     */
+    private void seedStreamers() {
+        if (!memberRepository.findTop60ByRoleOrderByFollowerCountDesc(Role.STREAMER).isEmpty()) return;
+        record S(Provider p, String nick, int followers, String bg) {}
+        java.util.List<S> seeds = java.util.List.of(
+                new S(Provider.CHZZK, "네온셔틀", 12400, "1a1a2e"),
+                new S(Provider.CHZZK, "픽셀곰", 8300, "16213e"),
+                new S(Provider.SOOP, "밤샘라이더", 5100, "0f3460"),
+                new S(Provider.CHZZK, "감자튀김단", 3800, "533483"),
+                new S(Provider.CIME, "구름사냥꾼", 2600, "2c394b"),
+                new S(Provider.CHZZK, "레트로열차", 1900, "3e2723"),
+                new S(Provider.SOOP, "은하수정비공", 1200, "1b4332"),
+                new S(Provider.CHZZK, "달빛골키퍼", 640, "4a148c"));
+        for (int i = 0; i < seeds.size(); i++) {
+            S s = seeds.get(i);
+            memberRepository.save(Member.create(s.p(), "seed-streamer-" + (i + 1), s.nick(),
+                    "https://placehold.co/200x200/" + s.bg() + "/ffffff?text=S" + (i + 1),
+                    s.followers(), Role.STREAMER));
+        }
+        log.info("[seed] streamer member {}건 삽입", seeds.size());
     }
 
     private void seedGoods() {
@@ -110,7 +142,7 @@ public class LocalDataSeeder implements ApplicationRunner {
         collabGameRepository.save(new CollabGame("픽셀 던전 러시",
                 "인디 로그라이크 협찬 콜라보. 키 배포 이벤트 동반.",
                 "https://placehold.co/400x300/263238/ffffff?text=Pixel",
-                "https://store.example.com/pixel", null, null, 1));
+                "https://store.example.com/pixel", null, 2L, 1));
         log.info("[seed] collab_game 2건 삽입");
     }
 

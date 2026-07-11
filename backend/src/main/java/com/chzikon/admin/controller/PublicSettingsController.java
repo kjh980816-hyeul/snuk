@@ -21,8 +21,12 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PublicSettingsController {
 
-    private static final Set<String> PUBLIC_KEYS = Set.of(
-            "LIVE_CHANNEL_ID", "HERO_IMAGE_URL", "BANNER_GOODS_URL", "BANNER_PARTNERS_URL");
+    private static final Set<String> PUBLIC_KEYS = Set.of("LIVE_CHANNEL_ID", "HERO_IMAGE_URL");
+
+    private static boolean isPublic(String key) {
+        // BANNER_* = 페이지 배너 이미지·문구(V10/V12 시드) — 전부 노출용 값
+        return PUBLIC_KEYS.contains(key) || key.startsWith("BANNER_");
+    }
 
     private final AppSettingService appSettingService;
 
@@ -30,7 +34,7 @@ public class PublicSettingsController {
     public ResponseEntity<Map<String, String>> publicSettings() {
         Map<String, String> out = new LinkedHashMap<>();
         for (AppSetting s : appSettingService.findAll()) {
-            if (PUBLIC_KEYS.contains(s.getSettingKey())) {
+            if (isPublic(s.getSettingKey())) {
                 out.put(s.getSettingKey(), s.getSettingValue());
             }
         }

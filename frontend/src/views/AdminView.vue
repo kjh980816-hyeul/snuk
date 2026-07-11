@@ -287,10 +287,45 @@ const settings = ref<Array<{ settingKey: string; settingValue: string; descripti
 // 사이트 노출 설정(V10 시드) — 전용 UI 로 관리, 일반 설정 테이블에서는 제외
 const SITE_IMAGES = [
   { key: 'HERO_IMAGE_URL', label: '홈 히어로 배경' },
+  { key: 'BANNER_CONTENTS_URL', label: '컨텐츠 배너' },
+  { key: 'BANNER_CHAMPIONSHIP_URL', label: '대회 배너' },
+  { key: 'BANNER_GAMES_URL', label: '게임체험단 배너' },
+  { key: 'BANNER_VIDEOS_URL', label: '영상 배너' },
+  { key: 'BANNER_STREAMERS_URL', label: '스트리머 배너' },
+  { key: 'BANNER_LIVE_URL', label: '생방송 배너' },
   { key: 'BANNER_GOODS_URL', label: '굿즈샵 배너' },
   { key: 'BANNER_PARTNERS_URL', label: '협력사 배너' },
 ]
-const SITE_KEYS = ['LIVE_CHANNEL_ID', ...SITE_IMAGES.map((s) => s.key)]
+// 배너 문구(제목/부제) — V12 시드, '-'=기본 문구 사용
+const BANNER_TEXTS = [
+  { page: 'CONTENTS', label: '컨텐츠' },
+  { page: 'CHAMPIONSHIP', label: '대회' },
+  { page: 'GAMES', label: '게임체험단' },
+  { page: 'VIDEOS', label: '영상' },
+  { page: 'STREAMERS', label: '스트리머' },
+  { page: 'LIVE', label: '생방송' },
+  { page: 'GOODS', label: '굿즈샵' },
+  { page: 'PARTNERS', label: '협력사' },
+]
+const bannerTextInputs = ref<Record<string, string>>({})
+function loadBannerTextInputs() {
+  const next: Record<string, string> = {}
+  for (const b of BANNER_TEXTS) {
+    next[`BANNER_${b.page}_TITLE`] = settingValue(`BANNER_${b.page}_TITLE`)
+    next[`BANNER_${b.page}_SUB`] = settingValue(`BANNER_${b.page}_SUB`)
+  }
+  bannerTextInputs.value = next
+}
+async function saveBannerText(page: string) {
+  await saveSetting(`BANNER_${page}_TITLE`, bannerTextInputs.value[`BANNER_${page}_TITLE`]?.trim() || '-')
+  await saveSetting(`BANNER_${page}_SUB`, bannerTextInputs.value[`BANNER_${page}_SUB`]?.trim() || '-')
+  alert('저장되었습니다.')
+}
+const SITE_KEYS = [
+  'LIVE_CHANNEL_ID',
+  ...SITE_IMAGES.map((s) => s.key),
+  ...BANNER_TEXTS.flatMap((b) => [`BANNER_${b.page}_TITLE`, `BANNER_${b.page}_SUB`]),
+]
 const generalSettings = computed(() => settings.value.filter((s) => !SITE_KEYS.includes(s.settingKey)))
 const liveChannelInput = ref('')
 
@@ -301,6 +336,7 @@ function settingValue(key: string): string {
 async function loadSettings() {
   settings.value = await adminApi.settings()
   liveChannelInput.value = settingValue('LIVE_CHANNEL_ID')
+  loadBannerTextInputs()
 }
 async function saveLiveChannel() {
   // setting_value 는 빈값 불가 — 미설정은 '-' 로 저장(프론트가 기본값 처리)
@@ -887,7 +923,18 @@ function onTab(t: Tab) {
           </div>
         </div>
         <p class="hint" v-if="imgUploading">업로드 중…</p>
-        <p class="hint" v-else>이미지를 선택하면 바로 업로드·적용됩니다. 메인/굿즈샵/협력사 페이지에 반영돼요.</p>
+        <p class="hint" v-else>이미지를 선택하면 바로 업로드·적용됩니다. 각 페이지 상단 배너에 반영돼요.</p>
+      </div>
+
+      <h4 style="margin-top:28px">배너 문구</h4>
+      <div class="form-card site-card">
+        <div v-for="b in BANNER_TEXTS" :key="b.page" class="banner-text-row">
+          <span class="banner-text-label">{{ b.label }}</span>
+          <input v-model="bannerTextInputs[`BANNER_${b.page}_TITLE`]" placeholder="제목 (비우면 기본 문구)" />
+          <input v-model="bannerTextInputs[`BANNER_${b.page}_SUB`]" placeholder="부제 문구 (비우면 기본 문구)" class="wide" />
+          <button class="btn sm" @click="saveBannerText(b.page)">저장</button>
+        </div>
+        <p class="hint">비워두고 저장하면 페이지 기본 문구로 돌아갑니다.</p>
       </div>
 
       <h4 style="margin-top:28px">설정값</h4>
@@ -1024,6 +1071,10 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .site-images { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px; }
 .site-img { display: flex; flex-direction: column; gap: 8px; }
 .site-img-label { font-size: 13px; font-weight: 600; color: var(--a-text2); }
+.banner-text-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.banner-text-label { width: 76px; font-size: 13px; font-weight: 600; color: var(--a-text2); flex: none; }
+.banner-text-row input { flex: 1; min-width: 140px; }
+.banner-text-row input.wide { flex: 2; }
 .site-img img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--a-border); background: var(--a-bg3); }
 .site-img-empty { height: 90px; border: 1px dashed var(--a-border2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--a-text3); }
 </style>
