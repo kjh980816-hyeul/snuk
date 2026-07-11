@@ -630,15 +630,13 @@ function bracketEmptyCard() {
 }
 
 function initBracket() {
-  const pcTrack = document.getElementById('pc-match-track');
-  const mbTrack = document.getElementById('mb-match-track');
-  const card = `<div style="flex-shrink:0;width:100%;padding:0 2px;">${bracketEmptyCard()}</div>`;
-  if (pcTrack) { pcTrack.innerHTML = card; pcTrack.style.transform = 'none'; }
-  if (mbTrack) { mbTrack.innerHTML = card; mbTrack.style.transform = 'none'; }
-  const pcDots = document.getElementById('pc-dots'); if (pcDots) pcDots.innerHTML = '';
-  const mbDots = document.getElementById('mb-dots'); if (mbDots) mbDots.innerHTML = '';
-  const label = document.getElementById('bracket-title-label');
-  if (label) label.textContent = `대진표 — ${D().rosterTournamentTitle || 'SNUK Championship'}`;
+  // 경기(대진) 데이터 모델이 아직 없음 — 강수 탭(16강 등) UI 는 대진 데이터가 생길 때까지 통째로 숨김.
+  // (박격포대회처럼 토너먼트 형식이 아닌 대회에선 "몇강"이 무의미)
+  const pcWrap = document.getElementById('desktop-bracket-wrap');
+  if (pcWrap) pcWrap.style.display = 'none';
+  const mbCont = document.getElementById('mb-match-container');
+  const mbWrap = mbCont && mbCont.parentElement ? mbCont.parentElement.parentElement : null;
+  if (mbWrap) mbWrap.style.display = 'none';
 }
 function switchPcTab(_k, btn) { document.querySelectorAll('.pc-bt').forEach((t) => t.classList.remove('active')); btn.classList.add('active'); }
 function switchMbTab(_k, btn) { document.querySelectorAll('.mb-tab').forEach((t) => t.classList.remove('active')); btn.classList.add('active'); }
@@ -674,17 +672,12 @@ function initRoster() {
     return;
   }
 
-  const rosterWrap = track.parentElement;
-  const setRosterW = () => {
-    const pw = rosterWrap ? rosterWrap.offsetWidth : 0;
-    if (pw > 0) {
-      const rw = Math.floor((pw - 9 * 7) / 8);
-      document.documentElement.style.setProperty('--roster-w', rw + 'px');
-    }
-  };
-  setRosterW();
-  requestAnimationFrame(setRosterW);
-  track.style.flexWrap = 'nowrap';
+  // 전원 노출 그리드(페이징 없음) — 프사·이름 가독성 우선
+  const navWrap = track.parentElement ? track.parentElement.parentElement : null;
+  if (navWrap) navWrap.querySelectorAll('button[onclick^="slideRoster"]').forEach((b) => { b.style.display = 'none'; });
+  track.style.flexWrap = 'wrap';
+  track.style.transform = 'none';
+  track.style.justifyContent = 'flex-start';
   track.innerHTML = roster.map((s) => {
     const avatar = s.img
       ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" onerror="this.parentElement.style.background='var(--bg3)';this.remove()">`
@@ -692,25 +685,21 @@ function initRoster() {
     const inner = `
       <div class="roster-card" style="border-color:var(--border);position:relative;">
         <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);background:rgba(52,199,120,.14);border:1px solid rgba(52,199,120,.4);border-radius:20px;padding:1px 6px;font-size:8px;font-weight:700;color:#34c878;white-space:nowrap;z-index:2;">참가확정</div>
-        <div class="roster-avatar" style="border:2px solid ${platColor[s.platform] || '#555'}55;margin-top:8px;">
+        <div class="roster-avatar" style="width:64px;height:64px;border:2px solid ${platColor[s.platform] || '#555'}55;margin-top:10px;">
           ${avatar}
-          <div style="position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:${platColor[s.platform] || '#555'};display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;border:2px solid var(--bg2);">${platShort[s.platform] || '?'}</div>
+          <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:${platColor[s.platform] || '#555'};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;border:2px solid var(--bg2);">${platShort[s.platform] || '?'}</div>
         </div>
-        <div style="font-size:10px;font-weight:700;color:var(--text);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;margin-top:4px;">${esc(s.name)}</div>
-        <div style="font-size:9px;color:${platColor[s.platform] || 'var(--text3)'};font-weight:600;text-align:center;">${platLabel[s.platform] || ''}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;margin-top:6px;">${esc(s.name)}</div>
+        <div style="font-size:10px;color:${platColor[s.platform] || 'var(--text3)'};font-weight:600;text-align:center;margin-bottom:6px;">${platLabel[s.platform] || ''}</div>
       </div>`;
     return s.streamUrl
-      ? `<a href="${esc(s.streamUrl)}" target="_blank" rel="noopener" style="text-decoration:none;flex-shrink:0;width:var(--roster-w,80px);min-width:var(--roster-w,80px);">${inner}</a>`
-      : `<div style="flex-shrink:0;width:var(--roster-w,80px);min-width:var(--roster-w,80px);">${inner}</div>`;
+      ? `<a href="${esc(s.streamUrl)}" target="_blank" rel="noopener" style="text-decoration:none;flex-shrink:0;width:112px;min-width:112px;">${inner}</a>`
+      : `<div style="flex-shrink:0;width:112px;min-width:112px;">${inner}</div>`;
   }).join('');
 
-  if (dots) {
-    dots.innerHTML = Array.from({ length: rosterTotalPages() }, (_, i) =>
-      `<div onclick="goRosterPage(${i})" id="rdot-${i}" style="width:${i === 0 ? '18px' : '6px'};height:6px;border-radius:3px;background:${i === 0 ? 'var(--text)' : 'var(--border2)'};cursor:pointer;transition:all .3s;"></div>`).join('');
-  }
-  rosterPage = 0;
-  renderRosterPage();
-  requestAnimationFrame(() => renderRosterPage());
+  if (dots) dots.innerHTML = '';
+  const pageLbl = document.getElementById('roster-page-label');
+  if (pageLbl) pageLbl.textContent = '';
 }
 
 function renderRosterPage() {
