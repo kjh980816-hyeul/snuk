@@ -43,7 +43,7 @@ function makeContentCard(d, w, i) {
   const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
   const badge = `<span class="badge ${badgeCls}">${esc(d.statusLabel)}</span>`;
   const slots = d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
-  return `<div class="content-card" style="width:${w};min-width:${w};" ${canApply ? `onclick="openApply('${d.kind}',${d.id})"` : ''}>
+  return `<div class="content-card" style="width:${w};min-width:${w};cursor:pointer;" ${d.kind === 'tournament' ? `onclick="__snukNav('/championship/${d.id}')"` : canApply ? `onclick="openApply('${d.kind}',${d.id})"` : ''}>
     <div class="card-thumb" style="background:${bgOf(i)};position:relative;">${thumbHtml(d.img, i)}</div>
     <div class="card-body">
       <div class="card-meta">${badge}${d.eventDate ? `<span style="font-size:11px;color:var(--text3);margin-left:auto;">${esc(d.eventDate)}</span>` : ''}</div>
@@ -84,7 +84,7 @@ function makeBigCard(d, w, i) {
   const kindLabel = d.kind === 'tournament' ? '대회' : '컨텐츠';
   const slots = d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
   const sub = [slots, d.eventDate].filter(Boolean).join(' · ');
-  return `<div class="content-card big-card" style="width:${w};min-width:${w};" ${canApply ? `onclick="openApply('${d.kind}',${d.id})"` : `onclick="window.__snukNav('${d.kind === 'tournament' ? '/championship' : '/campaigns'}')"`}>
+  return `<div class="content-card big-card" style="width:${w};min-width:${w};cursor:pointer;" ${d.kind === 'tournament' ? `onclick="__snukNav('/championship/${d.id}')"` : canApply ? `onclick="openApply('${d.kind}',${d.id})"` : `onclick="window.__snukNav('/campaigns')"`}>
     <div class="card-thumb" style="background:${bgOf(i)};position:relative;">
       ${thumbHtml(d.img, i, d.kind === 'tournament' ? '🏆' : '🎮')}
       <div class="big-card-grad"></div>
@@ -132,7 +132,7 @@ function renderFeatured(elId, d, tagText) {
   const canApply = d.status === 'open';
   const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
   el.style.display = '';
-  el.setAttribute('onclick', canApply ? `openApply('${d.kind}',${d.id})` : '');
+  el.setAttribute('onclick', d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')` : canApply ? `openApply('${d.kind}',${d.id})` : '');
   el.innerHTML = `
     <div class="featured-thumb" style="background:linear-gradient(135deg,#1a1040,#2d1060);position:relative;">
       ${d.img ? `<img src="${esc(d.img)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.remove()">` : '<div style="font-size:56px;opacity:.5;">🎮</div>'}

@@ -33,6 +33,9 @@ public class Tournament {
     @Column(name = "banner_image_url", length = 512)
     private String bannerImageUrl;
 
+    @Column(name = "detail_image_url", length = 512)
+    private String detailImageUrl;
+
     @Column(name = "event_date")
     private LocalDate eventDate;
 
@@ -69,6 +72,7 @@ public class Tournament {
 
     @Builder
     private Tournament(String title, String description, String gameName, String bannerImageUrl,
+                       String detailImageUrl,
                        LocalDate eventDate, LocalDateTime applyStart, LocalDateTime applyEnd,
                        int capacity, TournamentStatus status, String resultText,
                        boolean featured, int sortOrder) {
@@ -76,6 +80,7 @@ public class Tournament {
         this.description = description;
         this.gameName = gameName;
         this.bannerImageUrl = bannerImageUrl;
+        this.detailImageUrl = detailImageUrl;
         this.eventDate = eventDate;
         this.applyStart = applyStart;
         this.applyEnd = applyEnd;
@@ -91,6 +96,7 @@ public class Tournament {
     }
 
     public void update(String title, String description, String gameName, String bannerImageUrl,
+                       String detailImageUrl,
                        LocalDate eventDate, LocalDateTime applyStart, LocalDateTime applyEnd,
                        Integer capacity, TournamentStatus status, String resultText,
                        Boolean featured, Integer sortOrder) {
@@ -98,6 +104,7 @@ public class Tournament {
         this.description = description;
         this.gameName = gameName;
         this.bannerImageUrl = bannerImageUrl;
+        this.detailImageUrl = detailImageUrl;
         this.eventDate = eventDate;
         this.applyStart = applyStart;
         this.applyEnd = applyEnd;

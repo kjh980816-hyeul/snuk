@@ -554,10 +554,17 @@ function onTab(t: Tab) {
         <label>대회명<input v-model="tourEditing.title" /></label>
         <label>설명<textarea v-model="tourEditing.description"></textarea></label>
         <label>게임명<input v-model="tourEditing.gameName" /></label>
-        <label>배너 이미지
+        <label>배너 이미지 (포스터 — 목록/대표 노출)
           <div class="logo-upload">
             <img v-if="tourEditing.bannerImageUrl" :src="tourEditing.bannerImageUrl" class="logo-preview" alt="" />
             <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, tourEditing, 'bannerImageUrl')" />
+            <span v-if="imgUploading">업로드 중…</span>
+          </div>
+        </label>
+        <label>홍보 상세 이미지 (상세 페이지 본문 — 세로 긴 이미지 가능, 선택)
+          <div class="logo-upload">
+            <img v-if="tourEditing.detailImageUrl" :src="tourEditing.detailImageUrl" class="logo-preview" alt="" />
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, tourEditing, 'detailImageUrl')" />
             <span v-if="imgUploading">업로드 중…</span>
           </div>
         </label>

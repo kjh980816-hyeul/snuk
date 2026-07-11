@@ -84,6 +84,7 @@ export interface Tournament {
   description: string | null
   gameName: string | null
   bannerImageUrl: string | null
+  detailImageUrl: string | null
   eventDate: string | null
   applyStart: string | null
   applyEnd: string | null

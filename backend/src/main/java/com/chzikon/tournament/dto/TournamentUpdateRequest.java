@@ -10,6 +10,7 @@ public record TournamentUpdateRequest(
         String description,
         String gameName,
         String bannerImageUrl,
+        String detailImageUrl,
         LocalDate eventDate,
         LocalDateTime applyStart,
         LocalDateTime applyEnd,

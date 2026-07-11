@@ -13,6 +13,7 @@ public record TournamentCreateRequest(
         String description,
         String gameName,
         String bannerImageUrl,
+        String detailImageUrl,
         LocalDate eventDate,
         LocalDateTime applyStart,
         LocalDateTime applyEnd,
@@ -28,6 +29,7 @@ public record TournamentCreateRequest(
                 .description(description)
                 .gameName(gameName)
                 .bannerImageUrl(bannerImageUrl)
+                .detailImageUrl(detailImageUrl)
                 .eventDate(eventDate)
                 .applyStart(applyStart)
                 .applyEnd(applyEnd)

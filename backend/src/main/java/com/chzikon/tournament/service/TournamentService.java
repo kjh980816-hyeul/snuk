@@ -42,7 +42,7 @@ public class TournamentService {
     @Transactional
     public Tournament update(Long id, TournamentUpdateRequest req, Long actorId) {
         Tournament tournament = getById(id);
-        tournament.update(req.title(), req.description(), req.gameName(), req.bannerImageUrl(),
+        tournament.update(req.title(), req.description(), req.gameName(), req.bannerImageUrl(), req.detailImageUrl(),
                 req.eventDate(), req.applyStart(), req.applyEnd(),
                 req.capacity(), req.status(), req.resultText(), req.featured(), req.sortOrder());
         adminLogService.record(actorId, "TOURNAMENT_UPDATE", "tournament", id,

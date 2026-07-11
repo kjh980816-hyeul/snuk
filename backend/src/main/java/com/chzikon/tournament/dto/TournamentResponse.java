@@ -12,6 +12,7 @@ public record TournamentResponse(
         String description,
         String gameName,
         String bannerImageUrl,
+        String detailImageUrl,
         LocalDate eventDate,
         LocalDateTime applyStart,
         LocalDateTime applyEnd,
@@ -24,7 +25,7 @@ public record TournamentResponse(
 ) {
     public static TournamentResponse from(Tournament t) {
         return new TournamentResponse(
-                t.getId(), t.getTitle(), t.getDescription(), t.getGameName(), t.getBannerImageUrl(),
+                t.getId(), t.getTitle(), t.getDescription(), t.getGameName(), t.getBannerImageUrl(), t.getDetailImageUrl(),
                 t.getEventDate(), t.getApplyStart(), t.getApplyEnd(),
                 t.getCapacity(), t.getFilledSlots(), t.getStatus().name(),
                 t.getResultText(), t.isFeatured(), t.getSortOrder());
