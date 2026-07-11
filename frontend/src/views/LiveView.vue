@@ -1,13 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { OFFICIAL_CHZZK_CHANNEL_ID } from '@/config'
+import { siteSettingsApi } from '@/api'
 
 // 생방송: SNUK 공식 치지직 채널 라이브 임베드 (chzzk.naver.com/live/{채널ID})
-const channelId = OFFICIAL_CHZZK_CHANNEL_ID
+// 채널 ID 는 어드민 "설정" 탭(LIVE_CHANNEL_ID)에서 관리 — 미설정('-')이면 config 기본값
+const channelId = ref(OFFICIAL_CHZZK_CHANNEL_ID)
 const loaded = ref(false)
 
+onMounted(async () => {
+  try {
+    const s = await siteSettingsApi.get()
+    if (s.LIVE_CHANNEL_ID && s.LIVE_CHANNEL_ID !== '-') channelId.value = s.LIVE_CHANNEL_ID
+  } catch {
+    /* 설정 조회 실패 시 config 기본값 유지 */
+  }
+})
+
 function liveUrl() {
-  return channelId ? `https://chzzk.naver.com/live/${channelId}` : 'https://chzzk.naver.com'
+  return channelId.value ? `https://chzzk.naver.com/live/${channelId.value}` : 'https://chzzk.naver.com'
 }
 </script>
 

@@ -1,11 +1,21 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '@/api/admin'
 import { campaignApi, collabApi, noticeApi, tournamentApi } from '@/api'
 import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, Notice, OrderView, Spotlight, Tournament } from '@/api/types'
 
-type Tab = 'campaigns' | 'tournaments' | 'collab' | 'goods' | 'notices' | 'members' | 'settings' | 'logs'
+// 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (콘텐츠·대회·게임체험단·영상·굿즈샵·협력사)
+type Tab = 'campaigns' | 'tournaments' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'members' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
+
+// 테마 — 메인 사이트와 동일 키(snuk-theme) 공유
+const theme = ref<'light' | 'dark'>(
+  (localStorage.getItem('snuk-theme') as 'light' | 'dark') || 'dark',
+)
+function toggleTheme() {
+  theme.value = theme.value === 'light' ? 'dark' : 'light'
+  localStorage.setItem('snuk-theme', theme.value)
+}
 
 // 화면 표기용 한글 라벨 (저장값은 영문 enum 그대로)
 const ko: Record<string, string> = {
@@ -14,6 +24,7 @@ const ko: Record<string, string> = {
   QUANTITY: '수량만(키 없음)', UNIQUE_KEY: '고유 키 배포',
   AVAILABLE: '미배정', ASSIGNED: '배정됨', REVOKED: '무효',
   PENDING: '대기', APPROVED: '승인', REJECTED: '거절',
+  ACTIVE: '판매중', HIDDEN: '숨김', PAID: '결제완료', CANCELLED: '취소', FAILED: '실패',
 }
 const lbl = (v: string | undefined | null) => (v ? (ko[v] ?? v) : '-')
 
@@ -47,7 +58,7 @@ async function saveCampaign() {
   await loadCampaigns()
 }
 async function removeCampaign(c: Campaign) {
-  if (!confirm(`'${c.title}' 캠페인을 삭제할까요?`)) return
+  if (!confirm(`'${c.title}' 콘텐츠를 삭제할까요?`)) return
   await adminApi.deleteCampaign(c.id)
   if (selected.value?.id === c.id) selected.value = null
   await loadCampaigns()
@@ -272,8 +283,45 @@ async function resetMemberRole(m: MemberRow) {
 
 // ----- settings -----
 const settings = ref<Array<{ settingKey: string; settingValue: string; description: string | null }>>([])
+
+// 사이트 노출 설정(V10 시드) — 전용 UI 로 관리, 일반 설정 테이블에서는 제외
+const SITE_IMAGES = [
+  { key: 'HERO_IMAGE_URL', label: '홈 히어로 배경' },
+  { key: 'BANNER_GOODS_URL', label: '굿즈샵 배너' },
+  { key: 'BANNER_PARTNERS_URL', label: '협력사 배너' },
+]
+const SITE_KEYS = ['LIVE_CHANNEL_ID', ...SITE_IMAGES.map((s) => s.key)]
+const generalSettings = computed(() => settings.value.filter((s) => !SITE_KEYS.includes(s.settingKey)))
+const liveChannelInput = ref('')
+
+function settingValue(key: string): string {
+  const v = settings.value.find((s) => s.settingKey === key)?.settingValue ?? ''
+  return v === '-' ? '' : v
+}
 async function loadSettings() {
   settings.value = await adminApi.settings()
+  liveChannelInput.value = settingValue('LIVE_CHANNEL_ID')
+}
+async function saveLiveChannel() {
+  // setting_value 는 빈값 불가 — 미설정은 '-' 로 저장(프론트가 기본값 처리)
+  await saveSetting('LIVE_CHANNEL_ID', liveChannelInput.value.trim() || '-')
+  alert('저장되었습니다.')
+}
+async function pickSettingImage(e: Event, key: string) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) { alert('이미지는 5MB 이하만 업로드할 수 있어요.'); input.value = ''; return }
+  imgUploading.value = true
+  try {
+    const { url } = await adminApi.uploadImage(file)
+    await saveSetting(key, url)
+  } catch {
+    alert('업로드 실패 — 이미지 파일(jpg/png/gif/webp)인지 확인해주세요.')
+  } finally {
+    imgUploading.value = false
+    input.value = ''
+  }
 }
 async function saveSetting(key: string, value: string) {
   await adminApi.updateSetting(key, value)
@@ -335,7 +383,7 @@ onMounted(loadCampaigns)
 function onTab(t: Tab) {
   tab.value = t
   if (t === 'tournaments') loadTournaments()
-  if (t === 'collab') loadCollab()
+  if (t === 'games' || t === 'videos' || t === 'clients') loadCollab()
   if (t === 'goods') loadGoods()
   if (t === 'notices') loadNotices()
   if (t === 'members') loadMembers()
@@ -345,30 +393,36 @@ function onTab(t: Tab) {
 </script>
 
 <template>
-  <div class="admin-page">
+  <div class="admin-page" :data-theme="theme">
   <div class="admin-wrap">
     <header class="admin-head">
       <h2>SNUK <span>관리자</span></h2>
-      <a href="/" class="home-link">← 사이트로</a>
+      <div class="head-acts">
+        <button class="home-link" @click="toggleTheme">{{ theme === 'light' ? '다크 모드' : '라이트 모드' }}</button>
+        <a href="/" class="home-link">← 사이트로</a>
+      </div>
     </header>
     <nav class="tabs">
-      <button :class="{ on: tab === 'campaigns' }" @click="onTab('campaigns')">캠페인</button>
+      <button :class="{ on: tab === 'campaigns' }" @click="onTab('campaigns')">콘텐츠</button>
       <button :class="{ on: tab === 'tournaments' }" @click="onTab('tournaments')">대회</button>
-      <button :class="{ on: tab === 'collab' }" @click="onTab('collab')">콜라보/노출</button>
-      <button :class="{ on: tab === 'goods' }" @click="onTab('goods')">굿즈/주문</button>
+      <button :class="{ on: tab === 'games' }" @click="onTab('games')">게임체험단</button>
+      <button :class="{ on: tab === 'videos' }" @click="onTab('videos')">영상</button>
+      <button :class="{ on: tab === 'goods' }" @click="onTab('goods')">굿즈샵</button>
+      <button :class="{ on: tab === 'clients' }" @click="onTab('clients')">협력사</button>
       <button :class="{ on: tab === 'notices' }" @click="onTab('notices')">공지/스포트라이트</button>
       <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
-      <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정/권한</button>
+      <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정</button>
       <button :class="{ on: tab === 'logs' }" @click="onTab('logs')">감사로그</button>
     </nav>
 
     <!-- 캠페인 -->
     <section v-if="tab === 'campaigns'">
-      <button class="btn orange sm" @click="newCampaign">+ 새 캠페인</button>
+      <button class="btn orange sm" @click="newCampaign">+ 새 콘텐츠</button>
       <table class="grid">
-        <thead><tr><th>제목</th><th>상태</th><th>배포</th><th>키모드</th><th>슬롯</th><th>대표</th><th></th></tr></thead>
+        <thead><tr><th>이미지</th><th>제목</th><th>상태</th><th>배포</th><th>키모드</th><th>슬롯</th><th>대표</th><th></th></tr></thead>
         <tbody>
           <tr v-for="c in campaigns" :key="c.id" :class="{ sel: selected?.id === c.id }">
+            <td><img v-if="c.promoImageUrl" :src="c.promoImageUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
             <td>{{ c.title }}</td><td>{{ lbl(c.status) }}</td><td>{{ lbl(c.distributionType) }}</td>
             <td>{{ lbl(c.keyMode) }}</td><td>{{ c.filledSlots }}/{{ c.totalSlots }}</td>
             <td>{{ c.featured ? '★' : '' }}</td>
@@ -378,13 +432,13 @@ function onTab(t: Tab) {
               <button class="danger" @click="removeCampaign(c)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!campaigns.length"><td colspan="7" class="empty">등록된 캠페인이 없습니다.</td></tr>
+          <tr v-if="!campaigns.length"><td colspan="8" class="empty">등록된 콘텐츠가 없습니다.</td></tr>
         </tbody>
       </table>
 
       <!-- 편집 폼 -->
       <div v-if="editing" class="form-card">
-        <h4>{{ editing.id ? '캠페인 수정' : '새 캠페인' }}</h4>
+        <h4>{{ editing.id ? '콘텐츠 수정' : '새 콘텐츠' }}</h4>
         <label>제목<input v-model="editing.title" /></label>
         <label>설명<textarea v-model="editing.description"></textarea></label>
         <label>게임명<input v-model="editing.gameName" /></label>
@@ -448,7 +502,7 @@ function onTab(t: Tab) {
           </table>
         </div>
         <p v-else class="hint">
-          이 캠페인은 "수량만" 모드라 게임 키 등록이 없습니다. 키를 배포하려면 캠페인 수정에서
+          이 콘텐츠는 "수량만" 모드라 게임 키 등록이 없습니다. 키를 배포하려면 콘텐츠 수정에서
           키모드를 "고유 키 배포"로 바꾸면 여기에 키 등록 칸이 생깁니다.
         </p>
 
@@ -477,9 +531,10 @@ function onTab(t: Tab) {
     <section v-else-if="tab === 'tournaments'">
       <button class="btn orange sm" @click="newTournament">+ 새 대회</button>
       <table class="grid">
-        <thead><tr><th>대회명</th><th>게임</th><th>대회일</th><th>상태</th><th>정원</th><th>대표</th><th></th></tr></thead>
+        <thead><tr><th>배너</th><th>대회명</th><th>게임</th><th>대회일</th><th>상태</th><th>정원</th><th>대표</th><th></th></tr></thead>
         <tbody>
           <tr v-for="t in tournaments" :key="t.id" :class="{ sel: tourSelected?.id === t.id }">
+            <td><img v-if="t.bannerImageUrl" :src="t.bannerImageUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
             <td>{{ t.title }}</td><td>{{ t.gameName }}</td><td>{{ t.eventDate ?? '-' }}</td>
             <td>{{ lbl(t.status) }}</td><td>{{ t.filledSlots }}/{{ t.capacity }}</td>
             <td>{{ t.featured ? '★' : '' }}</td>
@@ -489,7 +544,7 @@ function onTab(t: Tab) {
               <button class="danger" @click="removeTournament(t)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!tournaments.length"><td colspan="7" class="empty">등록된 대회가 없습니다.</td></tr>
+          <tr v-if="!tournaments.length"><td colspan="8" class="empty">등록된 대회가 없습니다.</td></tr>
         </tbody>
       </table>
 
@@ -547,19 +602,19 @@ function onTab(t: Tab) {
       </div>
     </section>
 
-    <!-- 콜라보 -->
-    <section v-else-if="tab === 'collab'">
-      <!-- 콜라보 게임 -->
-      <h4>콜라보 게임 <button class="btn orange xs" @click="newGame">+ 추가</button></h4>
+    <!-- 게임체험단 (콜라보 게임) -->
+    <section v-else-if="tab === 'games'">
+      <h4>게임체험단 게임 <button class="btn orange xs" @click="newGame">+ 추가</button></h4>
       <table class="grid">
-        <thead><tr><th>게임명</th><th>게임링크</th><th>후기링크</th><th>정렬</th><th></th></tr></thead>
+        <thead><tr><th>썸네일</th><th>게임명</th><th>게임링크</th><th>후기링크</th><th>정렬</th><th></th></tr></thead>
         <tbody>
           <tr v-for="g in games" :key="g.id">
+            <td><img v-if="g.thumbnailUrl" :src="g.thumbnailUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
             <td>{{ g.name }}</td><td class="url">{{ g.gameLinkUrl }}</td><td class="url">{{ g.reviewLinkUrl }}</td>
             <td>{{ g.sortOrder }}</td>
             <td class="acts"><button @click="editGame(g)">수정</button><button class="danger" @click="delGame(g.id)">삭제</button></td>
           </tr>
-          <tr v-if="!games.length"><td colspan="5" class="empty">없음</td></tr>
+          <tr v-if="!games.length"><td colspan="6" class="empty">등록된 게임이 없습니다.</td></tr>
         </tbody>
       </table>
       <div v-if="gameEditing" class="form-card">
@@ -575,7 +630,7 @@ function onTab(t: Tab) {
         </label>
         <label>게임 링크 URL<input v-model="gameEditing.gameLinkUrl" placeholder="https://" /></label>
         <label>후기 링크 URL (외부 블로그 등 — 선택)<input v-model="gameEditing.reviewLinkUrl" placeholder="https://" /></label>
-        <label>후기 게시판 연결 (사이트 내 캠페인 — 선택)
+        <label>후기 게시판 연결 (사이트 내 콘텐츠 — 선택)
           <select v-model="gameEditing.campaignId">
             <option :value="null">연결 안 함</option>
             <option v-for="c in campaigns" :key="c.id" :value="c.id">{{ c.title }}</option>
@@ -588,17 +643,21 @@ function onTab(t: Tab) {
         </div>
       </div>
 
-      <!-- 콘텐츠 영상 -->
-      <h4 style="margin-top:28px">콘텐츠 영상 <button class="btn orange xs" @click="newVideo">+ 추가</button></h4>
+    </section>
+
+    <!-- 영상 -->
+    <section v-else-if="tab === 'videos'">
+      <h4>영상 <button class="btn orange xs" @click="newVideo">+ 추가</button></h4>
       <table class="grid">
-        <thead><tr><th>제목</th><th>영상 URL</th><th>대표</th><th>정렬</th><th></th></tr></thead>
+        <thead><tr><th>썸네일</th><th>제목</th><th>영상 URL</th><th>대표</th><th>정렬</th><th></th></tr></thead>
         <tbody>
           <tr v-for="v in videos" :key="v.id">
+            <td><img v-if="v.thumbnailUrl" :src="v.thumbnailUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
             <td>{{ v.title }}</td><td class="url">{{ v.videoUrl }}</td><td>{{ v.featured ? '★' : '' }}</td>
             <td>{{ v.sortOrder }}</td>
             <td class="acts"><button @click="editVideo(v)">수정</button><button class="danger" @click="delVideo(v.id)">삭제</button></td>
           </tr>
-          <tr v-if="!videos.length"><td colspan="5" class="empty">없음</td></tr>
+          <tr v-if="!videos.length"><td colspan="6" class="empty">등록된 영상이 없습니다.</td></tr>
         </tbody>
       </table>
       <div v-if="videoEditing" class="form-card">
@@ -622,17 +681,21 @@ function onTab(t: Tab) {
         </div>
       </div>
 
-      <!-- 클라이언트 로고 -->
-      <h4 style="margin-top:28px">클라이언트 로고 <button class="btn orange xs" @click="newLogo">+ 추가</button></h4>
+    </section>
+
+    <!-- 협력사 -->
+    <section v-else-if="tab === 'clients'">
+      <h4>협력사 <button class="btn orange xs" @click="newLogo">+ 추가</button></h4>
       <table class="grid">
-        <thead><tr><th>이름</th><th>로고 URL</th><th>링크</th><th>정렬</th><th></th></tr></thead>
+        <thead><tr><th>로고</th><th>이름</th><th>링크</th><th>정렬</th><th></th></tr></thead>
         <tbody>
           <tr v-for="cl in clients" :key="cl.id">
-            <td>{{ cl.name ?? '-' }}</td><td class="url">{{ cl.logoUrl }}</td><td class="url">{{ cl.linkUrl }}</td>
+            <td><img v-if="cl.logoUrl" :src="cl.logoUrl" class="thumb contain" alt="" /><span v-else class="no-img">－</span></td>
+            <td>{{ cl.name ?? '-' }}</td><td class="url">{{ cl.linkUrl }}</td>
             <td>{{ cl.sortOrder }}</td>
             <td class="acts"><button @click="editLogo(cl)">수정</button><button class="danger" @click="delLogo(cl.id)">삭제</button></td>
           </tr>
-          <tr v-if="!clients.length"><td colspan="5" class="empty">없음</td></tr>
+          <tr v-if="!clients.length"><td colspan="5" class="empty">등록된 협력사가 없습니다.</td></tr>
         </tbody>
       </table>
       <div v-if="logoEditing" class="form-card">
@@ -658,17 +721,18 @@ function onTab(t: Tab) {
     <section v-else-if="tab === 'goods'">
       <button class="btn orange sm" @click="newGoods">+ 새 굿즈</button>
       <table class="grid">
-        <thead><tr><th>상품명</th><th>가격</th><th>재고</th><th>상태</th><th>정렬</th><th></th></tr></thead>
+        <thead><tr><th>이미지</th><th>상품명</th><th>가격</th><th>재고</th><th>상태</th><th>정렬</th><th></th></tr></thead>
         <tbody>
           <tr v-for="g in goodsList" :key="g.id">
+            <td><img v-if="g.imageUrl" :src="g.imageUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
             <td>{{ g.name }}</td><td>{{ won(g.price) }}</td><td>{{ g.stock }}</td>
-            <td>{{ g.status }}</td><td>{{ g.sortOrder }}</td>
+            <td>{{ lbl(g.status) }}</td><td>{{ g.sortOrder }}</td>
             <td class="acts">
               <button @click="editGoods(g)">수정</button>
               <button class="danger" @click="removeGoods(g)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!goodsList.length"><td colspan="6" class="empty">등록된 굿즈가 없습니다.</td></tr>
+          <tr v-if="!goodsList.length"><td colspan="7" class="empty">등록된 굿즈가 없습니다.</td></tr>
         </tbody>
       </table>
 
@@ -687,7 +751,7 @@ function onTab(t: Tab) {
           <label>가격(원)<input type="number" v-model.number="goodsEditing.price" /></label>
           <label>재고<input type="number" v-model.number="goodsEditing.stock" /></label>
           <label>상태
-            <select v-model="goodsEditing.status"><option>ACTIVE</option><option>HIDDEN</option></select>
+            <select v-model="goodsEditing.status"><option value="ACTIVE">판매중</option><option value="HIDDEN">숨김</option></select>
           </label>
         </div>
         <label>정렬순서<input type="number" v-model.number="goodsEditing.sortOrder" /></label>
@@ -704,7 +768,7 @@ function onTab(t: Tab) {
           <tbody>
             <tr v-for="o in orders" :key="o.id">
               <td>#{{ o.id }}</td><td>{{ o.goodsName }}</td><td>{{ o.quantity }}</td>
-              <td>{{ won(o.totalAmount) }}</td><td>{{ o.status }}</td>
+              <td>{{ won(o.totalAmount) }}</td><td>{{ lbl(o.status) }}</td>
               <td>{{ o.receiverName }}</td><td>{{ o.receiverPhone }}</td>
               <td>{{ o.address }} {{ o.addressDetail }}</td>
               <td>{{ o.paidAt?.slice(0, 16).replace('T', ' ') ?? '-' }}</td>
@@ -798,17 +862,37 @@ function onTab(t: Tab) {
     </section>
 
     <section v-else-if="tab === 'settings'">
-      <h4>설정값</h4>
+      <h4>사이트 이미지 · 생방송</h4>
+      <div class="form-card site-card">
+        <label>생방송 공식 치지직 채널 ID (비우면 "준비중" 표시)
+          <div class="live-row">
+            <input v-model="liveChannelInput" placeholder="예) 5e3c8cabda51d938ca9d1ceda9680203" />
+            <button class="btn sm" @click="saveLiveChannel">저장</button>
+          </div>
+        </label>
+        <div class="site-images">
+          <div v-for="si in SITE_IMAGES" :key="si.key" class="site-img">
+            <span class="site-img-label">{{ si.label }}</span>
+            <img v-if="settingValue(si.key)" :src="settingValue(si.key)" alt="" />
+            <div v-else class="site-img-empty">기본 이미지 사용 중</div>
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickSettingImage($event, si.key)" />
+          </div>
+        </div>
+        <p class="hint" v-if="imgUploading">업로드 중…</p>
+        <p class="hint" v-else>이미지를 선택하면 바로 업로드·적용됩니다. 메인/굿즈샵/협력사 페이지에 반영돼요.</p>
+      </div>
+
+      <h4 style="margin-top:28px">설정값</h4>
       <table class="grid">
         <thead><tr><th>키</th><th>값</th><th>설명</th><th></th></tr></thead>
         <tbody>
-          <tr v-for="s in settings" :key="s.settingKey">
+          <tr v-for="s in generalSettings" :key="s.settingKey">
             <td>{{ s.settingKey }}</td>
             <td><input v-model="s.settingValue" /></td>
             <td>{{ s.description }}</td>
             <td><button @click="saveSetting(s.settingKey, s.settingValue)">저장</button></td>
           </tr>
-          <tr v-if="!settings.length"><td colspan="4" class="empty">설정값이 없습니다.</td></tr>
+          <tr v-if="!generalSettings.length"><td colspan="4" class="empty">설정값이 없습니다.</td></tr>
         </tbody>
       </table>
 
@@ -905,5 +989,33 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .collab-admin li { padding: 6px 0; border-bottom: 1px solid var(--a-border); display: flex; justify-content: space-between; align-items: center; }
 .override { display: flex; gap: 10px; align-items: center; }
 .override input, .override select { padding: 8px; }
-.url { color: var(--a-text2); }
+.url { color: var(--a-text2); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 라이트 테마 — 메인 사이트(snuk-theme)와 동일 키 공유 */
+.admin-page[data-theme="light"] {
+  --a-bg: #f8f8f9; --a-bg2: #ffffff; --a-bg3: #f0f0f2; --a-bg4: #e4e4e8;
+  --a-text: #18181c; --a-text2: #505058; --a-text3: #909098;
+  --a-border: rgba(0, 0, 0, 0.1); --a-border2: rgba(0, 0, 0, 0.2);
+}
+.admin-page[data-theme="light"] .btn.orange { background: #18181c; color: #fff; }
+.admin-page[data-theme="light"] .btn.orange:hover { background: #303035; }
+.admin-page[data-theme="light"] .tabs button.on { border-bottom-color: #18181c; }
+
+.head-acts { display: flex; gap: 8px; align-items: center; }
+.head-acts button.home-link { background: transparent; cursor: pointer; font: inherit; font-size: 13px; }
+
+/* 목록 썸네일 */
+.thumb { width: 52px; height: 32px; object-fit: cover; border-radius: 6px; background: var(--a-bg3); display: block; }
+.thumb.contain { object-fit: contain; }
+.no-img { color: var(--a-text3); }
+
+/* 설정 탭 — 사이트 이미지/생방송 카드 */
+.site-card { margin-top: 12px; }
+.live-row { display: flex; gap: 8px; margin-top: 4px; }
+.live-row input { flex: 1; padding: 8px; }
+.site-images { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px; }
+.site-img { display: flex; flex-direction: column; gap: 8px; }
+.site-img-label { font-size: 13px; font-weight: 600; color: var(--a-text2); }
+.site-img img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--a-border); background: var(--a-bg3); }
+.site-img-empty { height: 90px; border: 1px dashed var(--a-border2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--a-text3); }
 </style>

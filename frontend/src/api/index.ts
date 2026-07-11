@@ -25,6 +25,11 @@ export const authApi = {
   logout: () => api.post('/api/auth/logout'),
 }
 
+// ----- site settings (공개 화이트리스트 키 — 라이브 채널/배너 이미지) -----
+export const siteSettingsApi = {
+  get: () => api.get<Record<string, string>>('/api/site-settings').then((r) => r.data),
+}
+
 // ----- campaigns (public) -----
 export const campaignApi = {
   list: () => api.get<Campaign[]>('/api/campaigns').then((r) => r.data),

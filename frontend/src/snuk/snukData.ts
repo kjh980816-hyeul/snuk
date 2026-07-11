@@ -3,7 +3,7 @@
  * 시안 더미 배열과 동일한 필드 계약을 유지하되, 실 데이터의 id/액션 정보를 추가한다.
  * 실패한 소스는 빈 배열로 두고 나머지는 정상 노출(부분 실패 허용).
  */
-import { campaignApi, collabApi, goodsApi, noticeApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
+import { campaignApi, collabApi, goodsApi, noticeApi, siteSettingsApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
 import type {
   Campaign, CollabGame, ContentVideo, Goods, Notice, ParticipantPublic, Review, Spotlight,
   StreamerPublic, Tournament,
@@ -63,6 +63,8 @@ export interface SnukData {
     followers: number | null; channelUrl: string | null
   }>
   chzzkChannelId: string
+  /** 어드민 "설정" 탭에서 관리하는 공개 설정 (배너/히어로 이미지 등, '-'=미설정) */
+  siteSettings: Record<string, string>
 }
 
 // ---------- 매핑 ----------
@@ -111,7 +113,7 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 
 /** 전 페이지 공용 데이터 로드(공개 API만 — 로그인 불필요). */
 export async function loadSnukData(): Promise<SnukData> {
-  const [campaigns, tournaments, videos, goods, clients, games, notices, spotlights, streamers] = await Promise.all([
+  const [campaigns, tournaments, videos, goods, clients, games, notices, spotlights, streamers, siteSettings] = await Promise.all([
     safe<Campaign[]>(campaignApi.list(), []),
     safe<Tournament[]>(tournamentApi.list(), []),
     safe<ContentVideo[]>(collabApi.videos(), []),
@@ -121,6 +123,7 @@ export async function loadSnukData(): Promise<SnukData> {
     safe<Notice[]>(noticeApi.list(5), []),
     safe<Spotlight[]>(spotlightApi.active(), []),
     safe<StreamerPublic[]>(streamerApi.list(), []),
+    safe<Record<string, string>>(siteSettingsApi.get(), {}),
   ])
 
   // 게임체험단: 콜라보 게임 ↔ 연결된 캠페인(V6) + 후기 3건 미리보기
@@ -192,6 +195,10 @@ export async function loadSnukData(): Promise<SnukData> {
       platform: PROVIDER_PLAT[s.provider] ?? 'chz',
       followers: s.followerCount, channelUrl: s.channelUrl,
     })),
-    chzzkChannelId: OFFICIAL_CHZZK_CHANNEL_ID,
+    chzzkChannelId:
+      (siteSettings.LIVE_CHANNEL_ID && siteSettings.LIVE_CHANNEL_ID !== '-')
+        ? siteSettings.LIVE_CHANNEL_ID
+        : OFFICIAL_CHZZK_CHANNEL_ID,
+    siteSettings,
   }
 }

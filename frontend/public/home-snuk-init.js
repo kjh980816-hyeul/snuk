@@ -1147,7 +1147,21 @@ function __snukInit() {
   initStreamerChannels();
   initSpotlight();
   renderNotices();
+  applySiteImages();
   setActiveNav(location.pathname);
+}
+
+// 어드민 "설정" 탭에서 바꾼 히어로/배너 이미지 적용 ('-'=미설정 → 마크업 기본 이미지 유지)
+function applySiteImages() {
+  const ss = (D() && D().siteSettings) || {};
+  const apply = (sel, url) => {
+    if (!url || url === '-') return;
+    const el = document.querySelector(sel);
+    if (el && el.getAttribute('src') !== url) el.setAttribute('src', url);
+  };
+  apply('#hero .hero-banner-card > img', ss.HERO_IMAGE_URL);
+  apply('#goods .goods-banner img', ss.BANNER_GOODS_URL);
+  apply('#partners .goods-banner img', ss.BANNER_PARTNERS_URL);
 }
 
 ;(function () { try { if (typeof __snukInit === 'function') __snukInit(); } catch (e) { console.error('[snuk init]', e); } })();
