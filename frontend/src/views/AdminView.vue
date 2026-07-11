@@ -345,8 +345,12 @@ function onTab(t: Tab) {
 </script>
 
 <template>
-  <div class="wrap admin section">
-    <h2 class="section-label">관리자</h2>
+  <div class="admin-page">
+  <div class="admin-wrap">
+    <header class="admin-head">
+      <h2>SNUK <span>관리자</span></h2>
+      <a href="/" class="home-link">← 사이트로</a>
+    </header>
     <nav class="tabs">
       <button :class="{ on: tab === 'campaigns' }" @click="onTab('campaigns')">캠페인</button>
       <button :class="{ on: tab === 'tournaments' }" @click="onTab('tournaments')">대회</button>
@@ -832,36 +836,74 @@ function onTab(t: Tab) {
       </table>
     </section>
   </div>
+  </div>
 </template>
 
 <style scoped>
-.tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #eee; }
-.tabs button { background: none; border: 0; padding: 10px 16px; font-weight: 700; color: var(--text-muted); border-bottom: 2px solid transparent; }
-.tabs button.on { color: var(--text-strong); border-bottom-color: var(--accent-orange); }
+/* SNUK 시안 다크 모노톤 — 관리자 콘솔(셸 밖 bare 렌더라 자체 완결 스타일) */
+.admin-page {
+  --a-bg: #111113; --a-bg2: #1c1c1f; --a-bg3: #262629; --a-bg4: #303035;
+  --a-text: #f0f0f2; --a-text2: #8a8a92; --a-text3: #505058;
+  --a-border: rgba(255, 255, 255, 0.1); --a-border2: rgba(255, 255, 255, 0.2);
+  --a-red: #ff6b6b; --a-radius: 10px; --a-radius2: 16px;
+  min-height: 100vh; background: var(--a-bg); color: var(--a-text);
+  font-family: 'Pretendard', 'Noto Sans KR', -apple-system, 'Segoe UI', sans-serif;
+}
+.admin-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+.admin-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.admin-head h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 2px; }
+.admin-head h2 span { color: var(--a-text2); font-weight: 600; letter-spacing: 0; font-size: 18px; margin-left: 8px; }
+.home-link { color: var(--a-text2); text-decoration: none; font-size: 13px; border: 1px solid var(--a-border); border-radius: 999px; padding: 7px 14px; transition: 0.15s; }
+.home-link:hover { color: var(--a-text); border-color: var(--a-border2); background: var(--a-bg3); }
+
+h4, h5 { color: var(--a-text); }
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--a-border); flex-wrap: wrap; }
+.tabs button { background: none; border: 0; padding: 10px 16px; font-weight: 700; font-size: 14px; color: var(--a-text2); border-bottom: 2px solid transparent; cursor: pointer; transition: 0.15s; }
+.tabs button:hover { color: var(--a-text); }
+.tabs button.on { color: var(--a-text); border-bottom-color: var(--a-text); }
+
+/* 버튼 — 시안 CTA(라이트 온 다크) 톤 */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--a-border2); background: var(--a-bg3); color: var(--a-text); border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.15s; }
+.btn:hover { background: var(--a-bg4); }
+.btn.orange { background: #e8e8e8; color: #18181c; border-color: transparent; }
+.btn.orange:hover { background: #fff; }
+.btn.ghost { background: transparent; }
+.btn.sm { padding: 6px 12px; font-size: 13px; }
+.btn.xs, .xs { font-size: 12px; padding: 3px 10px; margin-left: 6px; }
+
 .grid { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
-.grid th, .grid td { border-bottom: 1px solid #eee; padding: 8px 10px; text-align: left; }
-.grid tr.sel { background: #fff7ec; }
-.grid .empty, .empty { color: var(--text-muted); text-align: center; }
-.acts button { margin-right: 6px; border: 1px solid #ddd; background: #fff; border-radius: 6px; padding: 4px 8px; }
-.acts button.danger, .danger { color: var(--label-red); border-color: #f3c2c2; }
-.xs { font-size: 12px; padding: 2px 8px; margin-left: 6px; }
+.grid th { color: var(--a-text2); font-weight: 600; font-size: 12px; }
+.grid th, .grid td { border-bottom: 1px solid var(--a-border); padding: 9px 10px; text-align: left; }
+.grid tr.sel { background: rgba(255, 255, 255, 0.06); }
+.grid .empty, .empty { color: var(--a-text3); text-align: center; }
+.grid button:not(.btn), .acts button { margin-right: 6px; border: 1px solid var(--a-border2); background: var(--a-bg3); color: var(--a-text); border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; transition: 0.15s; }
+.grid button:not(.btn):hover, .acts button:hover { background: var(--a-bg4); }
+.acts button.danger, .danger { color: var(--a-red); border-color: rgba(255, 107, 107, 0.35); }
+
 .avatar { width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 6px; object-fit: cover; }
-.mono { font-family: monospace; font-size: 12px; color: var(--text-muted); }
-.badge { margin-left: 6px; font-size: 11px; font-weight: 800; color: var(--accent-orange); border: 1px solid var(--accent-orange); border-radius: 999px; padding: 1px 7px; }
-.hint { margin-top: 12px; font-size: 13px; color: var(--text-muted); }
+.mono { font-family: monospace; font-size: 12px; color: var(--a-text2); }
+.badge { margin-left: 6px; font-size: 11px; font-weight: 800; color: var(--a-text); border: 1px solid var(--a-border2); border-radius: 999px; padding: 1px 7px; }
+.hint { margin-top: 12px; font-size: 13px; color: var(--a-text2); }
 .logo-upload { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
-.logo-preview { width: 48px; height: 48px; object-fit: contain; border: 1px solid #eee; border-radius: 6px; background: #fafafa; }
-.form-card, .manage { margin-top: 24px; border: 1px solid #eee; border-radius: var(--radius); padding: 18px; }
-.form-card label { display: block; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
-.form-card input, .form-card textarea, .form-card select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-top: 4px; }
+.logo-preview { width: 48px; height: 48px; object-fit: contain; border: 1px solid var(--a-border); border-radius: 6px; background: var(--a-bg3); }
+
+.form-card, .manage { margin-top: 24px; border: 1px solid var(--a-border); border-radius: var(--a-radius2); padding: 20px; background: var(--a-bg2); }
+.form-card label { display: block; margin-bottom: 10px; font-size: 13px; font-weight: 600; color: var(--a-text2); }
+input, textarea, select { background: var(--a-bg3); color: var(--a-text); border: 1px solid var(--a-border); border-radius: 6px; font: inherit; }
+input::placeholder, textarea::placeholder { color: var(--a-text3); }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a-border2); }
+.form-card input, .form-card textarea, .form-card select { width: 100%; padding: 8px; margin-top: 4px; }
+.grid input, .grid select { padding: 6px 8px; }
 .form-card .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .form-card .chk { display: flex; align-items: center; gap: 6px; }
+.form-card .chk input { width: auto; }
 .form-acts { display: flex; gap: 8px; margin-top: 12px; }
-.keys textarea, .manage textarea { width: 100%; min-height: 90px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; }
-.result { color: var(--accent-orange); font-weight: 700; }
+.keys textarea, .manage textarea { width: 100%; min-height: 90px; padding: 8px; margin-bottom: 8px; }
+.result { color: var(--a-text); font-weight: 700; }
 .collab-admin { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .collab-admin ul { list-style: none; padding: 0; }
-.collab-admin li { padding: 6px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+.collab-admin li { padding: 6px 0; border-bottom: 1px solid var(--a-border); display: flex; justify-content: space-between; align-items: center; }
 .override { display: flex; gap: 10px; align-items: center; }
-.override input, .override select { padding: 8px; border: 1px solid #ddd; border-radius: 6px; }
+.override input, .override select { padding: 8px; }
+.url { color: var(--a-text2); }
 </style>

@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+﻿<script setup lang="ts">
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { campaignApi, spotlightApi, tournamentApi } from '@/api'
@@ -140,6 +140,9 @@ onMounted(async () => {
   w.__SNUK_DATA = data
   shellTop.value = top
   shellBottom.value = bottom
+  // v-html DOM 이 실제로 붙은 뒤에 렌더러/로그인 반영 실행 (재마운트 시 else 분기가
+  // flush 전에 돌면 사이드바가 로그아웃 상태로 남는 버그 — 2026-07-11)
+  await nextTick()
 
   // 시안 렌더러 주입 (스크립트 말미에서 __snukInit 자동 실행)
   if (!document.getElementById('snuk-init-js')) {
