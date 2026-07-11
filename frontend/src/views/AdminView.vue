@@ -569,8 +569,9 @@ function onTab(t: Tab) {
             </select>
           </label>
           <label>참가 정원<input type="number" v-model.number="tourEditing.capacity" /></label>
-          <label class="chk"><input type="checkbox" v-model="tourEditing.featured" /> 대표 대회</label>
+          <label>대회일<input type="date" v-model="tourEditing.eventDate" /></label>
         </div>
+        <label class="chk"><input type="checkbox" v-model="tourEditing.featured" /> 대표 대회</label>
         <label>대회 결과 (DONE 상태에서 페이지에 노출)
           <textarea v-model="tourEditing.resultText" placeholder="예) 우승: 팀 알파 / MVP: 스트리머A"></textarea>
         </label>
