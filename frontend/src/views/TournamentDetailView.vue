@@ -15,6 +15,7 @@ const participants = ref<ParticipantPublic[]>([])
 const notFound = ref(false)
 const applying = ref(false)
 const applyMsg = ref('')
+const posterExpanded = ref(false)
 
 const statusLabel = computed(() => {
   const s = tour.value?.status
@@ -66,7 +67,8 @@ watch(() => route.params.id, load)
       <template v-else-if="tour">
         <!-- 상단: 포스터(원본 비율) + 정보 -->
         <div class="head">
-          <div v-if="tour.bannerImageUrl" class="poster">
+          <div v-if="tour.bannerImageUrl" class="poster" :class="{ expanded: posterExpanded }"
+               title="클릭하면 전체 포스터를 볼 수 있어요" @click="posterExpanded = !posterExpanded">
             <img :src="tour.bannerImageUrl" :alt="tour.title" />
           </div>
           <div class="info">
@@ -126,9 +128,11 @@ watch(() => route.params.id, load)
 .back { background: none; border: 1px solid var(--border); color: var(--text2); border-radius: 999px; padding: 7px 14px; font-size: 13px; cursor: pointer; margin-bottom: 18px; transition: 0.15s; }
 .back:hover { color: var(--text); border-color: var(--border2); }
 
-.head { display: grid; grid-template-columns: minmax(0, 380px) 1fr; gap: 28px; align-items: start; }
-.poster { border-radius: var(--radius2); overflow: hidden; border: 1px solid var(--border); background: var(--bg2); }
-.poster img { width: 100%; height: auto; display: block; }
+.head { display: grid; grid-template-columns: minmax(0, 300px) 1fr; gap: 28px; align-items: center; }
+.poster { border-radius: var(--radius2); overflow: hidden; border: 1px solid var(--border); background: var(--bg2); cursor: zoom-in; }
+.poster img { width: 100%; height: auto; display: block; max-height: 560px; object-fit: cover; object-position: top; }
+.poster.expanded { cursor: zoom-out; }
+.poster.expanded img { max-height: none; }
 .info h1 { font-size: 26px; font-weight: 800; color: var(--text); margin: 10px 0 12px; line-height: 1.3; }
 .meta-row { display: flex; align-items: center; gap: 10px; }
 .badge { font-size: 11px; font-weight: 800; border-radius: 999px; padding: 3px 10px; }
@@ -152,6 +156,9 @@ watch(() => route.params.id, load)
 
 .sec-title { font-size: 18px; font-weight: 800; color: var(--text); margin: 40px 0 16px; }
 .sec-title .cnt { font-size: 13px; color: var(--text3); font-weight: 600; margin-left: 6px; }
+/* 홍보 상세(세로 롱폼)는 좁은 중앙 컬럼으로 — 풀폭이면 페이지가 과하게 길어짐 */
+.detail-img { max-width: 680px; margin: 0 auto; text-align: center; }
+.detail-img .sec-title { text-align: center; }
 .detail-img img { width: 100%; height: auto; display: block; border-radius: var(--radius2); border: 1px solid var(--border); }
 
 .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
