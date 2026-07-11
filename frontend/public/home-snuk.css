@@ -174,7 +174,7 @@
 .card-body{padding:16px;}
 .card-meta{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .card-title{font-size:14px;font-weight:700;margin-bottom:6px;line-height:1.4;}
-.card-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px;}
+.card-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .card-footer{display:flex;align-items:center;justify-content:space-between;}
 .card-members{font-size:12px;color:var(--text3);}
 

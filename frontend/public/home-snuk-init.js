@@ -20,7 +20,7 @@ function emptyCard(msg) {
 
 function thumbHtml(img, i, emoji) {
   if (img) {
-    return `<img src="${esc(img)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.remove()">`;
+    return `<img src="${esc(img)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;" onerror="this.remove()">`;
   }
   return `<div class="card-thumb-placeholder">${emoji || '◆'}</div>`;
 }
@@ -135,7 +135,7 @@ function renderFeatured(elId, d, tagText) {
   el.setAttribute('onclick', d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')` : canApply ? `openApply('${d.kind}',${d.id})` : '');
   el.innerHTML = `
     <div class="featured-thumb" style="background:linear-gradient(135deg,#1a1040,#2d1060);position:relative;">
-      ${d.img ? `<img src="${esc(d.img)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.remove()">` : '<div style="font-size:56px;opacity:.5;">🎮</div>'}
+      ${d.img ? `<img src="${esc(d.img)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;" onerror="this.remove()">` : '<div style="font-size:56px;opacity:.5;">🎮</div>'}
       <div style="position:absolute;top:14px;left:14px;"><span class="badge ${badgeCls}">${esc(d.statusLabel)}</span></div>
     </div>
     <div class="featured-body">
