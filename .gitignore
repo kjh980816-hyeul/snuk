@@ -22,3 +22,6 @@ _extracted/
 
 # Logs
 *.log
+
+# 런타임 업로드 파일 (유저 콘텐츠 — 레포 제외)
+backend/uploads/
