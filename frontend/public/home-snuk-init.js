@@ -45,7 +45,10 @@ function makeContentCard(d, w, i) {
   const badge = `<span class="badge ${badgeCls}">${esc(d.statusLabel)}</span>`;
   const slots = d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
   return `<div class="content-card" style="width:${w};min-width:${w};cursor:pointer;" ${d.kind === 'tournament' ? `onclick="__snukNav('/championship/${d.id}')"` : canApply ? `onclick="openApply('${d.kind}',${d.id})"` : ''}>
-    <div class="card-thumb" style="background:${bgOf(i)};position:relative;">${thumbHtml(d.img, i)}</div>
+    <div class="card-thumb" style="background:${bgOf(i)};position:relative;">
+      ${thumbHtml(d.img, i)}
+      <span class="big-kind" style="position:absolute;top:8px;right:8px;">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>
+    </div>
     <div class="card-body">
       <div class="card-meta">${badge}${d.eventDate ? `<span style="font-size:11px;color:var(--text3);margin-left:auto;">${esc(d.eventDate)}</span>` : ''}</div>
       <div class="card-title">${esc(d.title)}</div>
@@ -64,8 +67,11 @@ function initSlider(id, cards) { const el = document.getElementById(id); if (el)
 function renderContentSliders() {
   const snuk = D().snukContents || [];
   const mug = D().mugContents || [];
-  initSlider('snuk-slider', snuk.length
-    ? snuk.map((d, i) => makeContentCard(d, cardWidth(5, 1), i)).join('')
+  // 컨텐츠·대회 통합 목록(/campaigns) — 모집중 우선
+  const merged = [...snuk, ...mug]
+    .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
+  initSlider('snuk-slider', merged.length
+    ? merged.map((d, i) => makeContentCard(d, cardWidth(5, 1), i)).join('')
     : emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!'));
   initSlider('mug-slider', mug.length
     ? mug.map((d, i) => makeContentCard(d, cardWidth(5, 1), i)).join('')
@@ -108,9 +114,157 @@ function makeBigCard(d, w, i) {
 }
 
 function initBigContents() {
-  // 홈 컨텐츠/대회 분리 그리드 (모집중 먼저, 나머지는 원래 순서 유지)
-  fillBigTrack('big-slider', D().snukContents || [], '진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
+  // 홈: 큰 피처드 카드 + 옆 작은 부가 카드 (항목 3/5) + 대회 그리드
+  initHomeFeature();
   fillBigTrack('big-tour-slider', D().mugContents || [], '예정된 대회가 없습니다. 새 대회 소식을 기다려주세요!');
+}
+
+// ── 자동 슬라이드 타이머 공용(멱등 init 대비 키별 1개 유지, 호버 시 일시정지)
+const _autoTimers = {};
+function setAutoLoop(key, fn, ms) {
+  if (_autoTimers[key]) clearInterval(_autoTimers[key]);
+  _autoTimers[key] = setInterval(fn, ms);
+}
+function hoverPaused(el) {
+  try { return !!(el && el.closest('section') && el.closest('section').matches(':hover')); } catch { return false; }
+}
+
+// ── 홈 피처드 레이아웃: 큰 칸 1 + 작은 부가 카드
+// 큰 칸 = 어드민이 체크(featured)한 컨텐츠. 미선택이면 모집중 우선 상위 5개 자동 순환.
+let _featureIdx = 0;
+function makeFeatureMainCard(d, i, dotsHtml) {
+  const canApply = d.status === 'open';
+  const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
+  const slots = d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
+  const sub = [slots, d.eventDate].filter(Boolean).join(' · ');
+  const click = d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')`
+    : canApply ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
+  return `<div class="feature-main-card" onclick="${click}" style="background:${bgOf(i)};">
+    ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : `<div class="feature-main-emoji">🎮</div>`}
+    <div class="feature-main-grad"></div>
+    <div class="feature-main-top">
+      <span class="badge ${badgeCls}">${esc(d.statusLabel)}</span>
+      <span class="big-kind">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>
+    </div>
+    <div class="feature-main-caption">
+      <div class="feature-main-title">${esc(d.title)}</div>
+      ${d.desc ? `<div class="feature-main-desc">${esc(d.desc)}</div>` : ''}
+      <div class="feature-main-foot">
+        ${sub ? `<span class="feature-main-sub">${esc(sub)}</span>` : '<span></span>'}
+        ${canApply ? `<button class="btn-apply" onclick="event.stopPropagation();openApply('${d.kind}',${d.id})">신청하기</button>` : ''}
+      </div>
+      ${dotsHtml || ''}
+    </div>
+  </div>`;
+}
+
+function makeFeatureSideCard(d, i) {
+  const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
+  const click = d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')`
+    : d.status === 'open' ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
+  return `<div class="feature-side-card" onclick="${click}">
+    <div class="feature-side-thumb" style="background:${bgOf(i + 2)};">
+      ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : ''}
+      <span class="badge ${badgeCls}" style="position:absolute;top:8px;left:8px;">${esc(d.statusLabel)}</span>
+      <span class="big-kind" style="position:absolute;top:8px;right:8px;">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>
+    </div>
+    <div class="feature-side-body">
+      <div class="feature-side-title">${esc(d.title)}</div>
+      <div class="feature-side-sub">${d.max > 0 ? `모집 ${d.filled}/${d.max}명` : esc(d.statusLabel)}</div>
+    </div>
+  </div>`;
+}
+
+// 컨텐츠+대회 통합 섹션 — 큰 칸=스눅 공식(관리자 등록) 컨텐츠 전용, 나머지(대회·스트리머 컨텐츠)는 작은 카드
+function initHomeFeature() {
+  const main = document.getElementById('home-feature-main');
+  const side = document.getElementById('home-feature-side');
+  if (!main || !side) return;
+  const openFirst = (arr) => [...arr].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
+  const campaigns = D().snukContents || [];
+  const tournaments = D().mugContents || [];
+  const adminPool = openFirst(campaigns.filter((c) => c.adminMade !== false)); // 큰 칸 후보 = 관리자만
+  const everything = openFirst([...campaigns, ...tournaments]);                // 작은 칸 = 컨텐츠+대회 전부
+  if (_autoTimers.homeFeature) { clearInterval(_autoTimers.homeFeature); _autoTimers.homeFeature = null; }
+  if (!campaigns.length && !tournaments.length) {
+    main.innerHTML = emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
+    side.innerHTML = '';
+    return;
+  }
+  const renderSide = (excl) => {
+    const rest = everything
+      .filter((x) => !(excl && x.kind === excl.kind && x.id === excl.id))
+      .slice(0, 4);
+    side.innerHTML = rest.map((d, i) => makeFeatureSideCard(d, i)).join('')
+      + `<div class="feature-side-card feature-side-more" onclick="window.__snukNav('/campaigns')">
+           <span>컨텐츠·대회 전체 보기 →</span></div>`;
+  };
+  if (!adminPool.length) {
+    main.innerHTML = emptyCard('SNUK 공식 컨텐츠 준비 중입니다.');
+    renderSide(null);
+    return;
+  }
+  const featured = D().snukFeatured; // featured 는 어드민 폼에서만 체크 가능 = 항상 공식
+  if (featured) {
+    main.innerHTML = makeFeatureMainCard(featured, 0, '');
+    renderSide(featured);
+    return;
+  }
+  // 미지정 — 공식 컨텐츠 상위 5개 자동 슬라이드(4초, 호버 시 정지)
+  const rotation = adminPool.slice(0, 5);
+  _featureIdx = _featureIdx % rotation.length;
+  const dots = () => `<div class="feature-dots">${rotation.map((_, i) =>
+    `<span class="${i === _featureIdx ? 'on' : ''}"></span>`).join('')}</div>`;
+  const paint = () => { main.innerHTML = makeFeatureMainCard(rotation[_featureIdx], _featureIdx, dots()); };
+  paint();
+  renderSide(rotation[_featureIdx]);
+  setAutoLoop('homeFeature', () => {
+    if (!document.getElementById('home-feature-main')) return;
+    if (hoverPaused(main)) return;
+    _featureIdx = (_featureIdx + 1) % rotation.length;
+    paint();
+  }, 4000);
+}
+
+// ── 라이브 배너 (히어로 아래, 어드민 on/off — 항목 13/18)
+function initLiveBanner() {
+  const sec = document.getElementById('live-banner');
+  if (!sec) return;
+  const ss = (D() && D().siteSettings) || {};
+  const url = (ss.LIVE_BANNER_URL || '').trim();
+  const on = ss.LIVE_BANNER_ENABLED === '1' && url && url !== '-';
+  sec.style.display = on ? '' : 'none';
+  if (!on) return;
+  const titleEl = document.getElementById('live-banner-title');
+  const title = (ss.LIVE_BANNER_TITLE || '').trim();
+  if (titleEl) titleEl.textContent = (title && title !== '-') ? title : '지금 방송 중';
+}
+function openLiveBanner() {
+  const ss = (D() && D().siteSettings) || {};
+  const url = (ss.LIVE_BANNER_URL || '').trim();
+  if (url && url !== '-') window.open(url, '_blank');
+}
+
+// ── SNUK 뉴스 (홈 섹션 — 항목 11)
+function initNews() {
+  const grid = document.getElementById('news-grid');
+  if (!grid) return;
+  const news = D().news || [];
+  if (!news.length) {
+    grid.innerHTML = emptyCard('아직 등록된 기사가 없습니다.');
+    return;
+  }
+  grid.innerHTML = news.slice(0, 4).map((n, i) => `
+    <div class="news-card" onclick="window.__snukNav('/news/${n.id}')">
+      <div class="news-card-thumb" style="background:${bgOf(i + 1)};">
+        ${n.thumb ? `<img src="${esc(n.thumb)}" alt="" onerror="this.remove()">` : '<div class="news-card-emoji">📰</div>'}
+      </div>
+      <div class="news-card-body">
+        <div class="news-card-title">${esc(n.title)}</div>
+        ${n.excerpt ? `<div class="news-card-excerpt">${esc(n.excerpt)}</div>` : ''}
+        <div class="news-card-meta">${esc(n.author)} · ${esc(n.date)}</div>
+      </div>
+    </div>`).join('');
 }
 
 function fillBigTrack(trackId, items, emptyMsg) {
@@ -468,7 +622,8 @@ function buyGoods(id) {
 }
 
 // ════════════════════════════════════════════
-// 굿즈 베스트 10 (홈 전용 — 5개×2슬라이드, 부족분은 표시용 더미 패딩)
+// 굿즈 베스트 10 (홈 전용 — 5개×2슬라이드)
+// 실 굿즈 0개 = 오픈 준비중 → 홈 섹션 통째로 숨김. 1개라도 등록되면 자동 노출.
 // ════════════════════════════════════════════
 let goodsBestPage = 0;
 
@@ -477,11 +632,21 @@ function goodsBestTotalPages() { return window._goodsBestPages || 1; }
 function initGoodsBest() {
   const track = document.getElementById('goods-best-track');
   if (!track) return;
-  const real = (D().goods || []).slice(0, 10).map((g) => ({ ...g, dummy: false }));
-  // 실 굿즈가 10개 미만이면 표시용 더미로 채움 (운영 요청 — 실 데이터 등록 시 자동 대체)
-  const items = [...real];
-  for (let i = items.length; i < 10; i++) {
-    items.push({ dummy: true, id: null, name: `SNUK 굿즈 ${i + 1}`, streamer: '오픈 준비중', price: null, img: null });
+  const items = (D().goods || []).slice(0, 10);
+  const section = document.getElementById('goods-best');
+  if (!items.length) {
+    // 준비중 게이트: 홈에서 노출 예정이던 섹션만 숨김(비노출 페이지의 none 은 건드리지 않음)
+    if (section && section.style.display !== 'none') {
+      section.style.display = 'none';
+      section.dataset.goodsGate = 'hidden';
+    }
+    window._goodsBestPages = 1;
+    return;
+  }
+  // 데이터 로드 전 선실행에서 숨겼던 경우 복원
+  if (section && section.dataset.goodsGate === 'hidden') {
+    section.style.display = '';
+    delete section.dataset.goodsGate;
   }
   const perPage = window.innerWidth <= 768 ? 3 : 5;
   const gap = 12;
@@ -492,19 +657,6 @@ function initGoodsBest() {
   track.innerHTML = pages.map((page, pi) => `<div class="goods-best-page" style="gap:${gap}px;">
     ${page.map((g, gi) => {
       const rank = pi * perPage + gi + 1;
-      if (g.dummy) {
-        return `<div class="goods-card dummy" style="width:${w};min-width:${w};" onclick="showToast('오픈 준비 중인 굿즈입니다')">
-          <div class="goods-thumb" style="background:${bgOf(rank)};display:flex;align-items:center;justify-content:center;">
-            <div class="goods-rank${rank <= 3 ? ' top3' : ''}">${rank}</div>
-            <div style="font-size:40px;opacity:.35;">🎁</div>
-          </div>
-          <div class="goods-body">
-            <div class="goods-name">${esc(g.name)}</div>
-            <div class="goods-streamer">${esc(g.streamer)}</div>
-            <div class="goods-price" style="color:var(--text3);">오픈 준비중</div>
-          </div>
-        </div>`;
-      }
       return `<div class="goods-card" style="width:${w};min-width:${w};" onclick="${g.purchasable ? `buyGoods(${g.id})` : `window.__snukNav('/goods')`}">
         <div class="goods-thumb" style="background:${bgOf(rank)};">
           <div class="goods-rank${rank <= 3 ? ' top3' : ''}">${rank}</div>
@@ -523,6 +675,13 @@ function initGoodsBest() {
   goodsBestPage = 0;
   track.style.transform = 'translateX(0)';
   renderGoodsBestDots();
+  // 굿즈 자동 슬라이드(항목 2) — 4.5초, 호버 시 정지, 끝나면 처음으로
+  setAutoLoop('goodsBest', () => {
+    const el = document.getElementById('goods-best-track');
+    if (!el) return;
+    if (hoverPaused(el)) return;
+    goGoodsBest((goodsBestPage + 1) % goodsBestTotalPages());
+  }, 4500);
 }
 
 function renderGoodsBestDots() {
@@ -559,13 +718,23 @@ function initStreamerStrip() {
     const avatar = s.img
       ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" draggable="false" onerror="this.parentElement.textContent='${esc(s.name.slice(0, 1))}';">`
       : `<span style="font-size:24px;font-weight:700;color:${platColor[s.platform] || 'var(--text2)'};">${esc(s.initial || s.name.slice(0, 1))}</span>`;
-    return `<div class="strip-card" onclick="${s.dummy ? `showToast('파트너 스트리머를 기다리고 있어요!')` : `window.__snukNav('/streamers/${s.id}')`}">
-      <div class="strip-avatar" style="border:2px solid ${platColor[s.platform] || '#555'}55;">${avatar}</div>
+    const liveRing = s.live ? 'border:2px solid #ff4040;box-shadow:0 0 10px rgba(255,64,64,.5);' : `border:2px solid ${platColor[s.platform] || '#555'}55;`;
+    return `<div class="strip-card" onclick="${s.dummy ? `showToast('파트너 스트리머를 기다리고 있어요!')` : `window.__snukNav('/streamers/${s.id}')`}" style="position:relative;">
+      ${s.live ? '<span class="strip-live-chip">LIVE</span>' : ''}
+      <div class="strip-avatar" style="${liveRing}">${avatar}</div>
       <div class="strip-name">${esc(s.name)}</div>
-      <div class="strip-sub" style="color:${platColor[s.platform] || 'var(--text3)'};">${s.followers != null ? `팔로워 ${Number(s.followers).toLocaleString('ko-KR')}` : (platLabel[s.platform] || '')}</div>
+      <div class="strip-sub" style="color:${platColor[s.platform] || 'var(--text3)'};">${s.live ? '방송 중' : s.followers != null ? `팔로워 ${Number(s.followers).toLocaleString('ko-KR')}` : (platLabel[s.platform] || '')}</div>
     </div>`;
   }).join('');
   bindStripDrag(box);
+  // 자동 스크롤(항목 6) — 호버/드래그 중엔 정지, 끝에 닿으면 처음으로
+  setAutoLoop('streamerStrip', () => {
+    const el = document.getElementById('streamer-strip-scroll');
+    if (!el) return;
+    if (el.classList.contains('dragging') || el.matches(':hover')) return;
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 2) el.scrollLeft = 0;
+    else el.scrollLeft += 1;
+  }, 30);
 }
 
 function bindStripDrag(box) {
@@ -723,12 +892,21 @@ function goRosterPage(n) { rosterPage = n; renderRosterPage(); }
 // ── 스트리머 채널 섹션 (실 스트리머 등급 회원)
 let streamerChanPos = 0;
 
+let _streamerQuery = '';
+function filterStreamerChannels(q) {
+  _streamerQuery = (q || '').trim().toLowerCase();
+  initStreamerChannels();
+}
+
 function initStreamerChannels() {
   const track = document.getElementById('streamer-ch-track');
   if (!track) return;
-  const streamers = D().streamers || [];
+  let streamers = D().streamers || [];
+  if (_streamerQuery) {
+    streamers = streamers.filter((s) => s.name.toLowerCase().includes(_streamerQuery));
+  }
   if (!streamers.length) {
-    track.innerHTML = emptyCard('아직 등록된 파트너 스트리머가 없습니다.');
+    track.innerHTML = emptyCard(_streamerQuery ? `"${_streamerQuery}" 검색 결과가 없습니다.` : '아직 등록된 파트너 스트리머가 없습니다.');
     return;
   }
   const mw = window.innerWidth;
@@ -747,10 +925,12 @@ function initStreamerChannels() {
           style="background:${platColor[s.platform]}18;color:${platColor[s.platform]};border:1px solid ${platColor[s.platform]}44;"
           onclick="event.stopPropagation()">${platLabel[s.platform] || ''}</a>`
       : `<span class="streamer-ch-plat" style="background:${platColor[s.platform]}18;color:${platColor[s.platform]};border:1px solid ${platColor[s.platform]}44;">${platLabel[s.platform] || ''}</span>`;
-    return `<div class="streamer-ch-item" style="width:${w};min-width:${w};cursor:pointer;" onclick="window.__snukNav('/streamers/${s.id}')">
-      <div class="streamer-ch-avatar">${avatar}</div>
+    return `<div class="streamer-ch-item" style="width:${w};min-width:${w};cursor:pointer;position:relative;" onclick="window.__snukNav('/streamers/${s.id}')">
+      ${s.live ? '<span class="strip-live-chip" style="position:absolute;top:4px;right:10px;">LIVE</span>' : ''}
+      <div class="streamer-ch-avatar" style="${s.live ? 'box-shadow:0 0 0 2px #ff4040, 0 0 12px rgba(255,64,64,.45);border-radius:50%;' : ''}">${avatar}</div>
       <div class="streamer-ch-name">${esc(s.name)}</div>
-      ${s.followers != null ? `<div style="font-size:10px;color:var(--text3);text-align:center;margin-bottom:4px;">팔로워 ${Number(s.followers).toLocaleString('ko-KR')}</div>` : ''}
+      ${s.live && s.liveTitle ? `<div style="font-size:10px;color:#ff8080;text-align:center;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 6px;">🔴 ${esc(s.liveTitle)}</div>`
+        : s.followers != null ? `<div style="font-size:10px;color:var(--text3);text-align:center;margin-bottom:4px;">팔로워 ${Number(s.followers).toLocaleString('ko-KR')}</div>` : ''}
       <div class="streamer-ch-plats">${platBtn}</div>
     </div>`;
   }).join('');
@@ -983,22 +1163,28 @@ async function submitSpotlight() {
 
 function initSpotlight() {
   const cards = document.getElementById('spotlight-cards');
-  const empty = document.getElementById('spotlight-empty');
   if (!cards) return;
   const spotlights = D().spotlights || [];
+  const section = document.getElementById('spotlight-section');
 
   if (!spotlights.length) {
-    if (empty) empty.style.display = 'block';
-    cards.style.display = 'none';
+    // 활성 스포트라이트 없으면 홈 섹션 통째로 숨김(비노출 페이지의 none 은 유지)
+    if (section && section.style.display !== 'none') {
+      section.style.display = 'none';
+      section.dataset.spotGate = 'hidden';
+    }
     return;
   }
-  if (empty) empty.style.display = 'none';
-  cards.style.display = 'block';
+  // 데이터 로드 전 선실행에서 숨겼던 경우 복원
+  if (section && section.dataset.spotGate === 'hidden') {
+    section.style.display = '';
+    delete section.dataset.spotGate;
+  }
 
   const pc = { chz: '#00c73c', soop: '#34c7ff', yt: '#ff4040' };
   const pn = { chz: '치지직', soop: '숲', yt: '유튜브' };
 
-  cards.innerHTML = '<div class="spotlight-grid">' + spotlights.slice(0, 2).map((s) => `
+  cards.innerHTML = '<div class="spotlight-grid">' + spotlights.slice(0, 4).map((s) => `
     <div class="spotlight-card" onclick="window.open('${esc(s.url)}','_blank')">
       <div class="spotlight-screen">
         ${s.img ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" onerror="this.remove()">` : ''}
@@ -1102,6 +1288,7 @@ window.addEventListener('resize', function () {
   _resizeTimer = setTimeout(function () {
     renderContentSliders();
     initBigContents();
+    initNews();
     initGameTrial();
     initGameVideos();
     if (window._rerenderGoods) window._rerenderGoods();
@@ -1126,6 +1313,8 @@ function __snukInit() {
   bindOverlayClose();
   renderContentSliders();
   initBigContents();
+  initLiveBanner();
+  initNews();
   renderFeatured('snuk-featured', D().snukFeatured, 'FEATURED');
   renderFeatured('mug-featured', D().mugFeatured, 'SIGNATURE CONTENT');
   initGameTrial();
@@ -1167,9 +1356,12 @@ function applySiteImages() {
     if (el && el.getAttribute('src') !== url) el.setAttribute('src', url);
   };
   const applyText = (sel, text) => {
-    if (!set(text)) return;
     const el = document.querySelector(sel);
-    if (el) el.textContent = text;
+    if (!el) return;
+    if (text === undefined || text === null || text === '-') return; // 미설정 → 기본 문구 유지
+    if (String(text).trim() === '') { el.style.display = 'none'; return; } // 빈값 저장 → 문구 숨김(항목 4)
+    el.style.display = '';
+    el.textContent = text;
   };
   applyImg('#hero .hero-banner-card > img', ss.HERO_IMAGE_URL);
   // 페이지 배너: 이미지 + 제목 + 문구 (키=BANNER_{PAGE}_{URL|TITLE|SUB}, V12 시드)

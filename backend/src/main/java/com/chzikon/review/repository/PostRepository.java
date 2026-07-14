@@ -14,4 +14,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findByCategoryAndHiddenFalseOrderByCreatedAtDesc(PostCategory category);
 
     List<Post> findByMemberIdOrderByCreatedAtDesc(Long memberId);
+
+    /** 후기 작성 여부(마감 경고/연장 판단). */
+    boolean existsByCategoryAndCampaignIdAndMemberId(PostCategory category, Long campaignId, Long memberId);
 }

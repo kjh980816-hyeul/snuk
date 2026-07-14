@@ -11,6 +11,8 @@ const router = createRouter({
     { path: '/games', name: 'games', component: () => import('@/views/GameTrialView.vue') },
     { path: '/live', name: 'live', component: () => import('@/views/LiveView.vue') },
     { path: '/streamers', name: 'streamers', component: () => import('@/views/StreamersView.vue') },
+    { path: '/news', name: 'news', component: () => import('@/views/NewsView.vue') },
+    { path: '/news/:id', name: 'news-detail', component: () => import('@/views/NewsView.vue') },
     { path: '/streamers/:id', name: 'streamer-profile', component: () => import('@/views/StreamerProfileView.vue') },
     // 구 경로 → 시안 페이지로 통합
     { path: '/collab', redirect: '/campaigns' },

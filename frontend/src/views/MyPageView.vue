@@ -46,7 +46,7 @@ async function resetPic() {
 }
 
 const roleLabel: Record<string, string> = {
-  VIEWER: '시청자', STREAMER: '스트리머', ADMIN: '관리자', GUEST: '게스트',
+  VIEWER: '시청자', STREAMER: '스트리머', REPORTER: '기자', ADMIN: '관리자', GUEST: '게스트',
 }
 const appStatusLabel: Record<string, string> = {
   PENDING: '승인 대기', APPROVED: '확정', REJECTED: '거절',
@@ -63,6 +63,42 @@ function dt(v: string | null | undefined) {
 }
 function won(v: number) {
   return v.toLocaleString('ko-KR') + '원'
+}
+
+// ----- 후기 마감(키 수령 +30일) — 남은 날짜 표시 + 게임당 1회 7일 연장 -----
+function daysLeft(deadline: string | null): number | null {
+  if (!deadline) return null
+  return Math.ceil((new Date(deadline).getTime() - Date.now()) / 86_400_000)
+}
+function deadlineText(a: { reviewDeadline: string | null; reviewWritten: boolean; warned: boolean }): string {
+  if (!a.reviewDeadline) return ''
+  if (a.reviewWritten) return '후기 작성 완료 ✅'
+  const d = daysLeft(a.reviewDeadline)
+  if (d === null) return ''
+  if (d < 0) return `후기 마감 ${-d}일 지남 ⚠️`
+  if (d === 0) return '오늘이 후기 마감일!'
+  return `후기 마감까지 D-${d}`
+}
+const extending = ref(false)
+async function extendDeadline(applicationId: number) {
+  if (extending.value) return
+  if (!confirm('후기 마감을 7일 연장할까요? (게임당 1번만 가능)')) return
+  extending.value = true
+  try {
+    await mypageApi.extendDeadline(applicationId)
+    summary.value = await mypageApi.summary()
+  } catch (e) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    alert(msg ?? '연장에 실패했어요.')
+  } finally {
+    extending.value = false
+  }
+}
+
+// ----- 스포트라이트 등록(내 방송 홍보하기) — 셸 전역 모달 재사용 -----
+function promoteMyStream() {
+  const open = (window as unknown as { openSpotlight?: () => void }).openSpotlight
+  open?.()
 }
 
 onMounted(async () => {
@@ -103,7 +139,9 @@ onMounted(async () => {
             <button v-if="auth.me.profileImageOverridden" class="mp-btn ghost" :disabled="picSaving" @click="resetPic">
               플랫폼 프사로
             </button>
+            <button class="mp-btn promote" @click="promoteMyStream">📣 내 방송 홍보하기</button>
           </div>
+          <div class="mp-promote-hint">스포트라이트에 내 방송을 홍보할 수 있어요 (승인된 스트리머, 최대 2시간 노출)</div>
         </div>
         <!-- 활동 요약 타일 -->
         <div class="mp-stats" v-if="summary">
@@ -132,6 +170,9 @@ onMounted(async () => {
             <div class="mp-item-main">
               <div class="mp-item-title">{{ a.campaignTitle }}</div>
               <div class="mp-item-sub">신청일 {{ dt(a.appliedAt) }}</div>
+              <div v-if="a.reviewDeadline" class="mp-deadline" :class="{ danger: !a.reviewWritten && (daysLeft(a.reviewDeadline) ?? 0) <= 3, done: a.reviewWritten }">
+                {{ deadlineText(a) }}
+              </div>
             </div>
             <span class="mp-pill" :class="a.status">{{ appStatusLabel[a.status] }}</span>
           </div>
@@ -157,8 +198,21 @@ onMounted(async () => {
               <div class="mp-item-title">{{ a.campaignTitle }}</div>
               <div class="mp-item-code">{{ a.maskedKey }}</div>
               <div class="mp-item-sub">코드 전체 보기는 해당 컨텐츠 페이지에서 본인 확인 후 가능합니다.</div>
+              <div v-if="a.reviewDeadline" class="mp-deadline" :class="{ danger: !a.reviewWritten && (daysLeft(a.reviewDeadline) ?? 0) <= 3, done: a.reviewWritten }">
+                {{ deadlineText(a) }}
+                <span v-if="!a.reviewWritten" class="mp-deadline-date">({{ a.reviewDeadline.slice(0, 10) }}까지)</span>
+                <span v-if="a.warned && !a.reviewWritten" class="mp-warn-chip">경고</span>
+              </div>
             </div>
-            <span class="mp-pill APPROVED">코드 배정</span>
+            <div class="mp-item-side">
+              <span class="mp-pill APPROVED">코드 배정</span>
+              <template v-if="a.reviewDeadline && !a.reviewWritten">
+                <RouterLink :to="`/campaigns/${a.campaignId}/reviews`" class="mp-btn small">후기 쓰러 가기</RouterLink>
+                <button v-if="!a.deadlineExtended" class="mp-btn small ghost" :disabled="extending"
+                  @click="extendDeadline(a.applicationId)">7일 연장 (1회)</button>
+                <span v-else class="mp-extended">연장 사용됨</span>
+              </template>
+            </div>
           </div>
         </div>
 
@@ -221,6 +275,8 @@ onMounted(async () => {
   background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
 }
 .mp-btn.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.mp-btn.promote { background: linear-gradient(135deg, #00c73c, #00a832); }
+.mp-promote-hint { font-size: 11px; color: var(--text3); margin-top: 8px; }
 .mp-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .mp-stats { display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; }
@@ -252,6 +308,17 @@ onMounted(async () => {
 .mp-pill.APPROVED, .mp-pill.PAID { background: rgba(52, 199, 120, .12); color: #34c878; border-color: rgba(52, 199, 120, .35); }
 .mp-pill.PENDING { background: rgba(255, 179, 0, .12); color: #ffb300; border-color: rgba(255, 179, 0, .35); }
 .mp-pill.REJECTED, .mp-pill.CANCELLED, .mp-pill.FAILED { background: rgba(239, 68, 68, .12); color: #ef4444; border-color: rgba(239, 68, 68, .35); }
+
+/* 후기 마감/연장(항목 19) */
+.mp-deadline { margin-top: 7px; font-size: 12px; font-weight: 700; color: #8fa8ff; }
+.mp-deadline.danger { color: #ff7070; }
+.mp-deadline.done { color: #34c878; }
+.mp-deadline-date { font-weight: 500; color: var(--text3); margin-left: 4px; }
+.mp-warn-chip { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; color: #fff;
+  background: #ef4444; border-radius: 5px; padding: 1px 6px; vertical-align: 1px; }
+.mp-item-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.mp-btn.small { font-size: 11px; padding: 5px 10px; text-decoration: none; text-align: center; }
+.mp-extended { font-size: 11px; color: var(--text3); }
 .mp-link { flex: none; font-size: 12px; font-weight: 700; color: var(--accent3, #5cf0fc); text-decoration: none; }
 
 .mp-empty {

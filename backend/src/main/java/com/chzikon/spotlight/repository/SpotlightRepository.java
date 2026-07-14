@@ -11,8 +11,8 @@ import java.util.List;
 
 public interface SpotlightRepository extends JpaRepository<Spotlight, Long> {
 
-    /** 노출 중(미만료) 최신순. */
-    @Query("SELECT s FROM Spotlight s WHERE s.expiresAt > :now ORDER BY s.createdAt DESC")
+    /** 노출 중(승인됨+미만료) 최신순. */
+    @Query("SELECT s FROM Spotlight s WHERE s.approved = true AND s.expiresAt > :now ORDER BY s.approvedAt DESC")
     List<Spotlight> findActive(@Param("now") LocalDateTime now, Pageable pageable);
 
     boolean existsByMemberIdAndExpiresAtAfter(Long memberId, LocalDateTime now);

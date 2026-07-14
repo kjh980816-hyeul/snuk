@@ -4,8 +4,8 @@ import { adminApi } from '@/api/admin'
 import { campaignApi, collabApi, noticeApi, tournamentApi } from '@/api'
 import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, Notice, OrderView, Spotlight, Tournament } from '@/api/types'
 
-// 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (콘텐츠·대회·게임체험단·영상·굿즈샵·협력사)
-type Tab = 'campaigns' | 'tournaments' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'members' | 'settings' | 'logs'
+// 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (컨텐츠·대회 통합 탭 + 게임체험단·영상·굿즈샵·협력사)
+type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'members' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
 
 // 테마 — 메인 사이트와 동일 키(snuk-theme) 공유
@@ -58,43 +58,39 @@ async function saveCampaign() {
   await loadCampaigns()
 }
 async function removeCampaign(c: Campaign) {
-  if (!confirm(`'${c.title}' 콘텐츠를 삭제할까요?`)) return
+  if (!confirm(`'${c.title}' 컨텐츠를 삭제할까요?`)) return
   await adminApi.deleteCampaign(c.id)
   if (selected.value?.id === c.id) selected.value = null
   await loadCampaigns()
 }
 async function selectCampaign(c: Campaign) {
   selected.value = c
-  keyResult.value = null
-  rawKeys.value = ''
-  keys.value = c.keyMode === 'UNIQUE_KEY' ? await adminApi.listKeys(c.id) : []
   applications.value = await adminApi.applications(c.id)
 }
-async function submitKeys() {
-  if (!selected.value) return
-  const res = await adminApi.registerKeys(selected.value.id, rawKeys.value)
+// 키/신청자 유틸 — 컨텐츠 패널·게임체험단 패널 공용(campaignId 명시)
+async function submitKeys(campaignId: number) {
+  const res = await adminApi.registerKeys(campaignId, rawKeys.value)
   keyResult.value = `등록 ${res.registered} · 중복 ${res.duplicated} · 빈줄 ${res.blank} (가용 ${res.totalAvailable})`
   rawKeys.value = ''
-  keys.value = await adminApi.listKeys(selected.value.id)
+  keys.value = await adminApi.listKeys(campaignId)
 }
-async function delKey(keyId: number) {
-  if (!selected.value) return
-  await adminApi.deleteKey(selected.value.id, keyId)
-  keys.value = await adminApi.listKeys(selected.value.id)
+async function delKey(campaignId: number, keyId: number) {
+  await adminApi.deleteKey(campaignId, keyId)
+  keys.value = await adminApi.listKeys(campaignId)
 }
-async function revokeKey(keyId: number) {
-  if (!selected.value) return
-  await adminApi.revokeKey(selected.value.id, keyId)
-  keys.value = await adminApi.listKeys(selected.value.id)
+async function revokeKey(campaignId: number, keyId: number) {
+  await adminApi.revokeKey(campaignId, keyId)
+  keys.value = await adminApi.listKeys(campaignId)
 }
-async function approveApp(id: number) {
+async function approveApp(id: number, campaignId: number) {
   await adminApi.approve(id)
-  if (selected.value) applications.value = await adminApi.applications(selected.value.id)
+  applications.value = await adminApi.applications(campaignId)
   await loadCampaigns()
+  if (gmCampaign.value?.id === campaignId) keys.value = await adminApi.listKeys(campaignId)
 }
-async function rejectApp(id: number) {
+async function rejectApp(id: number, campaignId: number) {
   await adminApi.reject(id)
-  if (selected.value) applications.value = await adminApi.applications(selected.value.id)
+  applications.value = await adminApi.applications(campaignId)
 }
 
 // ----- tournaments -----
@@ -141,6 +137,80 @@ async function approveParticipant(id: number) {
 async function rejectParticipant(id: number) {
   await adminApi.rejectParticipant(id)
   if (tourSelected.value) participants.value = await adminApi.participants(tourSelected.value.id)
+}
+
+// ----- 컨텐츠·대회 통합 목록 (게임체험단 연계 캠페인은 제외 — 게임체험단 탭에서 관리) -----
+interface UnifiedRow {
+  type: 'campaign' | 'tournament'
+  id: number
+  img: string | null
+  title: string
+  status: string
+  slots: string
+  featured: boolean
+  campaign?: Campaign
+  tournament?: Tournament
+}
+const gameLinkedIds = computed(() => new Set(games.value.map((g) => g.campaignId).filter(Boolean)))
+const unifiedRows = computed<UnifiedRow[]>(() => [
+  ...campaigns.value
+    .filter((c) => !gameLinkedIds.value.has(c.id))
+    .map((c): UnifiedRow => ({
+      type: 'campaign', id: c.id, img: c.promoImageUrl, title: c.title, status: c.status,
+      slots: `${c.filledSlots}/${c.totalSlots}`, featured: c.featured, campaign: c,
+    })),
+  ...tournaments.value.map((t): UnifiedRow => ({
+    type: 'tournament', id: t.id, img: t.bannerImageUrl, title: t.title, status: t.status,
+    slots: `${t.filledSlots}/${t.capacity}`, featured: t.featured, tournament: t,
+  })),
+])
+function manageRow(r: UnifiedRow) {
+  if (r.type === 'campaign' && r.campaign) { tourSelected.value = null; selectCampaign(r.campaign) }
+  else if (r.tournament) { selected.value = null; selectTournament(r.tournament) }
+}
+function editRow(r: UnifiedRow) {
+  if (r.type === 'campaign' && r.campaign) { tourEditing.value = null; editCampaign(r.campaign) }
+  else if (r.tournament) { editing.value = null; editTournament(r.tournament) }
+}
+function removeRow(r: UnifiedRow) {
+  if (r.type === 'campaign' && r.campaign) removeCampaign(r.campaign)
+  else if (r.tournament) removeTournament(r.tournament)
+}
+
+// ----- 게임체험단 모집·키 관리 (키 시스템은 여기 — 스눅↔게임사 협약 키 배포) -----
+const gameManage = ref<CollabGame | null>(null)
+const gmCampaign = ref<Campaign | null>(null)
+async function openGameManage(g: CollabGame) {
+  gameManage.value = g
+  keyResult.value = null
+  rawKeys.value = ''
+  if (!g.campaignId) { gmCampaign.value = null; keys.value = []; applications.value = []; return }
+  gmCampaign.value = campaigns.value.find((c) => c.id === g.campaignId)
+    ?? await campaignApi.detail(g.campaignId)
+  keys.value = await adminApi.listKeys(g.campaignId)
+  applications.value = await adminApi.applications(g.campaignId)
+}
+/** 연결 캠페인이 없는 게임 — 모집·키 시스템(비노출용 캠페인) 자동 생성 후 연결 */
+async function createTrialSystem(g: CollabGame) {
+  const created = await adminApi.createCampaign({
+    title: `[체험단] ${g.name}`, description: g.description ?? '', gameName: g.name,
+    promoImageUrl: g.thumbnailUrl, status: 'OPEN', distributionType: 'APPROVAL',
+    keyMode: 'UNIQUE_KEY', totalSlots: 0, featured: false,
+  })
+  await adminApi.updateGame(g.id, { ...g, campaignId: created.id })
+  await Promise.all([loadCollab(), loadCampaigns()])
+  const fresh = games.value.find((x) => x.id === g.id)
+  if (fresh) await openGameManage(fresh)
+}
+async function saveTrialRecruit() {
+  if (!gmCampaign.value) return
+  await adminApi.updateCampaign(gmCampaign.value.id, {
+    status: gmCampaign.value.status,
+    totalSlots: gmCampaign.value.totalSlots,
+    distributionType: gmCampaign.value.distributionType,
+  })
+  await loadCampaigns()
+  alert('모집 설정이 저장되었습니다.')
 }
 
 // ----- collab (게임/영상/클라이언트: 추가+수정+삭제 모두 지원) -----
@@ -317,12 +387,23 @@ function loadBannerTextInputs() {
   bannerTextInputs.value = next
 }
 async function saveBannerText(page: string) {
-  await saveSetting(`BANNER_${page}_TITLE`, bannerTextInputs.value[`BANNER_${page}_TITLE`]?.trim() || '-')
-  await saveSetting(`BANNER_${page}_SUB`, bannerTextInputs.value[`BANNER_${page}_SUB`]?.trim() || '-')
+  // 빈값 저장 = 문구 숨김(항목 4). 기본 문구로 돌리려면 '-' 입력.
+  await saveSetting(`BANNER_${page}_TITLE`, bannerTextInputs.value[`BANNER_${page}_TITLE`]?.trim() ?? '')
+  await saveSetting(`BANNER_${page}_SUB`, bannerTextInputs.value[`BANNER_${page}_SUB`]?.trim() ?? '')
   alert('저장되었습니다.')
 }
+// ----- 메인 라이브 배너(히어로 아래, 항목 13/18) -----
+const liveBannerEnabled = ref(false)
+const liveBannerUrl = ref('')
+const liveBannerTitle = ref('')
+async function saveLiveBanner() {
+  await saveSetting('LIVE_BANNER_ENABLED', liveBannerEnabled.value ? '1' : '0')
+  await saveSetting('LIVE_BANNER_URL', liveBannerUrl.value.trim() || '-')
+  await saveSetting('LIVE_BANNER_TITLE', liveBannerTitle.value.trim() || '-')
+  alert('저장되었습니다. 메인 히어로 아래에 반영돼요.')
+}
 const SITE_KEYS = [
-  'LIVE_CHANNEL_ID',
+  'LIVE_CHANNEL_ID', 'LIVE_BANNER_ENABLED', 'LIVE_BANNER_URL', 'LIVE_BANNER_TITLE',
   ...SITE_IMAGES.map((s) => s.key),
   ...BANNER_TEXTS.flatMap((b) => [`BANNER_${b.page}_TITLE`, `BANNER_${b.page}_SUB`]),
 ]
@@ -336,6 +417,9 @@ function settingValue(key: string): string {
 async function loadSettings() {
   settings.value = await adminApi.settings()
   liveChannelInput.value = settingValue('LIVE_CHANNEL_ID')
+  liveBannerEnabled.value = settingValue('LIVE_BANNER_ENABLED') === '1'
+  liveBannerUrl.value = settingValue('LIVE_BANNER_URL')
+  liveBannerTitle.value = settingValue('LIVE_BANNER_TITLE')
   loadBannerTextInputs()
 }
 async function saveLiveChannel() {
@@ -404,8 +488,24 @@ async function removeSpotlight(s: Spotlight) {
   await adminApi.deleteSpotlight(s.id)
   await loadNotices()
 }
-function spotActive(s: Spotlight) {
-  return new Date(s.expiresAt).getTime() > Date.now()
+async function approveSpotlight(s: Spotlight) {
+  await adminApi.approveSpotlight(s.id)
+  await loadNotices()
+}
+function spotState(s: Spotlight) {
+  if (!s.approved) return '승인대기'
+  return new Date(s.expiresAt).getTime() > Date.now() ? '노출중' : '만료'
+}
+
+// ----- 후기 미작성 경고 로그 -----
+interface ReviewWarning {
+  applicationId: number; memberId: number; nickname: string
+  campaignId: number; campaignTitle: string
+  reviewDeadline: string; warnedAt: string; deadlineExtended: boolean; reviewWritten: boolean
+}
+const reviewWarnings = ref<ReviewWarning[]>([])
+async function loadWarnings() {
+  reviewWarnings.value = await adminApi.reviewWarnings()
 }
 
 // ----- logs -----
@@ -414,14 +514,15 @@ async function loadLogs() {
   logs.value = await adminApi.logs()
 }
 
-onMounted(loadCampaigns)
+onMounted(() => { loadCampaigns(); loadTournaments(); loadCollab() })
 
 function onTab(t: Tab) {
   tab.value = t
-  if (t === 'tournaments') loadTournaments()
+  if (t === 'campaigns') { loadCampaigns(); loadTournaments(); loadCollab() }
   if (t === 'games' || t === 'videos' || t === 'clients') loadCollab()
   if (t === 'goods') loadGoods()
   if (t === 'notices') loadNotices()
+  if (t === 'warnings') loadWarnings()
   if (t === 'members') loadMembers()
   if (t === 'settings') loadSettings()
   if (t === 'logs') loadLogs()
@@ -439,42 +540,47 @@ function onTab(t: Tab) {
       </div>
     </header>
     <nav class="tabs">
-      <button :class="{ on: tab === 'campaigns' }" @click="onTab('campaigns')">콘텐츠</button>
-      <button :class="{ on: tab === 'tournaments' }" @click="onTab('tournaments')">대회</button>
+      <button :class="{ on: tab === 'campaigns' }" @click="onTab('campaigns')">컨텐츠·대회</button>
       <button :class="{ on: tab === 'games' }" @click="onTab('games')">게임체험단</button>
       <button :class="{ on: tab === 'videos' }" @click="onTab('videos')">영상</button>
       <button :class="{ on: tab === 'goods' }" @click="onTab('goods')">굿즈샵</button>
       <button :class="{ on: tab === 'clients' }" @click="onTab('clients')">협력사</button>
       <button :class="{ on: tab === 'notices' }" @click="onTab('notices')">공지/스포트라이트</button>
+      <button :class="{ on: tab === 'warnings' }" @click="onTab('warnings')">후기 경고</button>
       <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
       <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정</button>
       <button :class="{ on: tab === 'logs' }" @click="onTab('logs')">감사로그</button>
     </nav>
 
-    <!-- 캠페인 -->
+    <!-- 컨텐츠·대회 통합 — 한 목록·같은 양식. 스눅 공식 컨텐츠는 여기 "+ 새 컨텐츠"로 등록 -->
     <section v-if="tab === 'campaigns'">
-      <button class="btn orange sm" @click="newCampaign">+ 새 콘텐츠</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn orange sm" @click="tourEditing = null; newCampaign()">+ 새 컨텐츠 (스눅 공식)</button>
+        <button class="btn orange sm" @click="editing = null; newTournament()">+ 새 대회</button>
+        <span class="hint" style="margin:0">여기서 등록한 컨텐츠가 메인 큰 카드 후보예요. 게임체험단(키 배포)은 게임체험단 탭에서.</span>
+      </div>
       <table class="grid">
-        <thead><tr><th>이미지</th><th>제목</th><th>상태</th><th>배포</th><th>키모드</th><th>슬롯</th><th>대표</th><th></th></tr></thead>
+        <thead><tr><th>이미지</th><th>구분</th><th>제목</th><th>상태</th><th>모집</th><th>대표</th><th></th></tr></thead>
         <tbody>
-          <tr v-for="c in campaigns" :key="c.id" :class="{ sel: selected?.id === c.id }">
-            <td><img v-if="c.promoImageUrl" :src="c.promoImageUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
-            <td>{{ c.title }}</td><td>{{ lbl(c.status) }}</td><td>{{ lbl(c.distributionType) }}</td>
-            <td>{{ lbl(c.keyMode) }}</td><td>{{ c.filledSlots }}/{{ c.totalSlots }}</td>
-            <td>{{ c.featured ? '★' : '' }}</td>
+          <tr v-for="r in unifiedRows" :key="r.type + r.id"
+              :class="{ sel: (r.type === 'campaign' && selected?.id === r.id) || (r.type === 'tournament' && tourSelected?.id === r.id) }">
+            <td><img v-if="r.img" :src="r.img" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
+            <td>{{ r.type === 'tournament' ? '대회' : '컨텐츠' }}</td>
+            <td>{{ r.title }}</td><td>{{ lbl(r.status) }}</td><td>{{ r.slots }}</td>
+            <td>{{ r.featured ? '★' : '' }}</td>
             <td class="acts">
-              <button @click="selectCampaign(c)">관리</button>
-              <button @click="editCampaign(c)">수정</button>
-              <button class="danger" @click="removeCampaign(c)">삭제</button>
+              <button @click="manageRow(r)">참가자</button>
+              <button @click="editRow(r)">수정</button>
+              <button class="danger" @click="removeRow(r)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!campaigns.length"><td colspan="8" class="empty">등록된 콘텐츠가 없습니다.</td></tr>
+          <tr v-if="!unifiedRows.length"><td colspan="7" class="empty">등록된 컨텐츠·대회가 없습니다.</td></tr>
         </tbody>
       </table>
 
       <!-- 편집 폼 -->
       <div v-if="editing" class="form-card">
-        <h4>{{ editing.id ? '콘텐츠 수정' : '새 콘텐츠' }}</h4>
+        <h4>{{ editing.id ? '컨텐츠 수정' : '새 컨텐츠' }}</h4>
         <label>제목<input v-model="editing.title" /></label>
         <label>설명<textarea v-model="editing.description"></textarea></label>
         <label>게임명<input v-model="editing.gameName" /></label>
@@ -497,16 +603,11 @@ function onTab(t: Tab) {
               <option value="APPROVAL">승인제 (관리자 승인 후 확정)</option>
             </select>
           </label>
-          <label>키모드
-            <select v-model="editing.keyMode">
-              <option value="QUANTITY">수량만 (키 배포 없음)</option>
-              <option value="UNIQUE_KEY">고유 키 배포 (키 등록 필요)</option>
-            </select>
-          </label>
+          <label>진행일<input type="date" v-model="editing.eventDate" /></label>
         </div>
         <div class="row3">
-          <label>슬롯 수<input type="number" v-model.number="editing.totalSlots" /></label>
-          <label class="chk"><input type="checkbox" v-model="editing.featured" /> 홈 대표</label>
+          <label>모집 인원<input type="number" v-model.number="editing.totalSlots" /></label>
+          <label class="chk"><input type="checkbox" v-model="editing.featured" /> 메인 큰 카드 고정 (미체크 시 자동 슬라이드)</label>
         </div>
         <div class="form-acts">
           <button class="btn sm" @click="saveCampaign">저장</button>
@@ -514,76 +615,29 @@ function onTab(t: Tab) {
         </div>
       </div>
 
-      <!-- 선택 캠페인 관리: 키 + 신청자 -->
+      <!-- 컨텐츠 참가자(신청자) — 대회 참가자와 동일 양식 -->
       <div v-if="selected" class="manage">
-        <h4>‘{{ selected.title }}’ 관리</h4>
-
-        <div v-if="selected.keyMode === 'UNIQUE_KEY'" class="keys">
-          <h5>게임 키 (붙여넣기 일괄 등록)</h5>
-          <textarea v-model="rawKeys" placeholder="한 줄에 키 하나씩 붙여넣기"></textarea>
-          <button class="btn sm" @click="submitKeys">등록</button>
-          <p v-if="keyResult" class="result">{{ keyResult }}</p>
-          <table class="grid">
-            <thead><tr><th>키(마스킹)</th><th>상태</th><th>배정대상</th><th></th></tr></thead>
-            <tbody>
-              <tr v-for="k in keys" :key="k.id">
-                <td>{{ k.maskedKey }}</td><td>{{ lbl(k.status) }}</td><td>{{ k.assignedMemberId ?? '-' }}</td>
-                <td class="acts">
-                  <button v-if="k.status === 'AVAILABLE'" class="danger" @click="delKey(k.id)">삭제</button>
-                  <button v-if="k.status === 'ASSIGNED'" @click="revokeKey(k.id)">무효화</button>
-                </td>
-              </tr>
-              <tr v-if="!keys.length"><td colspan="4" class="empty">등록된 키가 없습니다.</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p v-else class="hint">
-          이 콘텐츠는 "수량만" 모드라 게임 키 등록이 없습니다. 키를 배포하려면 콘텐츠 수정에서
-          키모드를 "고유 키 배포"로 바꾸면 여기에 키 등록 칸이 생깁니다.
-        </p>
-
-        <div class="apps">
-          <h5>신청자</h5>
-          <table class="grid">
-            <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
-            <tbody>
-              <tr v-for="a in applications" :key="a.applicationId">
-                <td>#{{ a.memberId }}</td><td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
-                <td class="acts">
-                  <template v-if="a.status === 'PENDING'">
-                    <button @click="approveApp(a.applicationId)">승인</button>
-                    <button class="danger" @click="rejectApp(a.applicationId)">거절</button>
-                  </template>
-                </td>
-              </tr>
-              <tr v-if="!applications.length"><td colspan="4" class="empty">신청자가 없습니다.</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <h4>‘{{ selected.title }}’ 참가자</h4>
+        <table class="grid">
+          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="a in applications" :key="a.applicationId">
+              <td>#{{ a.memberId }}</td><td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
+              <td class="acts">
+                <template v-if="a.status === 'PENDING'">
+                  <button @click="approveApp(a.applicationId, selected!.id)">승인</button>
+                  <button class="danger" @click="rejectApp(a.applicationId, selected!.id)">거절</button>
+                </template>
+              </td>
+            </tr>
+            <tr v-if="!applications.length"><td colspan="4" class="empty">신청자가 없습니다.</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <!-- 대회 -->
-    <section v-else-if="tab === 'tournaments'">
-      <button class="btn orange sm" @click="newTournament">+ 새 대회</button>
-      <table class="grid">
-        <thead><tr><th>배너</th><th>대회명</th><th>게임</th><th>대회일</th><th>상태</th><th>정원</th><th>대표</th><th></th></tr></thead>
-        <tbody>
-          <tr v-for="t in tournaments" :key="t.id" :class="{ sel: tourSelected?.id === t.id }">
-            <td><img v-if="t.bannerImageUrl" :src="t.bannerImageUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
-            <td>{{ t.title }}</td><td>{{ t.gameName }}</td><td>{{ t.eventDate ?? '-' }}</td>
-            <td>{{ lbl(t.status) }}</td><td>{{ t.filledSlots }}/{{ t.capacity }}</td>
-            <td>{{ t.featured ? '★' : '' }}</td>
-            <td class="acts">
-              <button @click="selectTournament(t)">참가자</button>
-              <button @click="editTournament(t)">수정</button>
-              <button class="danger" @click="removeTournament(t)">삭제</button>
-            </td>
-          </tr>
-          <tr v-if="!tournaments.length"><td colspan="8" class="empty">등록된 대회가 없습니다.</td></tr>
-        </tbody>
-      </table>
-
+    <!-- 대회 편집/참가자 패널 (통합 목록에서 진입 — 목록은 위 통합 테이블 하나) -->
+    <section v-if="tab === 'campaigns'">
       <!-- 편집 폼 (결과입력 포함) -->
       <div v-if="tourEditing" class="form-card">
         <h4>{{ tourEditing.id ? '대회 수정' : '새 대회' }}</h4>
@@ -649,18 +703,92 @@ function onTab(t: Tab) {
     <!-- 게임체험단 (콜라보 게임) -->
     <section v-else-if="tab === 'games'">
       <h4>게임체험단 게임 <button class="btn orange xs" @click="newGame">+ 추가</button></h4>
+      <p class="hint">게임사 협약 키 배포는 여기서 — 게임별 "모집·키" 버튼에서 키 등록·신청자 승인을 관리해요.</p>
       <table class="grid">
-        <thead><tr><th>썸네일</th><th>게임명</th><th>게임링크</th><th>후기링크</th><th>정렬</th><th></th></tr></thead>
+        <thead><tr><th>썸네일</th><th>게임명</th><th>모집·키</th><th>게임링크</th><th>정렬</th><th></th></tr></thead>
         <tbody>
-          <tr v-for="g in games" :key="g.id">
+          <tr v-for="g in games" :key="g.id" :class="{ sel: gameManage?.id === g.id }">
             <td><img v-if="g.thumbnailUrl" :src="g.thumbnailUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
-            <td>{{ g.name }}</td><td class="url">{{ g.gameLinkUrl }}</td><td class="url">{{ g.reviewLinkUrl }}</td>
+            <td>{{ g.name }}</td>
+            <td>{{ g.campaignId ? '연결됨' : '미설정' }}</td>
+            <td class="url">{{ g.gameLinkUrl }}</td>
             <td>{{ g.sortOrder }}</td>
-            <td class="acts"><button @click="editGame(g)">수정</button><button class="danger" @click="delGame(g.id)">삭제</button></td>
+            <td class="acts">
+              <button @click="openGameManage(g)">모집·키</button>
+              <button @click="editGame(g)">수정</button>
+              <button class="danger" @click="delGame(g.id)">삭제</button>
+            </td>
           </tr>
           <tr v-if="!games.length"><td colspan="6" class="empty">등록된 게임이 없습니다.</td></tr>
         </tbody>
       </table>
+
+      <!-- 게임 모집·키 관리 (키 시스템은 게임체험단 소속) -->
+      <div v-if="gameManage" class="manage">
+        <h4>‘{{ gameManage.name }}’ 모집·키 관리</h4>
+
+        <div v-if="!gmCampaign">
+          <p class="hint">아직 이 게임의 모집·키 시스템이 없어요. 버튼 한 번이면 만들어집니다 (승인제 + 고유 키 배포).</p>
+          <button class="btn orange sm" @click="createTrialSystem(gameManage)">모집·키 시스템 만들기</button>
+        </div>
+
+        <template v-else>
+          <div class="row3">
+            <label>모집 상태
+              <select v-model="gmCampaign.status">
+                <option value="SCHEDULED">예정</option><option value="OPEN">모집중</option><option value="CLOSED">마감</option>
+              </select>
+            </label>
+            <label>배포방식
+              <select v-model="gmCampaign.distributionType">
+                <option value="FCFS">선착순 (신청 즉시 키 발급)</option>
+                <option value="APPROVAL">승인제 (승인 시 키 발급)</option>
+              </select>
+            </label>
+            <label>모집 인원<input type="number" v-model.number="gmCampaign.totalSlots" /></label>
+          </div>
+          <button class="btn sm" @click="saveTrialRecruit">모집 설정 저장</button>
+
+          <div class="keys" style="margin-top:18px">
+            <h5>게임 키 (붙여넣기 일괄 등록 — 키 수령 후 30일 내 후기 마감 자동 적용)</h5>
+            <textarea v-model="rawKeys" placeholder="한 줄에 키 하나씩 붙여넣기"></textarea>
+            <button class="btn sm" @click="submitKeys(gmCampaign.id)">등록</button>
+            <p v-if="keyResult" class="result">{{ keyResult }}</p>
+            <table class="grid">
+              <thead><tr><th>키(마스킹)</th><th>상태</th><th>배정대상</th><th></th></tr></thead>
+              <tbody>
+                <tr v-for="k in keys" :key="k.id">
+                  <td>{{ k.maskedKey }}</td><td>{{ lbl(k.status) }}</td><td>{{ k.assignedMemberId ?? '-' }}</td>
+                  <td class="acts">
+                    <button v-if="k.status === 'AVAILABLE'" class="danger" @click="delKey(gmCampaign!.id, k.id)">삭제</button>
+                    <button v-if="k.status === 'ASSIGNED'" @click="revokeKey(gmCampaign!.id, k.id)">무효화</button>
+                  </td>
+                </tr>
+                <tr v-if="!keys.length"><td colspan="4" class="empty">등록된 키가 없습니다.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="apps" style="margin-top:18px">
+            <h5>신청자 (승인하면 키 자동 배정)</h5>
+            <table class="grid">
+              <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
+              <tbody>
+                <tr v-for="a in applications" :key="a.applicationId">
+                  <td>#{{ a.memberId }}</td><td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
+                  <td class="acts">
+                    <template v-if="a.status === 'PENDING'">
+                      <button @click="approveApp(a.applicationId, gmCampaign!.id)">승인</button>
+                      <button class="danger" @click="rejectApp(a.applicationId, gmCampaign!.id)">거절</button>
+                    </template>
+                  </td>
+                </tr>
+                <tr v-if="!applications.length"><td colspan="4" class="empty">신청자가 없습니다.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </div>
       <div v-if="gameEditing" class="form-card">
         <h4>{{ gameEditing.id ? '게임 수정' : '새 게임' }}</h4>
         <label>게임명<input v-model="gameEditing.name" /></label>
@@ -674,7 +802,7 @@ function onTab(t: Tab) {
         </label>
         <label>게임 링크 URL<input v-model="gameEditing.gameLinkUrl" placeholder="https://" /></label>
         <label>후기 링크 URL (외부 블로그 등 — 선택)<input v-model="gameEditing.reviewLinkUrl" placeholder="https://" /></label>
-        <label>후기 게시판 연결 (사이트 내 콘텐츠 — 선택)
+        <label>후기 게시판 연결 (사이트 내 컨텐츠 — 선택. 연결해야 신청·키 배포·후기 마감이 동작)
           <select v-model="gameEditing.campaignId">
             <option :value="null">연결 안 함</option>
             <option v-for="c in campaigns" :key="c.id" :value="c.id">{{ c.title }}</option>
@@ -854,8 +982,8 @@ function onTab(t: Tab) {
         </div>
       </div>
 
-      <h3 style="margin-top: 32px">스포트라이트 (최근 50건)</h3>
-      <p class="hint">스트리머가 등록한 방송 홍보 — 등록 후 2시간 노출, 사이드바 최대 2개.</p>
+      <h3 style="margin-top: 32px">스포트라이트 (최근 50건 — 승인제)</h3>
+      <p class="hint">스트리머가 신청한 방송 홍보 — <b>승인해야 노출</b>되고, 승인 시각부터 2시간 사이드바 최대 2개 표시.</p>
       <table class="grid">
         <thead><tr><th>제목</th><th>스트리머</th><th>플랫폼</th><th>링크</th><th>상태</th><th>등록</th><th></th></tr></thead>
         <tbody>
@@ -864,11 +992,34 @@ function onTab(t: Tab) {
             <td>{{ s.streamerName }}</td>
             <td>{{ s.platform }}</td>
             <td><a :href="s.streamUrl" target="_blank" rel="noopener">링크 ↗</a></td>
-            <td>{{ spotActive(s) ? '노출중' : '만료' }}</td>
+            <td>{{ spotState(s) }}</td>
             <td>{{ s.createdAt?.slice(5, 16).replace('T', ' ') }}</td>
-            <td class="acts"><button class="danger" @click="removeSpotlight(s)">내리기</button></td>
+            <td class="acts">
+              <button v-if="!s.approved" @click="approveSpotlight(s)">승인</button>
+              <button class="danger" @click="removeSpotlight(s)">내리기</button>
+            </td>
           </tr>
           <tr v-if="!spotlights.length"><td colspan="7" class="empty">등록된 스포트라이트가 없습니다.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 후기 미작성 경고 로그 -->
+    <section v-else-if="tab === 'warnings'">
+      <h3>후기 미작성 경고 로그</h3>
+      <p class="hint">게임 키 수령 후 30일(연장 시 +7일) 안에 후기를 안 쓴 회원 목록이에요. 스윕은 1시간마다 자동 실행됩니다.</p>
+      <table class="grid">
+        <thead><tr><th>회원</th><th>컨텐츠</th><th>후기 마감</th><th>경고 시각</th><th>연장</th><th>후기</th></tr></thead>
+        <tbody>
+          <tr v-for="w in reviewWarnings" :key="w.applicationId">
+            <td>#{{ w.memberId }} {{ w.nickname }}</td>
+            <td>{{ w.campaignTitle }}</td>
+            <td>{{ w.reviewDeadline?.slice(0, 10) }}</td>
+            <td>{{ w.warnedAt?.slice(0, 16).replace('T', ' ') }}</td>
+            <td>{{ w.deadlineExtended ? '사용' : '-' }}</td>
+            <td>{{ w.reviewWritten ? '✅ 뒤늦게 작성' : '❌ 미작성' }}</td>
+          </tr>
+          <tr v-if="!reviewWarnings.length"><td colspan="6" class="empty">경고 이력이 없습니다.</td></tr>
         </tbody>
       </table>
     </section>
@@ -890,7 +1041,7 @@ function onTab(t: Tab) {
             <td>{{ m.followerCount ?? '-' }}</td>
             <td>
               <select :value="m.role" @change="changeMemberRole(m, ($event.target as HTMLSelectElement).value)">
-                <option>VIEWER</option><option>STREAMER</option><option>ADMIN</option>
+                <option>VIEWER</option><option>STREAMER</option><option>REPORTER</option><option>ADMIN</option>
               </select>
               <span v-if="m.roleOverridden" class="badge">수동</span>
             </td>
@@ -914,6 +1065,19 @@ function onTab(t: Tab) {
             <button class="btn sm" @click="saveLiveChannel">저장</button>
           </div>
         </label>
+        <div class="live-banner-box">
+          <h5 style="margin:14px 0 8px;">메인 라이브 배너 (히어로 바로 아래)</h5>
+          <label class="chk" style="margin-bottom:8px;">
+            <input type="checkbox" v-model="liveBannerEnabled" /> 배너 켜기 (끄면 메인에서 완전히 사라져요)
+          </label>
+          <label>방송 주소 (누구 방송을 띄울지 — 치지직/숲/유튜브 URL)
+            <input v-model="liveBannerUrl" placeholder="https://chzzk.naver.com/live/..." />
+          </label>
+          <label>배너 제목 (비우면 "지금 방송 중")
+            <input v-model="liveBannerTitle" placeholder="예) 씨미 님 스눅컵 연습 방송 🔴" />
+          </label>
+          <button class="btn sm" style="margin-top:8px;" @click="saveLiveBanner">라이브 배너 저장</button>
+        </div>
         <div class="site-images">
           <div v-for="si in SITE_IMAGES" :key="si.key" class="site-img">
             <span class="site-img-label">{{ si.label }}</span>
@@ -930,11 +1094,11 @@ function onTab(t: Tab) {
       <div class="form-card site-card">
         <div v-for="b in BANNER_TEXTS" :key="b.page" class="banner-text-row">
           <span class="banner-text-label">{{ b.label }}</span>
-          <input v-model="bannerTextInputs[`BANNER_${b.page}_TITLE`]" placeholder="제목 (비우면 기본 문구)" />
-          <input v-model="bannerTextInputs[`BANNER_${b.page}_SUB`]" placeholder="부제 문구 (비우면 기본 문구)" class="wide" />
+          <input v-model="bannerTextInputs[`BANNER_${b.page}_TITLE`]" placeholder="제목 (비우면 표시 안 함)" />
+          <input v-model="bannerTextInputs[`BANNER_${b.page}_SUB`]" placeholder="부제 문구 (비우면 표시 안 함)" class="wide" />
           <button class="btn sm" @click="saveBannerText(b.page)">저장</button>
         </div>
-        <p class="hint">비워두고 저장하면 페이지 기본 문구로 돌아갑니다.</p>
+        <p class="hint">비워두고 저장하면 문구가 <b>표시되지 않아요</b>. 기본 문구로 돌리려면 <code>-</code> 하나만 입력 후 저장.</p>
       </div>
 
       <h4 style="margin-top:28px">설정값</h4>
@@ -954,7 +1118,7 @@ function onTab(t: Tab) {
       <h4 style="margin-top:28px">권한 수동 오버라이드</h4>
       <div class="override">
         <input type="number" v-model.number="overrideMemberId" placeholder="회원 ID" />
-        <select v-model="overrideRole"><option>VIEWER</option><option>STREAMER</option><option>ADMIN</option></select>
+        <select v-model="overrideRole"><option>VIEWER</option><option>STREAMER</option><option>REPORTER</option><option>ADMIN</option></select>
         <button class="btn sm" @click="doOverride">적용</button>
       </div>
     </section>

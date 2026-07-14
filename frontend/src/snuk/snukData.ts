@@ -3,10 +3,10 @@
  * 시안 더미 배열과 동일한 필드 계약을 유지하되, 실 데이터의 id/액션 정보를 추가한다.
  * 실패한 소스는 빈 배열로 두고 나머지는 정상 노출(부분 실패 허용).
  */
-import { campaignApi, collabApi, goodsApi, noticeApi, siteSettingsApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
+import { campaignApi, collabApi, goodsApi, liveApi, newsApi, noticeApi, siteSettingsApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
 import type {
-  Campaign, CollabGame, ContentVideo, Goods, Notice, ParticipantPublic, Review, Spotlight,
-  StreamerPublic, Tournament,
+  Campaign, CollabGame, ContentVideo, Goods, News, Notice, ParticipantPublic, Review, Spotlight,
+  StreamerLive, StreamerPublic, Tournament,
 } from '@/api/types'
 import { GOODS_READY, OFFICIAL_CHZZK_CHANNEL_ID } from '@/config'
 
@@ -24,6 +24,8 @@ export interface SnukCard {
   img: string | null
   eventDate: string | null
   resultText?: string | null
+  /** 관리자 등록 여부(스눅 공식) — 홈 큰 카드는 관리자 컨텐츠만 */
+  adminMade?: boolean
 }
 
 export interface SnukGame {
@@ -61,6 +63,11 @@ export interface SnukData {
   streamers: Array<{
     id: number; name: string; img: string | null; platform: 'chz' | 'soop' | 'cime'
     followers: number | null; channelUrl: string | null
+    live: boolean; liveTitle: string
+  }>
+  news: Array<{
+    id: number; title: string; author: string; authorImg: string | null
+    date: string; thumb: string | null; excerpt: string
   }>
   chzzkChannelId: string
   /** 어드민 "설정" 탭에서 관리하는 공개 설정 (배너/히어로 이미지 등, '-'=미설정) */
@@ -86,6 +93,7 @@ function campaignCard(c: Campaign): SnukCard {
     max: c.totalSlots, filled: c.filledSlots, status,
     statusLabel: c.status === 'OPEN' ? '모집중' : c.status === 'SCHEDULED' ? '오픈예정' : '마감',
     img: c.promoImageUrl, eventDate: c.eventDate,
+    adminMade: c.ownerMemberId == null, // 스눅 공식(관리자 등록) — 스트리머 등록은 작게만
   }
 }
 
@@ -113,7 +121,7 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 
 /** 전 페이지 공용 데이터 로드(공개 API만 — 로그인 불필요). */
 export async function loadSnukData(): Promise<SnukData> {
-  const [campaigns, tournaments, videos, goods, clients, games, notices, spotlights, streamers, siteSettings] = await Promise.all([
+  const [campaigns, tournaments, videos, goods, clients, games, notices, spotlights, streamers, siteSettings, news, liveStreamers] = await Promise.all([
     safe<Campaign[]>(campaignApi.list(), []),
     safe<Tournament[]>(tournamentApi.list(), []),
     safe<ContentVideo[]>(collabApi.videos(), []),
@@ -124,7 +132,10 @@ export async function loadSnukData(): Promise<SnukData> {
     safe<Spotlight[]>(spotlightApi.active(), []),
     safe<StreamerPublic[]>(streamerApi.list(), []),
     safe<Record<string, string>>(siteSettingsApi.get(), {}),
+    safe<News[]>(newsApi.list(), []),
+    safe<StreamerLive[]>(liveApi.streamers(), []),
   ])
+  const liveById = new Map(liveStreamers.map((l) => [l.memberId, l]))
 
   // 게임체험단: 콜라보 게임 ↔ 연결된 캠페인(V6) + 후기 3건 미리보기
   const campaignById = new Map(campaigns.map((c) => [c.id, c]))
@@ -155,11 +166,15 @@ export async function loadSnukData(): Promise<SnukData> {
     ? await safe<ParticipantPublic[]>(tournamentApi.participants(rosterTarget.id), [])
     : []
 
-  const featuredCampaign = campaigns.find((c) => c.featured) ?? null
+  // 게임체험단 연계 캠페인(키 배포용)은 컨텐츠 목록에서 제외 — 게임체험단 섹션에서만 노출
+  const gameLinkedIds = new Set(games.map((g) => g.campaignId).filter((id) => id != null))
+  const pureCampaigns = campaigns.filter((c) => !gameLinkedIds.has(c.id))
+
+  const featuredCampaign = pureCampaigns.find((c) => c.featured) ?? null
   const featuredTournament = tournaments.find((t) => t.featured) ?? null
 
   return {
-    snukContents: campaigns.map(campaignCard),
+    snukContents: pureCampaigns.map(campaignCard),
     snukFeatured: featuredCampaign ? campaignCard(featuredCampaign) : null,
     mugContents: tournaments.map(tournamentCard),
     mugFeatured: featuredTournament ? tournamentCard(featuredTournament) : null,
@@ -190,10 +205,18 @@ export async function loadSnukData(): Promise<SnukData> {
       platform: PROVIDER_PLAT[p.provider] ?? 'chz', streamUrl: null,
     })),
     rosterTournamentTitle: rosterTarget?.title ?? '',
+    // 라이브 중인 스트리머 우선 노출(항목 7)
     streamers: streamers.map((s) => ({
       id: s.id, name: s.nickname, img: s.profileImageUrl,
       platform: PROVIDER_PLAT[s.provider] ?? 'chz',
       followers: s.followerCount, channelUrl: s.channelUrl,
+      live: liveById.get(s.id)?.live ?? false,
+      liveTitle: liveById.get(s.id)?.liveTitle ?? '',
+    })).sort((a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0)),
+    news: news.map((n) => ({
+      id: n.id, title: n.title, author: n.authorName, authorImg: n.authorImageUrl,
+      date: dateOf(n.createdAt), thumb: n.thumbnailUrl,
+      excerpt: (n.content ?? '').replace(/\s+/g, ' ').slice(0, 80),
     })),
     chzzkChannelId:
       (siteSettings.LIVE_CHANNEL_ID && siteSettings.LIVE_CHANNEL_ID !== '-')

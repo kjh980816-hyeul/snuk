@@ -46,7 +46,9 @@ public class AdminController {
                                                     @RequestBody Map<String, String> body,
                                                     @AuthenticationPrincipal MemberPrincipal principal) {
         String value = body.get("value");
-        if (value == null || value.isBlank()) {
+        // 배너/라이브 배너 문구는 빈값 허용(항목 4: 제목 비우기 = 미표시). '-' 는 기본 문구.
+        boolean blankAllowed = key.startsWith("BANNER_") || key.startsWith("LIVE_BANNER_");
+        if (value == null || (!blankAllowed && value.isBlank())) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "value 가 필요합니다.");
         }
         AppSetting saved = appSettingService.upsert(key, value, principal.memberId());

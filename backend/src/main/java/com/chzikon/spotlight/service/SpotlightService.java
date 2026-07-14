@@ -68,6 +68,15 @@ public class SpotlightService {
         return withMembers(spotlightRepository.findTop50ByOrderByCreatedAtDesc());
     }
 
+    /** 어드민 승인 — 승인 시각부터 2시간 노출(승인제, 항목 12). */
+    @Transactional
+    public void approve(Long id, Long actorId) {
+        Spotlight spotlight = spotlightRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        spotlight.approve();
+        adminLogService.record(actorId, "SPOTLIGHT_APPROVE", "spotlight", id, spotlight.getTitle());
+    }
+
     @Transactional
     public void delete(Long id, Long actorId) {
         Spotlight spotlight = spotlightRepository.findById(id)

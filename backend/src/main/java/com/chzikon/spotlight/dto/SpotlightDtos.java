@@ -20,7 +20,7 @@ public final class SpotlightDtos {
     ) {
     }
 
-    /** 공개 노출용 — 등록 스트리머의 닉네임/프사 포함. */
+    /** 공개 노출용 — 등록 스트리머의 닉네임/프사 포함. approved 는 어드민 승인 대기열 구분용. */
     public record SpotlightResponse(
             Long id,
             String title,
@@ -28,6 +28,7 @@ public final class SpotlightDtos {
             String streamUrl,
             String streamerName,
             String streamerImageUrl,
+            boolean approved,
             LocalDateTime createdAt,
             LocalDateTime expiresAt
     ) {
@@ -35,7 +36,7 @@ public final class SpotlightDtos {
             return new SpotlightResponse(s.getId(), s.getTitle(), s.getPlatform().name(), s.getStreamUrl(),
                     m != null ? m.getNickname() : "스트리머",
                     m != null ? m.getProfileImageUrl() : null,
-                    s.getCreatedAt(), s.getExpiresAt());
+                    s.isApproved(), s.getCreatedAt(), s.getExpiresAt());
         }
     }
 }

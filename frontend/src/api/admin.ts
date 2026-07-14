@@ -78,9 +78,16 @@ export const adminApi = {
     api.patch<Notice>(`/api/admin/notices/${id}`, body).then((r) => r.data),
   deleteNotice: (id: number) => api.delete(`/api/admin/notices/${id}`),
 
-  // spotlights
+  // spotlights (승인제 — 승인 시각부터 2시간 노출)
   spotlights: () => api.get<Spotlight[]>('/api/admin/spotlights').then((r) => r.data),
+  approveSpotlight: (id: number) => api.post(`/api/admin/spotlights/${id}/approve`),
   deleteSpotlight: (id: number) => api.delete(`/api/admin/spotlights/${id}`),
+
+  // 후기 미작성 경고 로그
+  reviewWarnings: () =>
+    api.get<Array<{ applicationId: number; memberId: number; nickname: string; campaignId: number; campaignTitle: string; reviewDeadline: string; warnedAt: string; deadlineExtended: boolean; reviewWritten: boolean }>>(
+      '/api/admin/review-warnings',
+    ).then((r) => r.data),
 
   // settings / members / logs
   settings: () => api.get<Array<{ settingKey: string; settingValue: string; description: string | null }>>(

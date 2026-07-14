@@ -24,8 +24,8 @@ public class PublicSettingsController {
     private static final Set<String> PUBLIC_KEYS = Set.of("LIVE_CHANNEL_ID", "HERO_IMAGE_URL");
 
     private static boolean isPublic(String key) {
-        // BANNER_* = 페이지 배너 이미지·문구(V10/V12 시드) — 전부 노출용 값
-        return PUBLIC_KEYS.contains(key) || key.startsWith("BANNER_");
+        // BANNER_* = 페이지 배너 이미지·문구(V10/V12), LIVE_BANNER_* = 메인 라이브 배너(V13) — 전부 노출용 값
+        return PUBLIC_KEYS.contains(key) || key.startsWith("BANNER_") || key.startsWith("LIVE_BANNER_");
     }
 
     private final AppSettingService appSettingService;

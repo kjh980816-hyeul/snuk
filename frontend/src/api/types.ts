@@ -1,4 +1,4 @@
-export type Role = 'GUEST' | 'VIEWER' | 'STREAMER' | 'ADMIN'
+export type Role = 'GUEST' | 'VIEWER' | 'STREAMER' | 'REPORTER' | 'ADMIN'
 export type CampaignStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED'
 export type DistributionType = 'FCFS' | 'APPROVAL'
 export type KeyMode = 'QUANTITY' | 'UNIQUE_KEY'
@@ -27,6 +27,7 @@ export interface Campaign {
   totalSlots: number
   filledSlots: number
   featured: boolean
+  ownerMemberId: number | null
 }
 
 export interface CollabGame {
@@ -158,8 +159,29 @@ export interface Spotlight {
   streamUrl: string
   streamerName: string
   streamerImageUrl: string | null
+  approved: boolean
   createdAt: string
   expiresAt: string
+}
+
+// ----- 스눅 뉴스 (REPORTER+ 작성) -----
+export interface News {
+  id: number
+  title: string
+  content: string | null
+  thumbnailUrl: string | null
+  authorId: number
+  authorName: string
+  authorImageUrl: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// ----- 라이브(스트리머 일괄) -----
+export interface StreamerLive {
+  memberId: number
+  live: boolean
+  liveTitle: string
 }
 
 // ----- 마이페이지 -----
@@ -172,6 +194,10 @@ export interface MypageSummary {
     hasAssignedKey: boolean
     maskedKey: string | null
     appliedAt: string
+    reviewDeadline: string | null
+    deadlineExtended: boolean
+    warned: boolean
+    reviewWritten: boolean
   }>
   tournaments: Array<{
     participantId: number

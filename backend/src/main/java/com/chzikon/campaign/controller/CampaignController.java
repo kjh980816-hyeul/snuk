@@ -1,7 +1,10 @@
 package com.chzikon.campaign.controller;
 
+import com.chzikon.campaign.dto.CampaignCreateRequest;
 import com.chzikon.campaign.dto.CampaignResponse;
+import com.chzikon.campaign.dto.CampaignUpdateRequest;
 import com.chzikon.campaign.dto.MyApplicationResponse;
+import jakarta.validation.Valid;
 import com.chzikon.campaign.service.CampaignApplicationService;
 import com.chzikon.campaign.service.CampaignService;
 import com.chzikon.global.security.MemberPrincipal;
@@ -31,6 +34,33 @@ public class CampaignController {
     @GetMapping("/{id}")
     public ResponseEntity<CampaignResponse> detail(@PathVariable Long id) {
         return ResponseEntity.ok(CampaignResponse.from(campaignService.getById(id)));
+    }
+
+    /** 컨텐츠 등록 — STREAMER+ (항목 1, 서비스 재검증). 소유자 기록되어 본인 수정/삭제 가능. */
+    @PostMapping
+    public ResponseEntity<CampaignResponse> create(
+            @Valid @RequestBody CampaignCreateRequest req,
+            @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(CampaignResponse.from(
+                campaignService.createByStreamer(req, principal.memberId())));
+    }
+
+    /** 본인 컨텐츠 수정 — 소유자 또는 ADMIN. */
+    @PutMapping("/{id}")
+    public ResponseEntity<CampaignResponse> update(
+            @PathVariable Long id,
+            @RequestBody CampaignUpdateRequest req,
+            @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(CampaignResponse.from(
+                campaignService.updateOwned(id, req, principal.memberId())));
+    }
+
+    /** 본인 컨텐츠 삭제 — 소유자 또는 ADMIN. */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id,
+                                       @AuthenticationPrincipal MemberPrincipal principal) {
+        campaignService.deleteOwned(id, principal.memberId());
+        return ResponseEntity.noContent().build();
     }
 
     /** 신청 — STREAMER+ (서비스에서 권한·슬롯·중복 백엔드 재검증). */

@@ -1,9 +1,9 @@
 import api from './client'
 import type {
   Campaign, ClientLogo, CollabGame, ContentVideo, Goods, Me, MyApplication,
-  MyParticipation, MypageSummary, Notice, OrderCreateRequest, OrderResponse, OrderView,
-  ParticipantPublic, Review, Spotlight, SpotlightPlatform, StreamerPost, StreamerProfile,
-  StreamerPublic, Tournament,
+  MyParticipation, MypageSummary, News, Notice, OrderCreateRequest, OrderResponse, OrderView,
+  ParticipantPublic, Review, Spotlight, SpotlightPlatform, StreamerLive, StreamerPost,
+  StreamerProfile, StreamerPublic, Tournament,
 } from './types'
 
 // ----- auth -----
@@ -46,6 +46,34 @@ export const campaignApi = {
 // ----- mypage (로그인 필요) -----
 export const mypageApi = {
   summary: () => api.get<MypageSummary>('/api/mypage/summary').then((r) => r.data),
+  /** 후기 마감 7일 연장(게임당 1회) */
+  extendDeadline: (applicationId: number) =>
+    api.post<{ applicationId: number; reviewDeadline: string }>(
+      `/api/mypage/applications/${applicationId}/extend`).then((r) => r.data),
+}
+
+// ----- 스눅 뉴스 (조회 공개, 작성 REPORTER+) -----
+export const newsApi = {
+  list: () => api.get<News[]>('/api/news').then((r) => r.data),
+  detail: (id: number) => api.get<News>(`/api/news/${id}`).then((r) => r.data),
+  write: (body: { title: string; content: string; thumbnailUrl?: string | null }) =>
+    api.post<News>('/api/news', body).then((r) => r.data),
+  edit: (id: number, body: { title: string; content: string; thumbnailUrl?: string | null }) =>
+    api.put<News>(`/api/news/${id}`, body).then((r) => r.data),
+  remove: (id: number) => api.delete(`/api/news/${id}`),
+  uploadImage: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<{ url: string }>('/api/news/upload-image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
+}
+
+// ----- 라이브 상태 (public) -----
+export const liveApi = {
+  status: () => api.get<{ live: boolean; liveTitle: string }>('/api/live/status').then((r) => r.data),
+  streamers: () => api.get<StreamerLive[]>('/api/live/streamers').then((r) => r.data),
 }
 
 // ----- tournaments (public) -----

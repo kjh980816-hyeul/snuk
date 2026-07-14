@@ -96,21 +96,23 @@ public class LocalDataSeeder implements ApplicationRunner {
 
     private void seedGoods() {
         if (goodsRepository.count() > 0) return;
+        // 전부 HIDDEN 시드 — 굿즈샵은 ACTIVE 굿즈가 1개라도 생겨야 노출(준비중 게이트).
+        // 어드민에서 ACTIVE 로 바꾸면 샵/홈 섹션이 자동으로 열리는지 확인하는 용도.
         goodsRepository.save(Goods.builder()
                 .name("SNUK 로고 티셔츠")
                 .description("스트리머 콜라보 기념 오버핏 반팔 티셔츠. 블랙/화이트.")
                 .imageUrl("https://placehold.co/600x600/1a1a1a/ffffff?text=SNUK+Tee")
-                .price(25000).stock(50).status(GoodsStatus.ACTIVE).sortOrder(0).build());
+                .price(25000).stock(50).status(GoodsStatus.HIDDEN).sortOrder(0).build());
         goodsRepository.save(Goods.builder()
                 .name("SNUK 아크릴 키링")
                 .description("귀여운 마스코트 아크릴 키링. 랜덤 1종.")
                 .imageUrl("https://placehold.co/600x600/f9a825/1a1a1a?text=Keyring")
-                .price(8000).stock(120).status(GoodsStatus.ACTIVE).sortOrder(1).build());
+                .price(8000).stock(120).status(GoodsStatus.HIDDEN).sortOrder(1).build());
         goodsRepository.save(Goods.builder()
                 .name("SNUK 스티커 팩")
                 .description("방송용 데코 스티커 12종 세트.")
                 .imageUrl("https://placehold.co/600x600/e64a19/ffffff?text=Stickers")
-                .price(5000).stock(0).status(GoodsStatus.ACTIVE).sortOrder(2).build()); // 품절 상태 확인용
+                .price(5000).stock(0).status(GoodsStatus.HIDDEN).sortOrder(2).build()); // 품절 상태 확인용
         goodsRepository.save(Goods.builder()
                 .name("[준비중] 시즌2 후드집업")
                 .description("공개 예정 상품(숨김 상태 — 어드민에만 노출).")

@@ -11,7 +11,10 @@ export const useAuthStore = defineStore('auth', () => {
   const loaded = ref(false)
 
   const isLoggedIn = computed(() => me.value !== null)
-  const isStreamer = computed(() => me.value?.role === 'STREAMER' || me.value?.role === 'ADMIN')
+  const isStreamer = computed(
+    () => me.value?.role === 'STREAMER' || me.value?.role === 'REPORTER' || me.value?.role === 'ADMIN')
+  /** 스눅 뉴스 작성 자격(REPORTER 이상) */
+  const isReporter = computed(() => me.value?.role === 'REPORTER' || me.value?.role === 'ADMIN')
   const isAdmin = computed(() => me.value?.role === 'ADMIN')
 
   async function fetchMe(): Promise<void> {
@@ -45,5 +48,5 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = `/oauth2/authorization/${provider}`
   }
 
-  return { me, loaded, isLoggedIn, isStreamer, isAdmin, fetchMe, logout, login }
+  return { me, loaded, isLoggedIn, isStreamer, isReporter, isAdmin, fetchMe, logout, login }
 })

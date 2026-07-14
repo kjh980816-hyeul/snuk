@@ -23,6 +23,14 @@ public class AdminSpotlightController {
         return ResponseEntity.ok(spotlightService.findRecentForAdmin());
     }
 
+    /** 승인 — 승인 시각부터 2시간 노출. */
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<Void> approve(@PathVariable Long id,
+                                        @AuthenticationPrincipal MemberPrincipal principal) {
+        spotlightService.approve(id, principal.memberId());
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id,
                                        @AuthenticationPrincipal MemberPrincipal principal) {

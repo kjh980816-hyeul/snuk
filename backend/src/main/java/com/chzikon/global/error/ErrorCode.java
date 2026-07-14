@@ -30,6 +30,8 @@ public enum ErrorCode {
 
     // 후기 (REV)
     REVIEW_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "R001", "참가자만 후기를 작성할 수 있습니다."),
+    DEADLINE_ALREADY_EXTENDED(HttpStatus.CONFLICT, "R002", "후기 마감 연장은 게임당 1회만 가능합니다."),
+    DEADLINE_NOT_APPLICABLE(HttpStatus.CONFLICT, "R003", "후기 마감이 없는 신청입니다."),
 
     // 굿즈/결제 (GOODS)
     GOODS_NOT_AVAILABLE(HttpStatus.CONFLICT, "G001", "판매 중인 상품이 아닙니다."),

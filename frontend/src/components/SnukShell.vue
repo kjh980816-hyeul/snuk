@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { campaignApi, spotlightApi, tournamentApi } from '@/api'
@@ -75,11 +75,23 @@ function errorMessage(e: unknown): string {
   return err?.response?.data?.message ?? '요청에 실패했습니다'
 }
 
+/**
+ * 데이터 동기화 3중화 — 메인 섹션과 메뉴 페이지가 항상 같은 최신 데이터를 보도록:
+ * ① 라우트 이동마다 재로딩 ② 신청/등록 액션 후 재로딩 ③ 60초 주기 갱신(탭 활성 시).
+ * (기존엔 셸 최초 마운트 1회 로드뿐이라 페이지·메인이 따로 놀았음 — 2026-07-14)
+ */
+let reloading = false
 async function reloadData(): Promise<void> {
-  w.__SNUK_DATA = await loadSnukData()
-  const init = w.__snukInit as (() => void) | undefined
-  init?.()
-  reflectLoginState()
+  if (reloading) return
+  reloading = true
+  try {
+    w.__SNUK_DATA = await loadSnukData()
+    const init = w.__snukInit as (() => void) | undefined
+    init?.()
+    reflectLoginState()
+  } finally {
+    reloading = false
+  }
 }
 
 onMounted(async () => {
@@ -108,7 +120,7 @@ onMounted(async () => {
     location.href = '/'
   }
   w.__snukActions = {
-    // 신청 후 선착순 키 발급 여부 확인 → 발급 키 즉시 노출
+    // 신청 후 선착순 키 발급 여부 확인 → 발급 키 즉시 노출 (완료 후 전 화면 데이터 동기화)
     applyCampaign: async (id: number) => {
       const applied = await campaignApi.apply(id)
       try {
@@ -116,9 +128,15 @@ onMounted(async () => {
         return { ...applied, assignedKey: mine.hasAssignedKey ? mine.assignedKey : null }
       } catch {
         return { ...applied, assignedKey: null }
+      } finally {
+        void reloadData()
       }
     },
-    applyTournament: (id: number) => tournamentApi.apply(id),
+    applyTournament: async (id: number) => {
+      const res = await tournamentApi.apply(id)
+      void reloadData()
+      return res
+    },
     writeReview: (campaignId: number, title: string, content: string) =>
       campaignApi.writeReview(campaignId, { title, content }),
     createSpotlight: (body: { title: string; platform: SpotlightPlatform; streamUrl: string }) =>
@@ -168,7 +186,15 @@ onMounted(async () => {
 watch(() => route.path, (path) => {
   const setNav = w.__snukSetActiveNav as ((p: string) => void) | undefined
   setNav?.(path)
+  // 페이지 이동 시 최신 데이터로 재로딩 — 어디서 뭘 바꿔도 다음 화면에 바로 반영
+  void reloadData()
 })
+
+// 60초 주기 갱신(탭이 보일 때만) — 라이브 상태/모집 현황을 머무는 화면에서도 최신화
+const refreshTimer = window.setInterval(() => {
+  if (document.visibilityState === 'visible') void reloadData()
+}, 60_000)
+onBeforeUnmount(() => window.clearInterval(refreshTimer))
 
 watch(() => auth.me, () => reflectLoginState())
 </script>

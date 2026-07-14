@@ -66,6 +66,10 @@ public class Campaign {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
+    /** 등록 스트리머(NULL = 어드민 등록). 본인 수정/삭제 권한 판별용. */
+    @Column(name = "owner_member_id")
+    private Long ownerMemberId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -114,6 +118,15 @@ public class Campaign {
         if (featured != null) this.featured = featured;
         if (sortOrder != null) this.sortOrder = sortOrder;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 스트리머 본인 등록 컨텐츠 표시. */
+    public void assignOwner(Long memberId) {
+        this.ownerMemberId = memberId;
+    }
+
+    public boolean isOwnedBy(Long memberId) {
+        return this.ownerMemberId != null && this.ownerMemberId.equals(memberId);
     }
 
     public boolean isOpenForApply() {

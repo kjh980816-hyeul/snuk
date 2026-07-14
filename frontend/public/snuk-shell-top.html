@@ -19,15 +19,13 @@
   </div>
   <div class="rs-nav">
     <button class="rs-item" onclick="__snukNav('/')">HOME</button>
-    <button class="rs-item" onclick="__snukNav('/campaigns')">콘텐츠</button>
+    <button class="rs-item" onclick="__snukNav('/campaigns')">컨텐츠·대회</button>
     <button class="rs-item" onclick="__snukNav('/games')">게임체험단</button>
     <button class="rs-item" onclick="__snukNav('/streamers')">스트리머</button>
-    <button class="rs-item" onclick="__snukNav('/championship')">대회</button>
-    <button class="rs-item" onclick="__snukNav('/live')">생방송</button>
+    <button class="rs-item" onclick="__snukNav('/news')">스눅 뉴스</button>
     <button class="rs-item" onclick="__snukNav('/videos')">영상</button>
     <button class="rs-item" onclick="__snukNav('/goods')">굿즈샵</button>
     <button class="rs-item" onclick="__snukNav('/clients')">협력사</button>
-    <button class="rs-item" onclick="__snukNav('/mypage')">마이페이지</button>
     <button class="rs-item rs-admin-item" style="display:none;color:#ffb300;" onclick="__snukNav('/admin')">관리자</button>
   </div>
 </div>
@@ -65,15 +63,13 @@
 
   <div class="rs-nav">
     <button class="rs-item" onclick="__snukNav('/')">HOME</button>
-    <button class="rs-item" onclick="__snukNav('/campaigns')">콘텐츠</button>
+    <button class="rs-item" onclick="__snukNav('/campaigns')">컨텐츠·대회</button>
     <button class="rs-item" onclick="__snukNav('/games')">게임체험단</button>
     <button class="rs-item" onclick="__snukNav('/streamers')">스트리머</button>
-    <button class="rs-item" onclick="__snukNav('/championship')">대회</button>
-    <button class="rs-item" onclick="__snukNav('/live')">생방송</button>
+    <button class="rs-item" onclick="__snukNav('/news')">스눅 뉴스</button>
     <button class="rs-item" onclick="__snukNav('/videos')">영상</button>
     <button class="rs-item" onclick="__snukNav('/goods')">굿즈샵</button>
     <button class="rs-item" onclick="__snukNav('/clients')">협력사</button>
-    <button class="rs-item" onclick="__snukNav('/mypage')">마이페이지</button>
     <button class="rs-item rs-admin-item" style="display:none;color:#ffb300;" onclick="__snukNav('/admin')">관리자</button>
   </div>
 
@@ -86,30 +82,7 @@
     <div id="rs-notice-list"></div>
   </div>
 
-  <!-- 스포트라이트 -->
-  <div class="rs-spotlight">
-    <!-- 제목 -->
-    <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
-      <span class="rs-spotlight-title">스포트라이트</span>
-      <span class="rs-spotlight-info" onclick="showToast('스포트라이트: 현재 방송 중인 채널을 홍보하세요')">ⓘ</span>
-    </div>
-    <!-- 신청하기 버튼 (제목 바로 아래) -->
-    <button onclick="openSpotlight()" style="width:100%;padding:8px 0;border-radius:8px;
-      background:#2a2a2e;color:#ffffff;border:none;cursor:pointer;
-      font-family:'Pretendard','Noto Sans KR',sans-serif;font-size:12px;font-weight:700;
-      margin-bottom:12px;transition:all .15s;letter-spacing:.3px;"
-      onmouseover="this.style.background='#1a1a1e'" onmouseout="this.style.background='#2a2a2e'">
-      내 방송 홍보하기 →
-    </button>
-    <div id="spotlight-list">
-      <!-- 빈 상태 -->
-      <div id="spotlight-empty" style="border:1px dashed var(--border2);border-radius:10px;padding:16px 12px;text-align:center;">
-        <div style="font-size:12px;color:var(--text3);line-height:1.6;">이 시간 스포트라이트가 비어있어요!</div>
-      </div>
-      <!-- 1줄에 1개씩 2줄 (최대 2개 노출) -->
-      <div id="spotlight-cards" style="display:flex;flex-direction:column;gap:8px;"></div>
-    </div>
-  </div>
+  <!-- 스포트라이트: 메인 배너 아래 섹션(#spotlight-section)으로 이동, 등록은 마이페이지 -->
 </aside>
 
 <!-- ══════════════════════════════════════════

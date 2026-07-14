@@ -37,6 +37,10 @@ public class Post {
     @Column(name = "is_hidden", nullable = false)
     private boolean hidden;
 
+    /** 뉴스 매거진 카드 썸네일(NEWS 전용, 선택). */
+    @Column(name = "thumbnail_url", length = 512)
+    private String thumbnailUrl;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -57,6 +61,11 @@ public class Post {
     public void edit(String title, String content) {
         if (title != null) this.title = title;
         this.content = content;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void changeThumbnail(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
         this.updatedAt = LocalDateTime.now();
     }
 

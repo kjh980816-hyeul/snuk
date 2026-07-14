@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SnukSections from '@/components/SnukSections.vue'
-// 콘텐츠: SNUK 컨텐츠(캠페인) — 게임체험단은 /games 로 분리
+// 컨텐츠·대회 통합 페이지 — 한 목록에 컨텐츠+대회 함께(모집중 우선), 상단 피처드는 공식 컨텐츠
 const show = ['snuk-contents']
 </script>
 

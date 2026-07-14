@@ -20,7 +20,11 @@ public record MypageSummaryResponse(
             String status,
             boolean hasAssignedKey,
             String maskedKey,
-            LocalDateTime appliedAt
+            LocalDateTime appliedAt,
+            LocalDateTime reviewDeadline,   // 키 수령 후 후기 마감(없으면 null)
+            boolean deadlineExtended,       // 7일 연장 사용 여부(게임당 1회)
+            boolean warned,                 // 마감 경과 경고 여부
+            boolean reviewWritten           // 후기 작성 완료 여부
     ) {}
 
     public record MyTournamentItem(

@@ -4,6 +4,7 @@ import com.chzikon.campaign.dto.*;
 import com.chzikon.campaign.service.CampaignApplicationService;
 import com.chzikon.campaign.service.CampaignService;
 import com.chzikon.campaign.service.GameKeyService;
+import com.chzikon.campaign.service.ReviewDeadlineService;
 import com.chzikon.global.security.MemberPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class AdminCampaignController {
     private final CampaignService campaignService;
     private final GameKeyService gameKeyService;
     private final CampaignApplicationService applicationService;
+    private final ReviewDeadlineService reviewDeadlineService;
 
     // ----- 캠페인 CRUD -----
     @PostMapping("/campaigns")
@@ -91,5 +93,11 @@ public class AdminCampaignController {
                                        @AuthenticationPrincipal MemberPrincipal principal) {
         applicationService.reject(id, principal.memberId());
         return ResponseEntity.ok().build();
+    }
+
+    // ----- 후기 미작성 경고 로그 -----
+    @GetMapping("/review-warnings")
+    public ResponseEntity<List<ReviewWarningAdminView>> reviewWarnings() {
+        return ResponseEntity.ok(reviewDeadlineService.warnings());
     }
 }

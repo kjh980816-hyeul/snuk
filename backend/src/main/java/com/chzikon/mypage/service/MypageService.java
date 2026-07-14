@@ -10,6 +10,7 @@ import com.chzikon.global.crypto.KeyCipher;
 import com.chzikon.goods.repository.GoodsOrderRepository;
 import com.chzikon.mypage.dto.MypageSummaryResponse;
 import com.chzikon.mypage.dto.MypageSummaryResponse.*;
+import com.chzikon.review.domain.PostCategory;
 import com.chzikon.review.repository.PostRepository;
 import com.chzikon.tournament.domain.Tournament;
 import com.chzikon.tournament.repository.TournamentParticipantRepository;
@@ -60,9 +61,12 @@ public class MypageService {
                     maskedKey = KeyCipher.mask(keyCipher.decrypt(key.getKeyValueEnc()));
                 }
             }
+            boolean reviewWritten = postRepository.existsByCategoryAndCampaignIdAndMemberId(
+                    PostCategory.REVIEW, a.getCampaignId(), memberId);
             return new MyCampaignItem(a.getId(), a.getCampaignId(),
                     c != null ? c.getTitle() : "(삭제된 캠페인)",
-                    a.getStatus().name(), maskedKey != null, maskedKey, a.getAppliedAt());
+                    a.getStatus().name(), maskedKey != null, maskedKey, a.getAppliedAt(),
+                    a.getReviewDeadline(), a.isDeadlineExtended(), a.getWarnedAt() != null, reviewWritten);
         }).toList();
     }
 

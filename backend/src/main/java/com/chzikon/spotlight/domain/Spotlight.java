@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/** 스트리머 방송 홍보(스포트라이트). 등록 후 2시간 노출, 사이드바 최대 2개 표시. */
+/** 스트리머 방송 홍보(스포트라이트). 승인제 — 어드민 승인 시각부터 2시간 노출, 최대 2개 표시. */
 @Entity
 @Table(name = "spotlight")
 @Getter
@@ -41,6 +41,13 @@ public class Spotlight {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    /** 승인제(어드민). 승인 전에는 사이드바 미노출. */
+    @Column(name = "is_approved", nullable = false)
+    private boolean approved;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
     public Spotlight(Long memberId, String title, Platform platform, String streamUrl) {
         this.memberId = memberId;
         this.title = title;
@@ -48,5 +55,12 @@ public class Spotlight {
         this.streamUrl = streamUrl;
         this.createdAt = LocalDateTime.now();
         this.expiresAt = this.createdAt.plusHours(EXPOSURE_HOURS);
+    }
+
+    /** 승인 — 노출 2시간은 승인 시각부터 다시 계산. */
+    public void approve() {
+        this.approved = true;
+        this.approvedAt = LocalDateTime.now();
+        this.expiresAt = this.approvedAt.plusHours(EXPOSURE_HOURS);
     }
 }
