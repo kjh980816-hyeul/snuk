@@ -166,6 +166,13 @@ onMounted(async () => {
       else await campaignApi.remove(id)
       void reloadData()
     },
+    // 주최자 참가자 관리 (본인 대회 한정 — 백엔드 재검증)
+    manageParticipants: (id: number) => tournamentApi.manageParticipants(id),
+    decideParticipant: async (id: number, pid: number, approve: boolean) => {
+      if (approve) await tournamentApi.approveParticipant(id, pid)
+      else await tournamentApi.rejectParticipant(id, pid)
+      void reloadData()
+    },
     errorMessage,
     reloadData,
   }

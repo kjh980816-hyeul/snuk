@@ -80,6 +80,30 @@ public class TournamentController {
                 "status", participant.getStatus().name()));
     }
 
+    /** 참가자 관리 목록 — 대회 소유 스트리머 또는 ADMIN. */
+    @GetMapping("/{id}/participants/manage")
+    public ResponseEntity<List<com.chzikon.tournament.dto.ParticipantManageView>> manageList(
+            @PathVariable Long id,
+            @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(participantService.listForManage(id, principal.memberId()));
+    }
+
+    /** 참가 승인 — 대회 소유 스트리머 또는 ADMIN (정원 원자 차감). */
+    @PostMapping("/{id}/participants/{pid}/approve")
+    public ResponseEntity<Void> approveParticipant(@PathVariable Long id, @PathVariable Long pid,
+                                                   @AuthenticationPrincipal MemberPrincipal principal) {
+        participantService.decideByOwner(id, pid, true, principal.memberId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** 참가 거절 — 대회 소유 스트리머 또는 ADMIN. */
+    @PostMapping("/{id}/participants/{pid}/reject")
+    public ResponseEntity<Void> rejectParticipant(@PathVariable Long id, @PathVariable Long pid,
+                                                  @AuthenticationPrincipal MemberPrincipal principal) {
+        participantService.decideByOwner(id, pid, false, principal.memberId());
+        return ResponseEntity.noContent().build();
+    }
+
     /** 내 참가 신청 상태 — 본인만. */
     @GetMapping("/{id}/my-participation")
     public ResponseEntity<MyParticipationResponse> myParticipation(

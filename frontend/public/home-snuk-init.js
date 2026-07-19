@@ -404,6 +404,7 @@ function openStreamerPost(kind) {
     <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
       <span style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(x.title)}</span>
       <span class="badge ${x.status === 'open' ? 'open' : 'closed'}">${esc(x.statusLabel)}</span>
+      ${isT ? `<button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#4cc38a;" onclick="spParticipants(${x.id},'${esc(x.title).replace(/'/g, '&#39;')}')">참가자</button>` : ''}
       <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="spEdit('${kind}',${x.id})">수정</button>
       <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#e5484d;" onclick="spDelete('${kind}',${x.id})">삭제</button>
     </div>`).join('');
@@ -448,6 +449,50 @@ async function spEdit(kind, id) {
   } catch (e) {
     showToast(A().errorMessage ? A().errorMessage(e) : '불러오기에 실패했습니다');
   }
+}
+
+// ── 주최자 참가자 관리 (본인 대회 신청자 승인/거절 — 백엔드가 소유자 재검증)
+async function spParticipants(tourId, title) {
+  let list;
+  try {
+    list = await A().manageParticipants(tourId);
+  } catch (e) {
+    showToast(A().errorMessage ? A().errorMessage(e) : '불러오기에 실패했습니다');
+    return;
+  }
+  const t = (D().mugContents || []).find((x) => x.id === tourId);
+  const stLabel = { PENDING: '대기', APPROVED: '승인됨', REJECTED: '거절됨' };
+  const stCls = { PENDING: '', APPROVED: 'open', REJECTED: 'closed' };
+  const rows = list.map((p) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text2);">
+        ${p.profileImageUrl ? `<img src="${esc(p.profileImageUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.remove()">` : esc((p.nickname || '?').slice(0, 1))}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.nickname)}</div>
+        <div style="font-size:11px;color:var(--text3);">팔로워 ${p.followerSnapshot.toLocaleString()}</div>
+      </div>
+      <span class="badge ${stCls[p.status] || ''}">${stLabel[p.status] || p.status}</span>
+      ${p.status === 'PENDING' ? `
+        <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#4cc38a;" onclick="spDecide(${tourId},${p.participantId},true,'${esc(title).replace(/'/g, '&#39;')}')">승인</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#e5484d;" onclick="spDecide(${tourId},${p.participantId},false,'${esc(title).replace(/'/g, '&#39;')}')">거절</button>` : ''}
+    </div>`).join('');
+  const approved = list.filter((p) => p.status === 'APPROVED').length;
+  openDynamicModal(`
+    <div class="modal-title">👥 참가자 관리</div>
+    <div class="modal-sub">${esc(title)} — 승인 ${approved}${t && t.max > 0 ? `/${t.max}` : ''}명 · 신청 ${list.length}건</div>
+    ${rows || '<div style="font-size:13px;color:var(--text3);padding:16px 0;">아직 신청자가 없습니다.</div>'}
+    <button class="btn btn-outline" style="width:100%;margin-top:14px;padding:10px;" onclick="openStreamerPost('tournament')">← 내 대회 목록으로</button>`);
+}
+
+async function spDecide(tourId, pid, approve, title) {
+  try {
+    await A().decideParticipant(tourId, pid, approve);
+    showToast(approve ? '✅ 승인했습니다' : '거절했습니다');
+  } catch (e) {
+    showToast(A().errorMessage ? A().errorMessage(e) : '처리에 실패했습니다');
+  }
+  spParticipants(tourId, title); // 목록 새로고침
 }
 
 async function spDelete(kind, id) {

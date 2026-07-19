@@ -107,6 +107,16 @@ export const tournamentApi = {
   update: (id: number, body: Record<string, unknown>) =>
     api.put<Tournament>(`/api/tournaments/${id}`, body).then((r) => r.data),
   remove: (id: number) => api.delete(`/api/tournaments/${id}`),
+  // 주최자 참가자 관리 (소유 스트리머 또는 ADMIN)
+  manageParticipants: (id: number) =>
+    api.get<Array<{
+      participantId: number; memberId: number; nickname: string; profileImageUrl: string | null
+      followerSnapshot: number; status: string; appliedAt: string
+    }>>(`/api/tournaments/${id}/participants/manage`).then((r) => r.data),
+  approveParticipant: (id: number, pid: number) =>
+    api.post(`/api/tournaments/${id}/participants/${pid}/approve`),
+  rejectParticipant: (id: number, pid: number) =>
+    api.post(`/api/tournaments/${id}/participants/${pid}/reject`),
 }
 
 // ----- 스트리머 (public + 프로필/팔로우/개인 게시판) -----

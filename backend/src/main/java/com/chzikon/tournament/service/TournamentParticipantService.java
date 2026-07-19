@@ -114,6 +114,47 @@ public class TournamentParticipantService {
                 .toList();
     }
 
+    // ---------- 주최자(소유 스트리머/ADMIN) 참가자 관리 ----------
+
+    private void requireOwnedTournament(Long tournamentId, Long memberId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Member member = memberService.getById(memberId);
+        if (!tournament.isOwnedBy(memberId)
+                && member.getRole() != com.chzikon.member.domain.Role.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.chzikon.tournament.dto.ParticipantManageView> listForManage(Long tournamentId, Long memberId) {
+        requireOwnedTournament(tournamentId, memberId);
+        List<TournamentParticipant> all =
+                participantRepository.findByTournamentIdOrderByAppliedAtAsc(tournamentId);
+        Map<Long, Member> members = memberRepository.findAllById(
+                        all.stream().map(TournamentParticipant::getMemberId).distinct().toList())
+                .stream().collect(Collectors.toMap(Member::getId, Function.identity()));
+        return all.stream()
+                .map(p -> com.chzikon.tournament.dto.ParticipantManageView.of(p, members.get(p.getMemberId())))
+                .toList();
+    }
+
+    /** 주최자 승인/거절 — 본인 대회의 참가자인지 검증 후 기존 승인 로직(비관락 정원 차감) 재사용. */
+    @Transactional
+    public void decideByOwner(Long tournamentId, Long participantId, boolean approveIt, Long memberId) {
+        requireOwnedTournament(tournamentId, memberId);
+        TournamentParticipant participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        if (!participant.getTournamentId().equals(tournamentId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND); // 남의 대회 참가자 id 우회 차단
+        }
+        if (approveIt) {
+            approve(participantId, memberId);
+        } else {
+            reject(participantId, memberId);
+        }
+    }
+
     // ---------- 본인 조회 ----------
 
     @Transactional(readOnly = true)
