@@ -3,7 +3,10 @@ package com.chzikon.tournament.controller;
 import com.chzikon.global.security.MemberPrincipal;
 import com.chzikon.tournament.dto.MyParticipationResponse;
 import com.chzikon.tournament.dto.ParticipantPublicView;
+import com.chzikon.tournament.dto.TournamentCreateRequest;
 import com.chzikon.tournament.dto.TournamentResponse;
+import com.chzikon.tournament.dto.TournamentUpdateRequest;
+import jakarta.validation.Valid;
 import com.chzikon.tournament.service.TournamentParticipantService;
 import com.chzikon.tournament.service.TournamentService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +41,33 @@ public class TournamentController {
     @GetMapping("/{id}/participants")
     public ResponseEntity<List<ParticipantPublicView>> participants(@PathVariable Long id) {
         return ResponseEntity.ok(participantService.listApprovedPublic(id));
+    }
+
+    /** 대회 등록 — STREAMER+ (서비스 재검증). 소유자 기록, featured(공식 슬롯)는 관리자 전용. */
+    @PostMapping
+    public ResponseEntity<TournamentResponse> create(
+            @Valid @RequestBody TournamentCreateRequest req,
+            @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(TournamentResponse.from(
+                tournamentService.createByStreamer(req, principal.memberId())));
+    }
+
+    /** 본인 대회 수정 — 소유자 또는 ADMIN. */
+    @PutMapping("/{id}")
+    public ResponseEntity<TournamentResponse> update(
+            @PathVariable Long id,
+            @RequestBody TournamentUpdateRequest req,
+            @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(TournamentResponse.from(
+                tournamentService.updateOwned(id, req, principal.memberId())));
+    }
+
+    /** 본인 대회 삭제 — 소유자 또는 ADMIN. */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id,
+                                       @AuthenticationPrincipal MemberPrincipal principal) {
+        tournamentService.deleteOwned(id, principal.memberId());
+        return ResponseEntity.noContent().build();
     }
 
     /** 참가 신청 — STREAMER+ (서비스에서 권한·상태·중복 백엔드 재검증). */

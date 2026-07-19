@@ -783,7 +783,7 @@
 .rs-avatar{background:var(--brand-grad)!important;}
 
 /* ── 홈 피처드 레이아웃(큰 카드 + 작은 부가 카드, 항목 3/5) ── */
-.home-feature-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;align-items:stretch;}
+.home-feature-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1fr);gap:16px;align-items:stretch;}
 .home-feature-main{min-height:420px;}
 .feature-main-card{position:relative;width:100%;height:100%;min-height:420px;border-radius:var(--radius2);overflow:hidden;cursor:pointer;border:1px solid var(--border);transition:all .25s;}
 .feature-main-card:hover{border-color:var(--grad1);box-shadow:0 14px 44px rgba(91,124,250,.25);}
@@ -799,7 +799,8 @@
 .feature-dots{display:flex;gap:6px;margin-top:14px;}
 .feature-dots span{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.3);transition:all .3s;}
 .feature-dots span.on{width:18px;background:#fff;}
-.home-feature-side{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:12px;}
+.home-feature-side{display:grid;grid-template-columns:1fr;grid-auto-rows:1fr;gap:12px;}
+.feature-more-bar{grid-column:1/-1;flex-direction:row;min-height:48px;}
 .feature-side-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:all .2s;min-width:0;}
 .feature-side-card:hover{border-color:var(--grad1);transform:translateY(-2px);}
 .feature-side-thumb{position:relative;aspect-ratio:16/10;overflow:hidden;}
@@ -813,7 +814,7 @@
 @media(max-width:480px){.home-feature-main,.feature-main-card{min-height:300px;}.feature-main-title{font-size:19px;}}
 
 /* ── 메인 라이브 배너(히어로 아래, 항목 13/18) ── */
-#live-banner .inner{padding-top:0;padding-bottom:0;}
+#live-banner .inner{padding-top:0;padding-bottom:0;max-width:1560px;}
 .home-live-banner{display:flex;align-items:center;gap:12px;padding:14px 20px;margin:14px 0 4px;border-radius:14px;cursor:pointer;background:linear-gradient(90deg,rgba(255,64,64,.14),rgba(155,92,255,.10));border:1px solid rgba(255,64,64,.35);transition:all .2s;}
 .home-live-banner:hover{border-color:rgba(255,64,64,.7);box-shadow:0 8px 26px rgba(255,64,64,.18);}
 .home-live-dot{width:9px;height:9px;border-radius:50%;background:#ff4040;animation:livePulse 1.4s ease-in-out infinite;flex-shrink:0;}

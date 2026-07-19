@@ -95,6 +95,7 @@ export interface Tournament {
   resultText: string | null
   featured: boolean
   sortOrder: number
+  ownerMemberId: number | null
 }
 
 export interface MyParticipation {

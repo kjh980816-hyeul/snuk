@@ -64,6 +64,10 @@ public class Tournament {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
+    /** 등록 스트리머(NULL = 어드민 등록 = 스눅 공식). 본인 수정/삭제 권한 판별용. */
+    @Column(name = "owner_member_id")
+    private Long ownerMemberId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -114,6 +118,16 @@ public class Tournament {
         if (featured != null) this.featured = featured;
         if (sortOrder != null) this.sortOrder = sortOrder;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 스트리머 본인 등록 대회 표시. featured(홈 공식 슬롯)는 관리자 전용이라 해제. */
+    public void assignOwner(Long memberId) {
+        this.ownerMemberId = memberId;
+        this.featured = false;
+    }
+
+    public boolean isOwnedBy(Long memberId) {
+        return this.ownerMemberId != null && this.ownerMemberId.equals(memberId);
     }
 
     public boolean isOpenForApply() {

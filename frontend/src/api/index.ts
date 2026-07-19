@@ -41,6 +41,22 @@ export const campaignApi = {
   reviews: (id: number) => api.get<Review[]>(`/api/campaigns/${id}/reviews`).then((r) => r.data),
   writeReview: (id: number, body: { title: string; content: string }) =>
     api.post<Review>(`/api/campaigns/${id}/reviews`, body).then((r) => r.data),
+  // 스트리머 본인 컨텐츠 등록/수정/삭제 (STREAMER+, 소유자 또는 ADMIN)
+  create: (body: Record<string, unknown>) => api.post<Campaign>('/api/campaigns', body).then((r) => r.data),
+  update: (id: number, body: Record<string, unknown>) =>
+    api.put<Campaign>(`/api/campaigns/${id}`, body).then((r) => r.data),
+  remove: (id: number) => api.delete(`/api/campaigns/${id}`),
+}
+
+// ----- 스트리머 이미지 업로드 (STREAMER+) -----
+export const uploadApi = {
+  image: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<{ url: string }>('/api/uploads/image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
 }
 
 // ----- mypage (로그인 필요) -----
@@ -86,6 +102,11 @@ export const tournamentApi = {
     api.get<MyParticipation>(`/api/tournaments/${id}/my-participation`).then((r) => r.data),
   participants: (id: number) =>
     api.get<ParticipantPublic[]>(`/api/tournaments/${id}/participants`).then((r) => r.data),
+  // 스트리머 본인 대회 등록/수정/삭제 (STREAMER+, 소유자 또는 ADMIN)
+  create: (body: Record<string, unknown>) => api.post<Tournament>('/api/tournaments', body).then((r) => r.data),
+  update: (id: number, body: Record<string, unknown>) =>
+    api.put<Tournament>(`/api/tournaments/${id}`, body).then((r) => r.data),
+  remove: (id: number) => api.delete(`/api/tournaments/${id}`),
 }
 
 // ----- 스트리머 (public + 프로필/팔로우/개인 게시판) -----

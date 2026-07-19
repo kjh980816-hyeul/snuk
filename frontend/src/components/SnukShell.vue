@@ -2,7 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { campaignApi, spotlightApi, tournamentApi } from '@/api'
+import { campaignApi, spotlightApi, tournamentApi, uploadApi } from '@/api'
 import { loadSnukData } from '@/snuk/snukData'
 import type { SpotlightPlatform } from '@/api/types'
 
@@ -25,6 +25,7 @@ const w = window as unknown as Record<string, unknown>
 function syncAuthGlobals(): void {
   w.__snukLoggedIn = auth.isLoggedIn
   w.__snukUser = auth.me ? { nickname: auth.me.nickname, role: auth.me.role } : null
+  w.__snukMe = auth.me ? { id: auth.me.id, role: auth.me.role } : null
 }
 
 function reflectLoginState(): void {
@@ -59,6 +60,8 @@ function reflectLoginState(): void {
   document.querySelectorAll<HTMLElement>('.rs-admin-item').forEach((el) => {
     el.style.display = auth.isAdmin ? '' : 'none'
   })
+  // 스트리머 등록 버튼 노출 갱신 (렌더러 로드 후에만 존재)
+  ;(w.__snukInitStreamerPost as (() => void) | undefined)?.()
 }
 
 function applyTheme(next: 'light' | 'dark'): void {
@@ -143,6 +146,25 @@ onMounted(async () => {
       spotlightApi.create(body),
     buyGoods: (id: number) => {
       router.push({ path: '/goods', query: { buy: String(id) } })
+    },
+    // 스트리머 본인 컨텐츠·대회 등록/수정/삭제 (백엔드가 소유자·등급 재검증)
+    uploadImage: (file: File) => uploadApi.image(file),
+    getContent: (kind: string, id: number) =>
+      kind === 'tournament' ? tournamentApi.detail(id) : campaignApi.detail(id),
+    createContent: async (kind: string, body: Record<string, unknown>) => {
+      const r = kind === 'tournament' ? await tournamentApi.create(body) : await campaignApi.create(body)
+      void reloadData()
+      return r
+    },
+    updateContent: async (kind: string, id: number, body: Record<string, unknown>) => {
+      const r = kind === 'tournament' ? await tournamentApi.update(id, body) : await campaignApi.update(id, body)
+      void reloadData()
+      return r
+    },
+    deleteContent: async (kind: string, id: number) => {
+      if (kind === 'tournament') await tournamentApi.remove(id)
+      else await campaignApi.remove(id)
+      void reloadData()
     },
     errorMessage,
     reloadData,

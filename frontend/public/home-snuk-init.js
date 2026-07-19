@@ -178,33 +178,36 @@ function makeFeatureSideCard(d, i) {
 // 컨텐츠+대회 통합 섹션 — 큰 칸=스눅 공식(관리자 등록) 컨텐츠 전용, 나머지(대회·스트리머 컨텐츠)는 작은 카드
 function initHomeFeature() {
   const main = document.getElementById('home-feature-main');
-  const side = document.getElementById('home-feature-side');
-  if (!main || !side) return;
+  const sideL = document.getElementById('home-feature-side-l');
+  const sideR = document.getElementById('home-feature-side-r');
+  if (!main || !sideL || !sideR) return;
   const openFirst = (arr) => [...arr].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
   const campaigns = D().snukContents || [];
   const tournaments = D().mugContents || [];
-  const adminPool = openFirst(campaigns.filter((c) => c.adminMade !== false)); // 큰 칸 후보 = 관리자만
+  // 큰 칸 후보 = 스눅 공식(관리자 등록 컨텐츠·대회)만 — 스트리머 등록분은 작은 카드로만
+  const adminPool = openFirst([...campaigns, ...tournaments].filter((x) => x.adminMade !== false));
   const everything = openFirst([...campaigns, ...tournaments]);                // 작은 칸 = 컨텐츠+대회 전부
   if (_autoTimers.homeFeature) { clearInterval(_autoTimers.homeFeature); _autoTimers.homeFeature = null; }
   if (!campaigns.length && !tournaments.length) {
     main.innerHTML = emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
-    side.innerHTML = '';
+    sideL.innerHTML = '';
+    sideR.innerHTML = '';
     return;
   }
+  // 큰 칸을 가운데 두고 작은 카드를 좌 2 / 우 2 로 배치
   const renderSide = (excl) => {
     const rest = everything
       .filter((x) => !(excl && x.kind === excl.kind && x.id === excl.id))
       .slice(0, 4);
-    side.innerHTML = rest.map((d, i) => makeFeatureSideCard(d, i)).join('')
-      + `<div class="feature-side-card feature-side-more" onclick="window.__snukNav('/campaigns')">
-           <span>컨텐츠·대회 전체 보기 →</span></div>`;
+    sideL.innerHTML = rest.slice(0, 2).map((d, i) => makeFeatureSideCard(d, i)).join('');
+    sideR.innerHTML = rest.slice(2, 4).map((d, i) => makeFeatureSideCard(d, i + 2)).join('');
   };
   if (!adminPool.length) {
     main.innerHTML = emptyCard('SNUK 공식 컨텐츠 준비 중입니다.');
     renderSide(null);
     return;
   }
-  const featured = D().snukFeatured; // featured 는 어드민 폼에서만 체크 가능 = 항상 공식
+  const featured = D().snukFeatured || D().mugFeatured; // featured 는 어드민 폼에서만 체크 가능 = 항상 공식(컨텐츠 우선, 없으면 대회)
   if (featured) {
     main.innerHTML = makeFeatureMainCard(featured, 0, '');
     renderSide(featured);
@@ -234,11 +237,39 @@ function initLiveBanner() {
   const url = (ss.LIVE_BANNER_URL || '').trim();
   const on = ss.LIVE_BANNER_ENABLED === '1' && url && url !== '-';
   sec.style.display = on ? '' : 'none';
-  if (!on) return;
+  const wrap = document.getElementById('live-embed-wrap');
+  if (!on) { if (wrap) wrap.style.display = 'none'; return; }
   const titleEl = document.getElementById('live-banner-title');
   const title = (ss.LIVE_BANNER_TITLE || '').trim();
   if (titleEl) titleEl.textContent = (title && title !== '-') ? title : '지금 방송 중';
+  // 방송중이면 배너 밑에 치지직 플레이어+채팅 임베드 (오프라인이면 배너만)
+  const ch = (ss.LIVE_CHANNEL_ID || '').trim();
+  if (!wrap || !ch || ch === '-') { if (wrap) wrap.style.display = 'none'; return; }
+  fetch('/api/live/status').then((r) => r.json()).then((s) => {
+    if (!s.live) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    const pl = document.getElementById('live-embed-player');
+    const chat = document.getElementById('live-embed-chat');
+    if (pl && !pl.src.includes(ch)) pl.src = `https://chzzk.naver.com/live/${ch}`;
+    if (chat && !chat.src.includes(ch)) chat.src = `https://chzzk.naver.com/live/${ch}/chat`;
+    fitLivePlayerCrop();
+    if (!window.__liveCropBound) {
+      window.__liveCropBound = true;
+      window.addEventListener('resize', fitLivePlayerCrop);
+    }
+    // 어드민 제목 미설정 시 실제 방송 제목 표시
+    if (titleEl && !(title && title !== '-') && s.liveTitle) titleEl.textContent = s.liveTitle;
+  }).catch(() => { wrap.style.display = 'none'; });
 }
+// 크롭 스케일: 컨테이너 폭에 맞춰 치지직 페이지(1620 로드)의 영상 영역(x240,y60,1026 폭)만 보이게
+function fitLivePlayerCrop() {
+  const crop = document.getElementById('live-embed-player-crop');
+  const pl = document.getElementById('live-embed-player');
+  if (!crop || !pl || !crop.clientWidth) return;
+  const s = crop.clientWidth / 1026;
+  pl.style.transform = `scale(${s}) translate(-240px, -60px)`;
+}
+
 function openLiveBanner() {
   const ss = (D() && D().siteSettings) || {};
   const url = (ss.LIVE_BANNER_URL || '').trim();
@@ -333,6 +364,140 @@ function openDynamicModal(innerHtml, width) {
     <button class="modal-close" onclick="document.getElementById('snuk-dyn-modal').classList.remove('open')">✕</button>
     ${innerHtml}</div>`;
   ov.classList.add('open');
+}
+
+// ════════════════════════════════════════════
+// 스트리머 컨텐츠·대회 등록 (STREAMER+ — 백엔드가 등급·소유자 재검증)
+// 공식(featured·큰 칸)은 관리자 전용, 스트리머 등록분은 작은 카드로만 노출.
+// ════════════════════════════════════════════
+const SP_INP = 'width:100%;margin-bottom:8px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box;';
+let _spEditId = null;
+let _spRaw = null; // 수정 시 원본(미노출 필드 보존용 — update 는 전필드 전송이라 유실 방지)
+
+function initStreamerPost() {
+  const me = window.__snukMe;
+  const can = !!(me && (me.role === 'STREAMER' || me.role === 'REPORTER' || me.role === 'ADMIN'));
+  [['snuk-contents', 'campaign', '+ 내 컨텐츠 등록'], ['mugchamps', 'tournament', '+ 내 대회 등록']].forEach(([sec, kind, label]) => {
+    const header = document.querySelector(`#${sec} .section-header`);
+    if (!header) return;
+    let btn = header.querySelector('.streamer-post-btn');
+    if (!can) { if (btn) btn.remove(); return; }
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.className = 'btn-apply streamer-post-btn';
+      btn.style.marginLeft = 'auto';
+      header.appendChild(btn);
+    }
+    btn.textContent = label;
+    btn.onclick = () => openStreamerPost(kind);
+  });
+}
+window.__snukInitStreamerPost = initStreamerPost;
+
+function openStreamerPost(kind) {
+  _spEditId = null;
+  _spRaw = null;
+  const me = window.__snukMe || {};
+  const isT = kind === 'tournament';
+  const mine = (isT ? (D().mugContents || []) : (D().snukContents || [])).filter((x) => x.ownerId === me.id);
+  const rows = mine.map((x) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(x.title)}</span>
+      <span class="badge ${x.status === 'open' ? 'open' : 'closed'}">${esc(x.statusLabel)}</span>
+      <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="spEdit('${kind}',${x.id})">수정</button>
+      <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#e5484d;" onclick="spDelete('${kind}',${x.id})">삭제</button>
+    </div>`).join('');
+  openDynamicModal(`
+    <div class="modal-title">${isT ? '🏆 내 대회' : '🎮 내 컨텐츠'}</div>
+    <div class="modal-sub">${isT ? '직접 주최하는 대회를 등록해보세요' : '"나 이런 거 할 건데 같이 할래?" — 함께할 스트리머를 모집해보세요'}</div>
+    ${mine.length ? `<div style="margin-bottom:14px;">${rows}</div>` : ''}
+    <input id="spc-title" style="${SP_INP}" placeholder="제목 *">
+    <input id="spc-game" style="${SP_INP}" placeholder="게임명">
+    <textarea id="spc-desc" style="${SP_INP}resize:vertical;" rows="3" placeholder="설명"></textarea>
+    <div style="display:flex;gap:8px;">
+      <input id="spc-date" type="date" style="${SP_INP}flex:1;" title="진행일">
+      <input id="spc-cap" type="number" min="0" style="${SP_INP}flex:1;" placeholder="${isT ? '정원(명)' : '모집 인원'}">
+      <select id="spc-status" style="${SP_INP}flex:1;">
+        <option value="OPEN">모집중</option><option value="SCHEDULED">오픈예정</option><option value="CLOSED">마감</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+      <input id="spc-img" type="file" accept="image/*" style="font-size:12px;flex:1;color:var(--text2);">
+      <img id="spc-img-prev" alt="" style="display:none;width:56px;height:36px;object-fit:cover;border-radius:6px;">
+    </div>
+    <button id="spc-submit" class="btn-apply" style="width:100%;padding:11px;" onclick="spSubmit('${kind}')">등록하기</button>`);
+}
+
+async function spEdit(kind, id) {
+  try {
+    const d = await A().getContent(kind, id);
+    _spRaw = d;
+    _spEditId = id;
+    document.getElementById('spc-title').value = d.title || '';
+    document.getElementById('spc-game').value = d.gameName || '';
+    document.getElementById('spc-desc').value = d.description || '';
+    document.getElementById('spc-date').value = d.eventDate || '';
+    document.getElementById('spc-cap').value = kind === 'tournament' ? d.capacity : d.totalSlots;
+    const sel = document.getElementById('spc-status');
+    sel.value = ['OPEN', 'SCHEDULED', 'CLOSED'].includes(d.status) ? d.status : 'CLOSED';
+    const img = d.promoImageUrl || d.bannerImageUrl;
+    const prev = document.getElementById('spc-img-prev');
+    if (img) { prev.src = img; prev.style.display = ''; }
+    document.getElementById('spc-submit').textContent = '수정 저장';
+    document.getElementById('spc-title').focus();
+  } catch (e) {
+    showToast(A().errorMessage ? A().errorMessage(e) : '불러오기에 실패했습니다');
+  }
+}
+
+async function spDelete(kind, id) {
+  if (!confirm('정말 삭제할까요? 신청 내역도 함께 사라집니다.')) return;
+  try {
+    await A().deleteContent(kind, id);
+    showToast('삭제됐습니다');
+    document.getElementById('snuk-dyn-modal').classList.remove('open');
+  } catch (e) {
+    showToast(A().errorMessage ? A().errorMessage(e) : '삭제에 실패했습니다');
+  }
+}
+
+async function spSubmit(kind) {
+  const title = document.getElementById('spc-title').value.trim();
+  if (!title) { showToast('제목을 입력해주세요'); return; }
+  const btn = document.getElementById('spc-submit');
+  btn.disabled = true;
+  btn.textContent = '처리 중...';
+  try {
+    let img = _spRaw ? (_spRaw.promoImageUrl || _spRaw.bannerImageUrl || null) : null;
+    const file = document.getElementById('spc-img').files[0];
+    if (file) img = (await A().uploadImage(file)).url;
+    const v = (id) => document.getElementById(id).value;
+    const desc = v('spc-desc').trim() || null;
+    const game = v('spc-game').trim() || null;
+    const date = v('spc-date') || null;
+    const cap = parseInt(v('spc-cap') || '0', 10) || 0;
+    const status = v('spc-status');
+    const body = kind === 'tournament'
+      ? { title, gameName: game, description: desc, bannerImageUrl: img,
+          detailImageUrl: _spRaw ? _spRaw.detailImageUrl : null,
+          eventDate: date, applyStart: _spRaw ? _spRaw.applyStart : null, applyEnd: _spRaw ? _spRaw.applyEnd : null,
+          capacity: cap, status, resultText: _spRaw ? _spRaw.resultText : null,
+          featured: _spRaw ? _spRaw.featured : false, sortOrder: _spRaw ? _spRaw.sortOrder : 0 }
+      : { title, gameName: game, description: desc, promoImageUrl: img,
+          eventDate: date, applyStart: _spRaw ? _spRaw.applyStart : null, applyEnd: _spRaw ? _spRaw.applyEnd : null,
+          status, distributionType: _spRaw ? _spRaw.distributionType : 'APPROVAL',
+          keyMode: _spRaw ? _spRaw.keyMode : 'QUANTITY', totalSlots: cap,
+          featured: _spRaw ? _spRaw.featured : false, sortOrder: _spRaw ? _spRaw.sortOrder : 0 };
+    if (_spEditId) await A().updateContent(kind, _spEditId, body);
+    else await A().createContent(kind, body);
+    showToast(_spEditId ? '✅ 수정됐습니다' : '✅ 등록됐습니다!');
+    document.getElementById('snuk-dyn-modal').classList.remove('open');
+  } catch (e) {
+    showToast(A().errorMessage ? A().errorMessage(e) : '저장에 실패했습니다');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = _spEditId ? '수정 저장' : '등록하기';
+  }
 }
 
 // ════════════════════════════════════════════
@@ -1328,6 +1493,7 @@ function __snukInit() {
   initRoster();
   initStreamerChannels();
   initSpotlight();
+  initStreamerPost();
   renderNotices();
   applySiteImages();
   initHeroStats();

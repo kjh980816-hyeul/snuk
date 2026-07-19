@@ -26,6 +26,8 @@ export interface SnukCard {
   resultText?: string | null
   /** 관리자 등록 여부(스눅 공식) — 홈 큰 카드는 관리자 컨텐츠만 */
   adminMade?: boolean
+  /** 등록 스트리머 id (본인 수정/삭제 버튼 노출용) */
+  ownerId?: number | null
 }
 
 export interface SnukGame {
@@ -94,6 +96,7 @@ function campaignCard(c: Campaign): SnukCard {
     statusLabel: c.status === 'OPEN' ? '모집중' : c.status === 'SCHEDULED' ? '오픈예정' : '마감',
     img: c.promoImageUrl, eventDate: c.eventDate,
     adminMade: c.ownerMemberId == null, // 스눅 공식(관리자 등록) — 스트리머 등록은 작게만
+    ownerId: c.ownerMemberId,
   }
 }
 
@@ -105,6 +108,8 @@ function tournamentCard(t: Tournament): SnukCard {
     statusLabel: t.status === 'OPEN' ? '모집중' : t.status === 'SCHEDULED' ? '오픈예정'
       : t.status === 'DONE' ? '종료' : '마감',
     img: t.bannerImageUrl, eventDate: t.eventDate, resultText: t.resultText,
+    adminMade: t.ownerMemberId == null, // 스눅 공식(관리자 등록) — 스트리머 등록은 작게만
+    ownerId: t.ownerMemberId,
   }
 }
 
@@ -170,8 +175,9 @@ export async function loadSnukData(): Promise<SnukData> {
   const gameLinkedIds = new Set(games.map((g) => g.campaignId).filter((id) => id != null))
   const pureCampaigns = campaigns.filter((c) => !gameLinkedIds.has(c.id))
 
-  const featuredCampaign = pureCampaigns.find((c) => c.featured) ?? null
-  const featuredTournament = tournaments.find((t) => t.featured) ?? null
+  // featured(홈 큰 칸)는 스눅 공식(관리자 등록)만 — 스트리머 등록분은 후보 제외
+  const featuredCampaign = pureCampaigns.find((c) => c.featured && c.ownerMemberId == null) ?? null
+  const featuredTournament = tournaments.find((t) => t.featured && t.ownerMemberId == null) ?? null
 
   return {
     snukContents: pureCampaigns.map(campaignCard),
