@@ -935,13 +935,11 @@ function initStreamerStrip() {
   const box = document.getElementById('streamer-strip-scroll');
   if (!box) return;
   const real = D().streamers || [];
-  // 실 스트리머 없으면 표시용 더미(운영 요청 — 시안 방식 ddragon 아바타)
-  // 실 스트리머 없으면 표시용 더미(이니셜 아바타 — 외부 IP 이미지 사용 금지)
-  const items = real.length
-    ? real.map((s) => ({ id: s.id, name: s.name, img: s.img, platform: s.platform, followers: s.followers, dummy: false }))
-    : Array.from({ length: 12 }, (_, i) => ({
-        id: null, name: `스트리머${i + 1}`, platform: 'chz', followers: null, dummy: true, img: null, initial: String(i + 1),
-      }));
+  if (!real.length) {
+    box.innerHTML = emptyCard('아직 등록된 파트너 스트리머가 없습니다.');
+    return;
+  }
+  const items = real.map((s) => ({ id: s.id, name: s.name, img: s.img, platform: s.platform, followers: s.followers, dummy: false }));
   box.innerHTML = items.map((s) => {
     const avatar = s.img
       ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" draggable="false" onerror="this.parentElement.textContent='${esc(s.name.slice(0, 1))}';">`
