@@ -27,8 +27,16 @@
       <label class="form-label">방송 링크</label>
       <input class="form-input" id="sp-url" type="text" placeholder="https://chzzk.naver.com/...">
     </div>
+    <div class="form-group">
+      <label class="form-label">방송 날짜 · 시간 (선택)</label>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" id="sp-date" type="date" style="flex:1;min-width:0;">
+        <input class="form-input" id="sp-time" type="time" style="flex:1;min-width:0;">
+      </div>
+    </div>
     <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:16px;font-size:11px;color:var(--text3);line-height:1.6;">
-      스포트라이트는 <strong style="color:var(--text2);">최대 2시간</strong> 노출됩니다.<br>승인된 스트리머만 등록할 수 있습니다.
+      스포트라이트는 <strong style="color:var(--text2);">최대 2시간</strong> 노출됩니다.<br>승인된 스트리머만 등록할 수 있습니다.<br>
+      <span id="sp-cost-line">등록 시 포인트가 차감됩니다.</span>
     </div>
     <button class="btn-apply" style="width:100%;padding:11px;font-size:13px;border-radius:8px;"
       onclick="submitSpotlight()">스포트라이트 등록하기</button>

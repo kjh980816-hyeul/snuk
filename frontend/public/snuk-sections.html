@@ -29,17 +29,13 @@
       <span class="home-live-title" id="live-banner-title">지금 방송 중</span>
       <span class="home-live-cta">보러가기 →</span>
     </div>
-    <!-- 방송중일 때만: 치지직 플레이어 + 채팅 임베드 -->
+    <!-- 방송중일 때만: 치지직 플레이어 임베드 (영상만, 채팅 없음) -->
     <div id="live-embed-wrap" style="display:none;margin-top:14px;">
-      <div style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;">
-        <!-- 치지직은 플레이어 전용 임베드가 없어 전체 페이지를 확대 로드 후 영상 영역만 크롭 (1620x900 기준 x240,y60,1026x577) -->
-        <div id="live-embed-player-crop" style="flex:1 1 640px;aspect-ratio:16/9;overflow:hidden;position:relative;border:1px solid var(--border);border-radius:12px;background:#000;min-width:0;">
-          <iframe id="live-embed-player" title="치지직 라이브" src="about:blank"
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
-            style="position:absolute;left:0;top:0;width:1620px;height:900px;border:0;transform-origin:0 0;"></iframe>
-        </div>
-        <iframe id="live-embed-chat" title="치지직 채팅" src="about:blank"
-          style="flex:0 1 340px;min-height:480px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);min-width:260px;"></iframe>
+      <!-- 치지직은 플레이어 전용 임베드가 없어 전체 페이지를 확대 로드 후 영상 영역만 크롭 (1620x900 기준 x240,y60,1026x577) -->
+      <div id="live-embed-player-crop" style="width:100%;aspect-ratio:16/9;overflow:hidden;position:relative;border:1px solid var(--border);border-radius:12px;background:#000;">
+        <iframe id="live-embed-player" title="치지직 라이브" src="about:blank"
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
+          style="position:absolute;left:0;top:0;width:1620px;height:900px;border:0;transform-origin:0 0;"></iframe>
       </div>
     </div>
   </div>

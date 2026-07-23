@@ -13,13 +13,15 @@ public record ParticipantManageView(
         String profileImageUrl,
         int followerSnapshot,
         String status,
-        LocalDateTime appliedAt
+        LocalDateTime appliedAt,
+        java.util.List<ApplyFormJson.ApplyAnswer> answers
 ) {
     public static ParticipantManageView of(TournamentParticipant p, Member m) {
         return new ParticipantManageView(
                 p.getId(), p.getMemberId(),
                 m != null ? m.getNickname() : "(탈퇴 회원)",
                 m != null ? m.getProfileImageUrl() : null,
-                p.getFollowerSnapshot(), p.getStatus().name(), p.getAppliedAt());
+                p.getFollowerSnapshot(), p.getStatus().name(), p.getAppliedAt(),
+                ApplyFormJson.answersFromJson(p.getAnswers()));
     }
 }

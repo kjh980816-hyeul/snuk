@@ -20,6 +20,7 @@ const router = createRouter({
     { path: '/championship', name: 'championship', component: () => import('@/views/ChampionshipView.vue') },
     { path: '/championship/:id', name: 'tournament-detail', component: () => import('@/views/TournamentDetailView.vue') },
     { path: '/goods', name: 'goods', component: () => import('@/views/GoodsView.vue') },
+    { path: '/resources', name: 'resources', component: () => import('@/views/ResourcesView.vue') },
     { path: '/clients', name: 'clients', component: () => import('@/views/ClientsView.vue') },
     { path: '/oauth/callback', name: 'oauth-callback', component: () => import('@/views/OAuthCallbackView.vue') },
     { path: '/mypage', name: 'mypage', component: () => import('@/views/MyPageView.vue'), meta: { auth: true } },

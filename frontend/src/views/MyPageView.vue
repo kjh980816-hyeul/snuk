@@ -131,6 +131,10 @@ onMounted(async () => {
           <div class="mp-sub" v-if="auth.me.followerCount !== null">
             팔로워 {{ auth.me.followerCount?.toLocaleString('ko-KR') }}
           </div>
+          <div class="mp-sub">
+            🪙 내 포인트 <b>{{ (auth.me.points ?? 0).toLocaleString('ko-KR') }}P</b>
+            <span style="opacity:.7;"> — 매일 첫 로그인마다 적립, 스포트라이트 등록에 사용</span>
+          </div>
           <div class="mp-pic-edit">
             <input ref="fileEl" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden-file" @change="onPicFile" />
             <button class="mp-btn" :disabled="picSaving" @click="fileEl?.click()">

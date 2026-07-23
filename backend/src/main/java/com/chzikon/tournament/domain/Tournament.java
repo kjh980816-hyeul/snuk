@@ -58,6 +58,10 @@ public class Tournament {
     @Column(name = "result_text", columnDefinition = "TEXT")
     private String resultText;
 
+    /** 참가 신청 커스텀 질문(JSON 배열 문자열, 주최자 작성 — V15 항목 17). */
+    @Column(name = "apply_questions", columnDefinition = "TEXT")
+    private String applyQuestions;
+
     @Column(name = "is_featured", nullable = false)
     private boolean featured;
 
@@ -78,8 +82,9 @@ public class Tournament {
     private Tournament(String title, String description, String gameName, String bannerImageUrl,
                        String detailImageUrl,
                        LocalDate eventDate, LocalDateTime applyStart, LocalDateTime applyEnd,
-                       int capacity, TournamentStatus status, String resultText,
+                       int capacity, TournamentStatus status, String resultText, String applyQuestions,
                        boolean featured, int sortOrder) {
+        this.applyQuestions = applyQuestions;
         this.title = title;
         this.description = description;
         this.gameName = gameName;
@@ -102,8 +107,9 @@ public class Tournament {
     public void update(String title, String description, String gameName, String bannerImageUrl,
                        String detailImageUrl,
                        LocalDate eventDate, LocalDateTime applyStart, LocalDateTime applyEnd,
-                       Integer capacity, TournamentStatus status, String resultText,
+                       Integer capacity, TournamentStatus status, String resultText, String applyQuestions,
                        Boolean featured, Integer sortOrder) {
+        this.applyQuestions = applyQuestions;
         if (title != null) this.title = title;
         this.description = description;
         this.gameName = gameName;

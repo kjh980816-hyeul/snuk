@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '@/api/admin'
-import { campaignApi, collabApi, noticeApi, tournamentApi } from '@/api'
+import { campaignApi, collabApi, noticeApi, resourceApi, tournamentApi } from '@/api'
 import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, Notice, OrderView, Spotlight, Tournament } from '@/api/types'
 
 // 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (컨텐츠·대회 통합 탭 + 게임체험단·영상·굿즈샵·협력사)
-type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'members' | 'settings' | 'logs'
+type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'members' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
 
 // 테마 — 메인 사이트와 동일 키(snuk-theme) 공유
@@ -35,7 +35,7 @@ const selected = ref<Campaign | null>(null)
 const keys = ref<Array<{ id: number; maskedKey: string; status: string; assignedMemberId: number | null }>>([])
 const rawKeys = ref('')
 const keyResult = ref<string | null>(null)
-const applications = ref<Array<{ applicationId: number; memberId: number; status: string; followerSnapshot: number }>>([])
+const applications = ref<Array<{ applicationId: number; memberId: number; nickname: string; profileImageUrl: string | null; status: string; followerSnapshot: number }>>([])
 
 async function loadCampaigns() {
   campaigns.value = await campaignApi.list()
@@ -97,7 +97,28 @@ async function rejectApp(id: number, campaignId: number) {
 const tournaments = ref<Tournament[]>([])
 const tourEditing = ref<Partial<Tournament> | null>(null)
 const tourSelected = ref<Tournament | null>(null)
-const participants = ref<Array<{ participantId: number; memberId: number; status: string; followerSnapshot: number }>>([])
+const participants = ref<Array<{ participantId: number; memberId: number; nickname: string; profileImageUrl: string | null; status: string; followerSnapshot: number; answers: Array<{ text: string | null; imageUrl: string | null }> }>>([])
+
+// 대회 참가 질문(항목 17) — 줄바꿈 구분, 줄 앞에 [선택] 붙이면 선택 항목(기본 필수)
+const tourQuestionsText = computed({
+  get: () => (tourEditing.value?.applyQuestions ?? [])
+    .map((q) => (q.required ? q.q : `[선택] ${q.q}`)).join('\n'),
+  set: (v: string) => {
+    if (tourEditing.value) {
+      tourEditing.value.applyQuestions = v.split('\n')
+        .map((s) => s.trim()).filter(Boolean)
+        .map((s) => s.startsWith('[선택]')
+          ? { q: s.slice(4).trim(), required: false }
+          : { q: s, required: true })
+        .filter((q) => q.q)
+    }
+  },
+})
+
+// 참가 신청 CSV 다운로드(항목 18)
+function exportParticipantsCsv(tournamentId: number) {
+  tournamentApi.exportParticipants(tournamentId).catch(() => alert('다운로드에 실패했습니다.'))
+}
 
 async function loadTournaments() {
   tournaments.value = await tournamentApi.list()
@@ -388,8 +409,12 @@ function loadBannerTextInputs() {
 }
 async function saveBannerText(page: string) {
   // 빈값 저장 = 문구 숨김(항목 4). 기본 문구로 돌리려면 '-' 입력.
-  await saveSetting(`BANNER_${page}_TITLE`, bannerTextInputs.value[`BANNER_${page}_TITLE`]?.trim() ?? '')
-  await saveSetting(`BANNER_${page}_SUB`, bannerTextInputs.value[`BANNER_${page}_SUB`]?.trim() ?? '')
+  // 값을 먼저 스냅샷 — saveSetting 안의 loadSettings 가 입력값을 서버 값으로 되돌리기 때문.
+  const title = bannerTextInputs.value[`BANNER_${page}_TITLE`]?.trim() ?? ''
+  const sub = bannerTextInputs.value[`BANNER_${page}_SUB`]?.trim() ?? ''
+  await adminApi.updateSetting(`BANNER_${page}_TITLE`, title)
+  await adminApi.updateSetting(`BANNER_${page}_SUB`, sub)
+  await loadSettings()
   alert('저장되었습니다.')
 }
 // ----- 메인 라이브 배너(히어로 아래, 항목 13/18) -----
@@ -397,9 +422,14 @@ const liveBannerEnabled = ref(false)
 const liveBannerUrl = ref('')
 const liveBannerTitle = ref('')
 async function saveLiveBanner() {
-  await saveSetting('LIVE_BANNER_ENABLED', liveBannerEnabled.value ? '1' : '0')
-  await saveSetting('LIVE_BANNER_URL', liveBannerUrl.value.trim() || '-')
-  await saveSetting('LIVE_BANNER_TITLE', liveBannerTitle.value.trim() || '-')
+  // 값을 먼저 스냅샷 — saveSetting 안의 loadSettings 가 입력값을 서버 값으로 되돌리기 때문.
+  const enabled = liveBannerEnabled.value ? '1' : '0'
+  const url = liveBannerUrl.value.trim() || '-'
+  const title = liveBannerTitle.value.trim() || '-'
+  await adminApi.updateSetting('LIVE_BANNER_ENABLED', enabled)
+  await adminApi.updateSetting('LIVE_BANNER_URL', url)
+  await adminApi.updateSetting('LIVE_BANNER_TITLE', title)
+  await loadSettings()
   alert('저장되었습니다. 메인 히어로 아래에 반영돼요.')
 }
 const SITE_KEYS = [
@@ -407,8 +437,43 @@ const SITE_KEYS = [
   ...SITE_IMAGES.map((s) => s.key),
   ...BANNER_TEXTS.flatMap((b) => [`BANNER_${b.page}_TITLE`, `BANNER_${b.page}_SUB`]),
 ]
-const generalSettings = computed(() => settings.value.filter((s) => !SITE_KEYS.includes(s.settingKey)))
+const generalSettings = computed(() => settings.value.filter(
+  (s) => !SITE_KEYS.includes(s.settingKey) && !s.settingKey.startsWith('MENU_')))
 const liveChannelInput = ref('')
+
+// 사이드바 메뉴 표시/숨김(항목 8) — MENU_{KEY}='0' 이면 숨김
+const MENU_ITEMS = [
+  { key: 'HOME', label: 'HOME' },
+  { key: 'CAMPAIGNS', label: '컨텐츠·대회' },
+  { key: 'GAMES', label: '게임체험단' },
+  { key: 'STREAMERS', label: '스트리머' },
+  { key: 'NEWS', label: '스눅 뉴스' },
+  { key: 'VIDEOS', label: '영상' },
+  { key: 'GOODS', label: '굿즈샵' },
+  { key: 'RESOURCES', label: '무료소스' },
+  { key: 'CLIENTS', label: '협력사' },
+]
+const menuInputs = ref<Record<string, boolean>>({})
+function loadMenuInputs() {
+  const next: Record<string, boolean> = {}
+  for (const m of MENU_ITEMS) {
+    next[m.key] = settingValue(`MENU_${m.key}`) !== '0'
+  }
+  menuInputs.value = next
+}
+async function saveMenus() {
+  for (const m of MENU_ITEMS) {
+    await adminApi.updateSetting(`MENU_${m.key}`, menuInputs.value[m.key] ? '1' : '0')
+  }
+  await loadSettings()
+  alert('저장되었습니다. 사이트 새로고침 시 반영돼요.')
+}
+
+// 히어로/배너 이미지 제거·기본 복원(항목 16) — 'none'=이미지 없음, '-'=기본 이미지
+async function setSettingImage(key: string, value: 'none' | '-') {
+  await adminApi.updateSetting(key, value)
+  await loadSettings()
+}
 
 function settingValue(key: string): string {
   const v = settings.value.find((s) => s.settingKey === key)?.settingValue ?? ''
@@ -421,6 +486,7 @@ async function loadSettings() {
   liveBannerUrl.value = settingValue('LIVE_BANNER_URL')
   liveBannerTitle.value = settingValue('LIVE_BANNER_TITLE')
   loadBannerTextInputs()
+  loadMenuInputs()
 }
 async function saveLiveChannel() {
   // setting_value 는 빈값 불가 — 미설정은 '-' 로 저장(프론트가 기본값 처리)
@@ -494,6 +560,7 @@ async function approveSpotlight(s: Spotlight) {
 }
 function spotState(s: Spotlight) {
   if (!s.approved) return '승인대기'
+  if (s.scheduledAt && new Date(s.scheduledAt).getTime() > Date.now()) return '노출예약'
   return new Date(s.expiresAt).getTime() > Date.now() ? '노출중' : '만료'
 }
 
@@ -516,6 +583,71 @@ async function loadLogs() {
 
 onMounted(() => { loadCampaigns(); loadTournaments(); loadCollab() })
 
+// ----- 게시판 신고함(항목 3) -----
+const reports = ref<Array<{ reportId: number; postId: number; reason: string | null; reporterName: string; createdAt: string; postTitle: string; postContent: string; postAuthorName: string; streamerName: string }>>([])
+async function loadReports() {
+  reports.value = await adminApi.postReports()
+}
+async function dismissReport(reportId: number) {
+  await adminApi.dismissPostReport(reportId)
+  await loadReports()
+}
+async function deleteReportedPost(postId: number) {
+  if (!confirm('신고된 글을 삭제할까요? (해당 글의 모든 신고도 함께 정리됩니다)')) return
+  await adminApi.deleteReportedPost(postId)
+  await loadReports()
+}
+
+// ----- 무료소스(항목 19) -----
+const resources = ref<Array<{ id: number; title: string; description: string | null; fileUrl: string | null; imageUrl: string | null; createdAt: string }>>([])
+const resTitle = ref('')
+const resDesc = ref('')
+const resLink = ref('')
+const resFile = ref<File | null>(null)
+const resImage = ref<File | null>(null)
+const resUploading = ref(false)
+async function loadResources() {
+  resources.value = await resourceApi.list()
+}
+function pickResFile(e: Event) {
+  resFile.value = (e.target as HTMLInputElement).files?.[0] ?? null
+}
+function pickResImage(e: Event) {
+  resImage.value = (e.target as HTMLInputElement).files?.[0] ?? null
+}
+async function submitResource() {
+  if (!resTitle.value.trim() || resUploading.value) return
+  if (!resLink.value.trim() && !resFile.value) {
+    alert('링크(주소) 또는 파일 중 하나는 입력해주세요.')
+    return
+  }
+  resUploading.value = true
+  try {
+    await adminApi.createResource(resTitle.value.trim(), resDesc.value.trim(), {
+      link: resLink.value.trim() || undefined,
+      file: resFile.value,
+      image: resImage.value,
+    })
+    resTitle.value = ''
+    resDesc.value = ''
+    resLink.value = ''
+    resFile.value = null
+    resImage.value = null
+    await loadResources()
+    alert('무료소스가 등록됐습니다.')
+  } catch (e) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    alert(msg ?? '등록에 실패했습니다.')
+  } finally {
+    resUploading.value = false
+  }
+}
+async function removeResource(id: number) {
+  if (!confirm('이 소스를 삭제할까요? (파일도 함께 삭제됩니다)')) return
+  await adminApi.deleteResource(id)
+  await loadResources()
+}
+
 function onTab(t: Tab) {
   tab.value = t
   if (t === 'campaigns') { loadCampaigns(); loadTournaments(); loadCollab() }
@@ -523,6 +655,8 @@ function onTab(t: Tab) {
   if (t === 'goods') loadGoods()
   if (t === 'notices') loadNotices()
   if (t === 'warnings') loadWarnings()
+  if (t === 'reports') loadReports()
+  if (t === 'resources') loadResources()
   if (t === 'members') loadMembers()
   if (t === 'settings') loadSettings()
   if (t === 'logs') loadLogs()
@@ -547,6 +681,8 @@ function onTab(t: Tab) {
       <button :class="{ on: tab === 'clients' }" @click="onTab('clients')">협력사</button>
       <button :class="{ on: tab === 'notices' }" @click="onTab('notices')">공지/스포트라이트</button>
       <button :class="{ on: tab === 'warnings' }" @click="onTab('warnings')">후기 경고</button>
+      <button :class="{ on: tab === 'reports' }" @click="onTab('reports')">신고함</button>
+      <button :class="{ on: tab === 'resources' }" @click="onTab('resources')">무료소스</button>
       <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
       <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정</button>
       <button :class="{ on: tab === 'logs' }" @click="onTab('logs')">감사로그</button>
@@ -622,7 +758,8 @@ function onTab(t: Tab) {
           <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
           <tbody>
             <tr v-for="a in applications" :key="a.applicationId">
-              <td>#{{ a.memberId }}</td><td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
+              <td>{{ a.nickname }} <span class="hint" style="margin:0">#{{ a.memberId }}</span></td>
+              <td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
               <td class="acts">
                 <template v-if="a.status === 'PENDING'">
                   <button @click="approveApp(a.applicationId, selected!.id)">승인</button>
@@ -672,6 +809,9 @@ function onTab(t: Tab) {
         <label>대회 결과 (DONE 상태에서 페이지에 노출)
           <textarea v-model="tourEditing.resultText" placeholder="예) 우승: 팀 알파 / MVP: 스트리머A"></textarea>
         </label>
+        <label>참가 신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 을 붙이면 선택 항목, 답변엔 사진 첨부도 가능)
+          <textarea v-model="tourQuestionsText" placeholder="예) 티어를 알려주세요&#10;[선택] 하고 싶은 말"></textarea>
+        </label>
         <label>정렬순서<input type="number" v-model.number="tourEditing.sortOrder" /></label>
         <div class="form-acts">
           <button class="btn sm" @click="saveTournament">저장</button>
@@ -679,14 +819,26 @@ function onTab(t: Tab) {
         </div>
       </div>
 
-      <!-- 선택 대회: 참가 신청자 승인/거절 -->
+      <!-- 선택 대회: 참가 신청자 승인/거절 + 답변 확인 + CSV(항목 14/17/18) -->
       <div v-if="tourSelected" class="manage">
-        <h4>‘{{ tourSelected.title }}’ 참가 신청자</h4>
+        <h4>‘{{ tourSelected.title }}’ 참가 신청자
+          <button class="btn sm" style="margin-left:8px;" @click="exportParticipantsCsv(tourSelected!.id)">📄 엑셀(CSV) 다운로드</button>
+        </h4>
         <table class="grid">
-          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
+          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th>답변</th><th></th></tr></thead>
           <tbody>
             <tr v-for="p in participants" :key="p.participantId">
-              <td>#{{ p.memberId }}</td><td>{{ p.followerSnapshot }}</td><td>{{ lbl(p.status) }}</td>
+              <td>{{ p.nickname }} <span class="hint" style="margin:0">#{{ p.memberId }}</span></td>
+              <td>{{ p.followerSnapshot }}</td><td>{{ lbl(p.status) }}</td>
+              <td style="max-width:340px;">
+                <div v-for="(ans, i) in p.answers" :key="i" style="font-size:11.5px;line-height:1.5;">
+                  <b>Q{{ i + 1 }}.</b> {{ ans.text || '' }}
+                  <a v-if="ans.imageUrl" :href="ans.imageUrl" target="_blank" rel="noopener">
+                    <img :src="ans.imageUrl" alt="" style="height:34px;border-radius:5px;vertical-align:middle;margin-left:4px;" />
+                  </a>
+                </div>
+                <span v-if="!p.answers?.length" class="hint" style="margin:0">-</span>
+              </td>
               <td class="acts">
                 <template v-if="p.status === 'PENDING'">
                   <button @click="approveParticipant(p.participantId)">승인</button>
@@ -694,7 +846,7 @@ function onTab(t: Tab) {
                 </template>
               </td>
             </tr>
-            <tr v-if="!participants.length"><td colspan="4" class="empty">참가 신청자가 없습니다.</td></tr>
+            <tr v-if="!participants.length"><td colspan="5" class="empty">참가 신청자가 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
@@ -775,7 +927,8 @@ function onTab(t: Tab) {
               <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
               <tbody>
                 <tr v-for="a in applications" :key="a.applicationId">
-                  <td>#{{ a.memberId }}</td><td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
+                  <td>{{ a.nickname }} <span class="hint" style="margin:0">#{{ a.memberId }}</span></td>
+                  <td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
                   <td class="acts">
                     <template v-if="a.status === 'PENDING'">
                       <button @click="approveApp(a.applicationId, gmCampaign!.id)">승인</button>
@@ -985,13 +1138,14 @@ function onTab(t: Tab) {
       <h3 style="margin-top: 32px">스포트라이트 (최근 50건 — 승인제)</h3>
       <p class="hint">스트리머가 신청한 방송 홍보 — <b>승인해야 노출</b>되고, 승인 시각부터 2시간 사이드바 최대 2개 표시.</p>
       <table class="grid">
-        <thead><tr><th>제목</th><th>스트리머</th><th>플랫폼</th><th>링크</th><th>상태</th><th>등록</th><th></th></tr></thead>
+        <thead><tr><th>제목</th><th>스트리머</th><th>플랫폼</th><th>링크</th><th>방송 예정</th><th>상태</th><th>등록</th><th></th></tr></thead>
         <tbody>
           <tr v-for="s in spotlights" :key="s.id">
             <td>{{ s.title }}</td>
             <td>{{ s.streamerName }}</td>
             <td>{{ s.platform }}</td>
             <td><a :href="s.streamUrl" target="_blank" rel="noopener">링크 ↗</a></td>
+            <td>{{ s.scheduledAt ? s.scheduledAt.slice(5, 16).replace('T', ' ') : '-' }}</td>
             <td>{{ spotState(s) }}</td>
             <td>{{ s.createdAt?.slice(5, 16).replace('T', ' ') }}</td>
             <td class="acts">
@@ -999,7 +1153,7 @@ function onTab(t: Tab) {
               <button class="danger" @click="removeSpotlight(s)">내리기</button>
             </td>
           </tr>
-          <tr v-if="!spotlights.length"><td colspan="7" class="empty">등록된 스포트라이트가 없습니다.</td></tr>
+          <tr v-if="!spotlights.length"><td colspan="8" class="empty">등록된 스포트라이트가 없습니다.</td></tr>
         </tbody>
       </table>
     </section>
@@ -1020,6 +1174,69 @@ function onTab(t: Tab) {
             <td>{{ w.reviewWritten ? '✅ 뒤늦게 작성' : '❌ 미작성' }}</td>
           </tr>
           <tr v-if="!reviewWarnings.length"><td colspan="6" class="empty">경고 이력이 없습니다.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 게시판 신고함 (항목 3) -->
+    <section v-else-if="tab === 'reports'">
+      <h3>스트리머 게시판 신고함</h3>
+      <p class="hint">회원이 신고한 게시글이에요. "글 삭제"는 글과 걸린 신고를 함께 정리, "기각"은 신고만 지웁니다.</p>
+      <table class="grid">
+        <thead><tr><th>글</th><th>내용</th><th>작성자</th><th>게시판</th><th>신고자</th><th>사유</th><th>신고일</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="r in reports" :key="r.reportId">
+            <td>{{ r.postTitle }}</td>
+            <td style="max-width:260px;"><span style="font-size:11.5px;">{{ (r.postContent || '').slice(0, 80) }}</span></td>
+            <td>{{ r.postAuthorName }}</td>
+            <td>{{ r.streamerName }}</td>
+            <td>{{ r.reporterName }}</td>
+            <td>{{ r.reason || '-' }}</td>
+            <td>{{ r.createdAt?.slice(5, 16).replace('T', ' ') }}</td>
+            <td class="acts">
+              <button class="danger" @click="deleteReportedPost(r.postId)">글 삭제</button>
+              <button @click="dismissReport(r.reportId)">기각</button>
+            </td>
+          </tr>
+          <tr v-if="!reports.length"><td colspan="8" class="empty">접수된 신고가 없습니다.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 무료소스 (항목 19) -->
+    <section v-else-if="tab === 'resources'">
+      <h3>무료소스 자료실</h3>
+      <p class="hint">사이트 "무료소스" 페이지에 노출돼요. <b>링크(주소)로 등록</b>하는 게 기본이고, 파일 직접 업로드도 가능합니다(5MB 이하).</p>
+      <div class="form-card">
+        <h4>새 소스 등록</h4>
+        <label>제목<input v-model="resTitle" maxlength="200" /></label>
+        <label>설명<textarea v-model="resDesc" rows="3"></textarea></label>
+        <label>링크(주소) — 소스가 있는 곳 주소
+          <input v-model="resLink" placeholder="https://drive.google.com/... 또는 소스 페이지 주소" />
+        </label>
+        <label>또는 파일 직접 업로드 (선택)<input type="file" @change="pickResFile" /></label>
+        <label>썸네일 이미지 (선택)<input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickResImage" /></label>
+        <div class="form-acts">
+          <button class="btn sm" :disabled="resUploading || !resTitle.trim() || (!resLink.trim() && !resFile)" @click="submitResource">
+            {{ resUploading ? '업로드 중…' : '등록' }}
+          </button>
+        </div>
+      </div>
+      <table class="grid">
+        <thead><tr><th>썸네일</th><th>제목</th><th>설명</th><th>파일</th><th>등록일</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="r in resources" :key="r.id">
+            <td><img v-if="r.imageUrl" :src="r.imageUrl" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
+            <td>{{ r.title }}</td>
+            <td style="max-width:280px;"><span style="font-size:11.5px;">{{ (r.description || '').slice(0, 60) }}</span></td>
+            <td>
+              <a v-if="r.fileUrl && r.fileUrl.startsWith('http')" :href="r.fileUrl" target="_blank" rel="noopener">링크 열기 ↗</a>
+              <a v-else-if="r.fileUrl" :href="r.fileUrl" download>다운로드 ⬇</a>
+            </td>
+            <td>{{ r.createdAt?.slice(0, 10) }}</td>
+            <td class="acts"><button class="danger" @click="removeResource(r.id)">삭제</button></td>
+          </tr>
+          <tr v-if="!resources.length"><td colspan="6" class="empty">등록된 소스가 없습니다.</td></tr>
         </tbody>
       </table>
     </section>
@@ -1081,13 +1298,18 @@ function onTab(t: Tab) {
         <div class="site-images">
           <div v-for="si in SITE_IMAGES" :key="si.key" class="site-img">
             <span class="site-img-label">{{ si.label }}</span>
-            <img v-if="settingValue(si.key)" :src="settingValue(si.key)" alt="" />
+            <div v-if="settingValue(si.key) === 'none'" class="site-img-empty">이미지 숨김 (표시 안 함)</div>
+            <img v-else-if="settingValue(si.key)" :src="settingValue(si.key)" alt="" />
             <div v-else class="site-img-empty">기본 이미지 사용 중</div>
             <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickSettingImage($event, si.key)" />
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <button class="btn ghost xs" @click="setSettingImage(si.key, 'none')">이미지 없애기</button>
+              <button class="btn ghost xs" @click="setSettingImage(si.key, '-')">기본으로</button>
+            </div>
           </div>
         </div>
         <p class="hint" v-if="imgUploading">업로드 중…</p>
-        <p class="hint" v-else>이미지를 선택하면 바로 업로드·적용됩니다. 각 페이지 상단 배너에 반영돼요.</p>
+        <p class="hint" v-else>이미지를 선택하면 바로 업로드·적용됩니다. "이미지 없애기"는 해당 배너 이미지를 아예 표시하지 않아요.</p>
       </div>
 
       <h4 style="margin-top:28px">배너 문구</h4>
@@ -1099,6 +1321,17 @@ function onTab(t: Tab) {
           <button class="btn sm" @click="saveBannerText(b.page)">저장</button>
         </div>
         <p class="hint">비워두고 저장하면 문구가 <b>표시되지 않아요</b>. 기본 문구로 돌리려면 <code>-</code> 하나만 입력 후 저장.</p>
+      </div>
+
+      <h4 style="margin-top:28px">사이드바 메뉴 표시</h4>
+      <div class="form-card site-card">
+        <div style="display:flex;flex-wrap:wrap;gap:14px;">
+          <label v-for="m in MENU_ITEMS" :key="m.key" class="chk" style="margin:0;">
+            <input type="checkbox" v-model="menuInputs[m.key]" /> {{ m.label }}
+          </label>
+        </div>
+        <button class="btn sm" style="margin-top:10px;align-self:flex-start;" @click="saveMenus">메뉴 표시 저장</button>
+        <p class="hint">체크 해제한 메뉴는 사이드바·모바일 메뉴에서 숨겨져요. (페이지 주소로 직접 들어가는 건 막지 않아요)</p>
       </div>
 
       <h4 style="margin-top:28px">설정값</h4>

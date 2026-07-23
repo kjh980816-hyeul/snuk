@@ -33,9 +33,8 @@ public class GameKeyService {
      */
     @Transactional
     public KeyRegisterResult bulkRegister(Long campaignId, String rawKeys, Long actorId) {
-        if (!campaignRepository.existsById(campaignId)) {
-            throw new BusinessException(ErrorCode.NOT_FOUND);
-        }
+        var campaign = campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         String[] lines = rawKeys.split("\\r?\\n");
         int blank = 0;
         int duplicated = 0;
@@ -60,6 +59,10 @@ public class GameKeyService {
             registered++;
         }
         gameKeyRepository.saveAll(toSave);
+        // 키가 등록됐는데 QUANTITY(키 없음) 모드면 자동 전환 — 승인 시 키 자동 배정이 돌게 (항목 15 픽스)
+        if (registered > 0) {
+            campaign.enableUniqueKeyMode();
+        }
 
         long available = gameKeyRepository.countByCampaignIdAndStatus(campaignId, GameKey.Status.AVAILABLE);
         adminLogService.record(actorId, "KEY_BULK_REGISTER", "campaign", campaignId,

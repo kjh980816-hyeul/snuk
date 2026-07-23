@@ -34,6 +34,7 @@ public class SpotlightService {
     private final MemberService memberService;
     private final ExternalUrlValidator urlValidator;
     private final AdminLogService adminLogService;
+    private final com.chzikon.admin.service.AppSettingService appSettingService;
 
     /** 노출 중 스포트라이트(최대 2개) — 공개. */
     @Transactional(readOnly = true)
@@ -57,8 +58,13 @@ public class SpotlightService {
         if (spotlightRepository.existsByMemberIdAndExpiresAtAfter(memberId, LocalDateTime.now())) {
             throw new BusinessException(ErrorCode.SPOTLIGHT_ACTIVE_EXISTS);
         }
+        // 포인트 차감(V15) — 어드민은 면제, 부족하면 POINT_INSUFFICIENT
+        if (member.getRole() != com.chzikon.member.domain.Role.ADMIN) {
+            member.spendPoints(appSettingService.getInt("SPOTLIGHT_POINT_COST", 50));
+        }
         Spotlight saved = spotlightRepository.save(
-                new Spotlight(memberId, request.title(), request.platform(), request.streamUrl()));
+                new Spotlight(memberId, request.title(), request.platform(), request.streamUrl(),
+                        request.scheduledAt()));
         return SpotlightResponse.of(saved, member);
     }
 

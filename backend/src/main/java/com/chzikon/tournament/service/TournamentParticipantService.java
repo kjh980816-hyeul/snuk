@@ -40,7 +40,8 @@ public class TournamentParticipantService {
      * - 1인 1신청(unique). 접수는 PENDING, 정원 차감은 어드민 승인 시점.
      */
     @Transactional
-    public TournamentParticipant apply(Long tournamentId, Long memberId) {
+    public TournamentParticipant apply(Long tournamentId, Long memberId,
+                                       List<com.chzikon.tournament.dto.ApplyFormJson.ApplyAnswer> answers) {
         Member member = memberService.getById(memberId);
         if (!member.getRole().isStreamerOrAbove()) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_ROLE);
@@ -54,11 +55,26 @@ public class TournamentParticipantService {
         if (!tournament.isOpenForApply()) {
             throw new BusinessException(ErrorCode.TOURNAMENT_NOT_OPEN);
         }
+        // 질문 검증(항목 17) — 필수 질문은 텍스트나 이미지 중 하나는 있어야 함. 선택 질문은 비워도 됨.
+        var questions = com.chzikon.tournament.dto.ApplyFormJson.questionsFromJson(tournament.getApplyQuestions());
+        if (!questions.isEmpty()) {
+            if (answers == null || answers.size() != questions.size()) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT, "참가 신청 질문 답변이 누락됐습니다.");
+            }
+            for (int i = 0; i < questions.size(); i++) {
+                var a = answers.get(i);
+                if (questions.get(i).required() && (a == null || a.isBlank())) {
+                    throw new BusinessException(ErrorCode.INVALID_INPUT,
+                            "필수 질문에 모두 답변해주세요: " + questions.get(i).q());
+                }
+            }
+        }
 
         int followerSnapshot = member.getFollowerCount() != null ? member.getFollowerCount() : 0;
         try {
             return participantRepository.save(
-                    new TournamentParticipant(tournamentId, memberId, followerSnapshot));
+                    new TournamentParticipant(tournamentId, memberId, followerSnapshot,
+                            com.chzikon.tournament.dto.ApplyFormJson.answersToJson(answers)));
         } catch (DataIntegrityViolationException e) {
             // unique(tournament_id, member_id) 동시 중복신청 방어
             throw new BusinessException(ErrorCode.ALREADY_JOINED);
@@ -94,9 +110,58 @@ public class TournamentParticipantService {
 
     @Transactional(readOnly = true)
     public List<ParticipantAdminView> listParticipants(Long tournamentId) {
-        return participantRepository.findByTournamentIdOrderByAppliedAtAsc(tournamentId).stream()
-                .map(ParticipantAdminView::from)
+        List<TournamentParticipant> all =
+                participantRepository.findByTournamentIdOrderByAppliedAtAsc(tournamentId);
+        Map<Long, Member> members = memberRepository.findAllById(
+                        all.stream().map(TournamentParticipant::getMemberId).distinct().toList())
+                .stream().collect(Collectors.toMap(Member::getId, Function.identity()));
+        return all.stream()
+                .map(p -> ParticipantAdminView.of(p, members.get(p.getMemberId())))
                 .toList();
+    }
+
+    /**
+     * 참가 신청 내역 CSV(엑셀 호환) — 주최자(소유 스트리머) 또는 ADMIN (항목 18).
+     * 헤더: 닉네임, 회원번호, 상태, 팔로워, 신청일 + 대회 질문들.
+     */
+    @Transactional(readOnly = true)
+    public String exportCsv(Long tournamentId, Long memberId) {
+        requireOwnedTournament(tournamentId, memberId);
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        var questions = com.chzikon.tournament.dto.ApplyFormJson.questionsFromJson(tournament.getApplyQuestions());
+        List<com.chzikon.tournament.dto.ParticipantAdminView> rows = listParticipants(tournamentId);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(csvRow(java.util.stream.Stream.concat(
+                java.util.stream.Stream.of("닉네임", "회원번호", "상태", "팔로워", "신청일"),
+                questions.stream().map(q -> q.q() + (q.required() ? "" : " (선택)"))).toList()));
+        for (var r : rows) {
+            java.util.List<String> cells = new java.util.ArrayList<>(List.of(
+                    r.nickname(), String.valueOf(r.memberId()), r.status(),
+                    String.valueOf(r.followerSnapshot()),
+                    r.appliedAt() != null ? r.appliedAt().toString() : ""));
+            for (int i = 0; i < questions.size(); i++) {
+                if (i < r.answers().size() && r.answers().get(i) != null) {
+                    var a = r.answers().get(i);
+                    String cell = a.text() != null ? a.text() : "";
+                    if (a.imageUrl() != null && !a.imageUrl().isBlank()) {
+                        cell = (cell.isBlank() ? "" : cell + " ") + "[사진] " + a.imageUrl();
+                    }
+                    cells.add(cell);
+                } else {
+                    cells.add("");
+                }
+            }
+            sb.append(csvRow(cells));
+        }
+        return sb.toString();
+    }
+
+    private static String csvRow(List<String> cells) {
+        return cells.stream()
+                .map(c -> '"' + (c == null ? "" : c.replace("\"", "\"\"")) + '"')
+                .collect(Collectors.joining(",")) + "\r\n";
     }
 
     /** 공개 로스터 — 승인된 참가자만(닉네임·프사). 대진표/참여 스트리머 표시용. */

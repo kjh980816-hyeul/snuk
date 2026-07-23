@@ -29,6 +29,7 @@ public class CampaignApplicationService {
     private final CampaignApplicationRepository applicationRepository;
     private final GameKeyRepository gameKeyRepository;
     private final MemberService memberService;
+    private final com.chzikon.member.repository.MemberRepository memberRepository;
     private final KeyCipher keyCipher;
     private final AdminLogService adminLogService;
 
@@ -124,8 +125,13 @@ public class CampaignApplicationService {
 
     @Transactional(readOnly = true)
     public List<ApplicationAdminView> listApplications(Long campaignId) {
-        return applicationRepository.findByCampaignIdOrderByAppliedAtAsc(campaignId).stream()
-                .map(ApplicationAdminView::from)
+        List<CampaignApplication> apps = applicationRepository.findByCampaignIdOrderByAppliedAtAsc(campaignId);
+        var members = memberRepository.findAllById(
+                        apps.stream().map(CampaignApplication::getMemberId).distinct().toList())
+                .stream().collect(java.util.stream.Collectors.toMap(
+                        com.chzikon.member.domain.Member::getId, java.util.function.Function.identity()));
+        return apps.stream()
+                .map(a -> ApplicationAdminView.from(a, members.get(a.getMemberId())))
                 .toList();
     }
 

@@ -142,7 +142,7 @@ onMounted(async () => {
     },
     writeReview: (campaignId: number, title: string, content: string) =>
       campaignApi.writeReview(campaignId, { title, content }),
-    createSpotlight: (body: { title: string; platform: SpotlightPlatform; streamUrl: string }) =>
+    createSpotlight: (body: { title: string; platform: SpotlightPlatform; streamUrl: string; scheduledAt?: string | null }) =>
       spotlightApi.create(body),
     buyGoods: (id: number) => {
       router.push({ path: '/goods', query: { buy: String(id) } })
@@ -168,6 +168,7 @@ onMounted(async () => {
     },
     // 주최자 참가자 관리 (본인 대회 한정 — 백엔드 재검증)
     manageParticipants: (id: number) => tournamentApi.manageParticipants(id),
+    exportParticipants: (id: number) => tournamentApi.exportParticipants(id),
     decideParticipant: async (id: number, pid: number, approve: boolean) => {
       if (approve) await tournamentApi.approveParticipant(id, pid)
       else await tournamentApi.rejectParticipant(id, pid)

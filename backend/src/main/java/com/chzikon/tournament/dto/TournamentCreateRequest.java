@@ -20,6 +20,7 @@ public record TournamentCreateRequest(
         @PositiveOrZero int capacity,
         TournamentStatus status,
         String resultText,
+        java.util.List<ApplyFormJson.ApplyQuestion> applyQuestions,
         boolean featured,
         int sortOrder
 ) {
@@ -36,6 +37,7 @@ public record TournamentCreateRequest(
                 .capacity(capacity)
                 .status(status)
                 .resultText(resultText)
+                .applyQuestions(ApplyFormJson.questionsToJson(applyQuestions))
                 .featured(featured)
                 .sortOrder(sortOrder)
                 .build();

@@ -16,7 +16,8 @@ public final class SpotlightDtos {
     public record SpotlightCreateRequest(
             @NotBlank @Size(max = 200) String title,
             @NotNull Spotlight.Platform platform,
-            @NotBlank @Size(max = 512) String streamUrl
+            @NotBlank @Size(max = 512) String streamUrl,
+            LocalDateTime scheduledAt
     ) {
     }
 
@@ -30,13 +31,14 @@ public final class SpotlightDtos {
             String streamerImageUrl,
             boolean approved,
             LocalDateTime createdAt,
-            LocalDateTime expiresAt
+            LocalDateTime expiresAt,
+            LocalDateTime scheduledAt
     ) {
         public static SpotlightResponse of(Spotlight s, Member m) {
             return new SpotlightResponse(s.getId(), s.getTitle(), s.getPlatform().name(), s.getStreamUrl(),
                     m != null ? m.getNickname() : "스트리머",
                     m != null ? m.getProfileImageUrl() : null,
-                    s.isApproved(), s.getCreatedAt(), s.getExpiresAt());
+                    s.isApproved(), s.getCreatedAt(), s.getExpiresAt(), s.getScheduledAt());
         }
     }
 }

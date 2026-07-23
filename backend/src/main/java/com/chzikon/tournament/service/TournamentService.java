@@ -48,7 +48,9 @@ public class TournamentService {
         Tournament tournament = getById(id);
         tournament.update(req.title(), req.description(), req.gameName(), req.bannerImageUrl(), req.detailImageUrl(),
                 req.eventDate(), req.applyStart(), req.applyEnd(),
-                req.capacity(), req.status(), req.resultText(), req.featured(), req.sortOrder());
+                req.capacity(), req.status(), req.resultText(),
+                com.chzikon.tournament.dto.ApplyFormJson.questionsToJson(req.applyQuestions()),
+                req.featured(), req.sortOrder());
         adminLogService.record(actorId, "TOURNAMENT_UPDATE", "tournament", id,
                 "status=" + tournament.getStatus());
         return tournament;
@@ -85,6 +87,7 @@ public class TournamentService {
         tournament.update(req.title(), req.description(), req.gameName(), req.bannerImageUrl(), req.detailImageUrl(),
                 req.eventDate(), req.applyStart(), req.applyEnd(),
                 req.capacity(), req.status(), req.resultText(),
+                com.chzikon.tournament.dto.ApplyFormJson.questionsToJson(req.applyQuestions()),
                 isAdmin ? req.featured() : null, req.sortOrder());
         return tournament;
     }

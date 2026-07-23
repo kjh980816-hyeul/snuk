@@ -90,6 +90,23 @@ async function removePost(p: StreamerPost) {
   }
 }
 
+// 글 신고(항목 3) — 로그인 회원 1인 1신고, 어드민 신고함으로 접수
+async function reportPost(p: StreamerPost) {
+  if (!auth.isLoggedIn) {
+    ;(window as unknown as { openLogin?: () => void }).openLogin?.()
+    return
+  }
+  const reason = prompt(`'${p.title}' 글을 신고합니다.\n신고 사유를 입력해주세요. (선택)`)
+  if (reason === null) return
+  try {
+    await streamerApi.reportPost(p.id, reason.trim())
+    alert('신고가 접수됐습니다. 운영진 확인 후 처리됩니다.')
+  } catch (e) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    alert(msg ?? '신고에 실패했습니다.')
+  }
+}
+
 function dt(v: string) {
   return v?.slice(0, 16).replace('T', ' ')
 }
@@ -167,7 +184,10 @@ watch(() => route.params.id, load)
                 <div class="sp-post-meta">{{ p.authorName }} · {{ dt(p.createdAt) }}</div>
               </div>
             </div>
-            <button v-if="p.deletable" class="sp-del" @click="removePost(p)">삭제</button>
+            <div class="sp-post-btns">
+              <button v-if="auth.isLoggedIn && auth.me?.id !== p.authorId" class="sp-report" @click="reportPost(p)">신고</button>
+              <button v-if="p.deletable" class="sp-del" @click="removePost(p)">삭제</button>
+            </div>
           </div>
           <p v-if="p.content" class="sp-post-content">{{ p.content }}</p>
         </article>
@@ -231,10 +251,16 @@ watch(() => route.params.id, load)
 .sp-post-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .sp-post-title { font-size: 14px; font-weight: 700; color: var(--text); }
 .sp-post-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.sp-post-btns { display: flex; gap: 6px; flex: none; }
 .sp-del {
   flex: none; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer;
   background: rgba(239, 68, 68, .1); color: #ef4444; border: 1px solid rgba(239, 68, 68, .3);
 }
+.sp-report {
+  flex: none; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer;
+  background: var(--bg3); color: var(--text3); border: 1px solid var(--border);
+}
+.sp-report:hover { color: #ffb300; border-color: rgba(255, 179, 0, .4); }
 .sp-post-content { margin: 10px 0 0 46px; font-size: 13px; color: var(--text2); white-space: pre-wrap; line-height: 1.7; }
 
 .sp-empty {

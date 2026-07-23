@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { tournamentApi } from '@/api'
+import { tournamentApi, uploadApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import type { ParticipantPublic, Tournament } from '@/api/types'
 
@@ -38,13 +38,58 @@ async function load() {
   }
 }
 
+// 주최자 커스텀 질문(항목 17) — 필수/선택 구분 + 답변에 사진 첨부 가능
+const applyFormOpen = ref(false)
+const answerTexts = ref<string[]>([])
+const answerImages = ref<Array<string | null>>([])
+const answerUploading = ref<number | null>(null)
+
+function startApply() {
+  if (!tour.value) return
+  if (!auth.isLoggedIn) { applyMsg.value = '로그인 후 신청할 수 있습니다.'; return }
+  if (tour.value.applyQuestions?.length && !applyFormOpen.value) {
+    answerTexts.value = tour.value.applyQuestions.map(() => '')
+    answerImages.value = tour.value.applyQuestions.map(() => null)
+    applyFormOpen.value = true
+    return
+  }
+  apply()
+}
+
+async function onAnswerImage(e: Event, i: number) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  answerUploading.value = i
+  try {
+    const { url } = await uploadApi.image(file)
+    answerImages.value[i] = url
+  } catch {
+    alert('사진 업로드에 실패했어요. (5MB 이하 이미지만 가능)')
+  } finally {
+    answerUploading.value = null
+    ;(e.target as HTMLInputElement).value = ''
+  }
+}
+
 async function apply() {
   if (!tour.value) return
   if (!auth.isLoggedIn) { applyMsg.value = '로그인 후 신청할 수 있습니다.'; return }
+  const qs = tour.value.applyQuestions ?? []
+  if (qs.length) {
+    const missing = qs.findIndex((q, i) => q.required && !answerTexts.value[i]?.trim() && !answerImages.value[i])
+    if (missing >= 0) {
+      applyMsg.value = `필수 질문에 답변해주세요: ${qs[missing].q}`
+      return
+    }
+  }
   applying.value = true
   try {
-    await tournamentApi.apply(tour.value.id)
+    const answers = qs.length
+      ? qs.map((_, i) => ({ text: answerTexts.value[i]?.trim() || null, imageUrl: answerImages.value[i] }))
+      : undefined
+    await tournamentApi.apply(tour.value.id, answers)
     applyMsg.value = '참가 신청 완료! 관리자 승인 후 확정됩니다.'
+    applyFormOpen.value = false
   } catch (e) {
     const err = e as { response?: { data?: { message?: string } } }
     applyMsg.value = err?.response?.data?.message ?? '신청에 실패했습니다.'
@@ -84,10 +129,28 @@ watch(() => route.params.id, load)
               <div class="stat"><strong>{{ statusLabel }}</strong><span>상태</span></div>
             </div>
             <div class="acts">
-              <button v-if="tour.status === 'OPEN'" class="apply" :disabled="applying" @click="apply">
-                {{ applying ? '신청 중…' : '참가 신청하기' }}
+              <button v-if="tour.status === 'OPEN'" class="apply" :disabled="applying" @click="startApply">
+                {{ applying ? '신청 중…' : applyFormOpen ? '답변 제출하고 신청하기' : '참가 신청하기' }}
               </button>
               <span v-if="applyMsg" class="apply-msg">{{ applyMsg }}</span>
+            </div>
+            <!-- 주최자 질문 답변 폼(항목 17: 필수/선택 + 사진 첨부) -->
+            <div v-if="applyFormOpen && tour.applyQuestions?.length" class="apply-form">
+              <div v-for="(q, i) in tour.applyQuestions" :key="i" class="apply-q">
+                <label>{{ i + 1 }}. {{ q.q }}
+                  <span :class="q.required ? 'q-req' : 'q-opt'">{{ q.required ? '필수' : '선택' }}</span>
+                </label>
+                <textarea v-model="answerTexts[i]" rows="2" placeholder="답변을 입력해주세요"></textarea>
+                <div class="q-img-row">
+                  <label class="q-img-btn">
+                    {{ answerUploading === i ? '업로드 중…' : '📷 사진 첨부' }}
+                    <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none"
+                      @change="onAnswerImage($event, i)" />
+                  </label>
+                  <img v-if="answerImages[i]" :src="answerImages[i]!" class="q-img-prev" alt="" />
+                  <button v-if="answerImages[i]" class="q-img-del" @click="answerImages[i] = null">사진 제거</button>
+                </div>
+              </div>
             </div>
             <div v-if="tour.status === 'DONE' && tour.resultText" class="result">
               <h3>대회 결과</h3>
@@ -150,6 +213,21 @@ watch(() => route.params.id, load)
 .apply:hover { filter: brightness(1.1); }
 .apply:disabled { opacity: 0.6; cursor: default; }
 .apply-msg { font-size: 13px; color: var(--text2); }
+/* 주최자 질문 답변 폼(항목 17) */
+.apply-form { margin-top: 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.apply-q { display: flex; flex-direction: column; gap: 6px; }
+.apply-q label { font-size: 13px; font-weight: 700; color: var(--text); }
+.apply-q textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 9px;
+  padding: 9px 11px; color: var(--text); font-size: 13px; outline: none; resize: vertical;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
+.q-req { font-size: 10px; font-weight: 800; color: #ff7070; margin-left: 6px; }
+.q-opt { font-size: 10px; font-weight: 700; color: var(--text3); margin-left: 6px; }
+.q-img-row { display: flex; align-items: center; gap: 8px; }
+.q-img-btn { font-size: 11.5px; color: var(--text2); border: 1px dashed var(--border); border-radius: 8px;
+  padding: 6px 12px; cursor: pointer; }
+.q-img-prev { height: 44px; border-radius: 7px; }
+.q-img-del { font-size: 11px; color: #ff7070; background: transparent; border: none; cursor: pointer; }
 .result { margin-top: 20px; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius2); padding: 16px 20px; }
 .result h3 { font-size: 14px; color: var(--text); margin: 0 0 8px; }
 .result p { font-size: 14px; color: var(--text2); white-space: pre-line; margin: 0; }

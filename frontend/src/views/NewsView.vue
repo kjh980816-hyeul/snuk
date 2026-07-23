@@ -159,23 +159,46 @@ onMounted(async () => {
 
         <div v-if="loading" class="empty">불러오는 중…</div>
         <div v-else-if="!list.length" class="empty">아직 등록된 기사가 없습니다.</div>
-        <div v-else class="list">
-          <div v-for="n in list" :key="n.id" class="row" @click="router.push(`/news/${n.id}`)">
-            <div class="row-thumb">
-              <img v-if="n.thumbnailUrl" :src="n.thumbnailUrl" alt="" />
-              <span v-else>📰</span>
+        <template v-else>
+          <!-- 헤드라인: 첫 기사만 크게 (항목 4) -->
+          <div class="headline" @click="router.push(`/news/${list[0].id}`)">
+            <div class="headline-media">
+              <img v-if="list[0].thumbnailUrl" :src="list[0].thumbnailUrl" alt="" />
+              <span v-else class="headline-emoji">📰</span>
+              <span class="headline-badge">HEADLINE</span>
             </div>
-            <div class="row-body">
-              <div class="row-title">{{ n.title }}</div>
-              <div class="row-excerpt">{{ (n.content ?? '').slice(0, 120) }}</div>
-              <div class="row-meta">{{ n.authorName }} 기자 · {{ dt(n.createdAt) }}</div>
-            </div>
-            <div v-if="canManage(n)" class="manage" @click.stop>
-              <button class="mini" @click="openEdit(n)">수정</button>
-              <button class="mini danger" @click="remove(n)">삭제</button>
+            <div class="headline-body">
+              <div class="headline-title">{{ list[0].title }}</div>
+              <div class="headline-excerpt">{{ (list[0].content ?? '').slice(0, 200) }}</div>
+              <div class="headline-meta">
+                <span>{{ list[0].authorName }} 기자 · {{ dt(list[0].createdAt) }}</span>
+                <span v-if="canManage(list[0])" class="manage" @click.stop>
+                  <button class="mini" @click="openEdit(list[0])">수정</button>
+                  <button class="mini danger" @click="remove(list[0])">삭제</button>
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+
+          <!-- 나머지: 게시판 리스트 -->
+          <div class="list">
+            <div v-for="n in list.slice(1)" :key="n.id" class="row" @click="router.push(`/news/${n.id}`)">
+              <div class="row-thumb">
+                <img v-if="n.thumbnailUrl" :src="n.thumbnailUrl" alt="" />
+                <span v-else>📰</span>
+              </div>
+              <div class="row-body">
+                <div class="row-title">{{ n.title }}</div>
+                <div class="row-excerpt">{{ (n.content ?? '').slice(0, 120) }}</div>
+                <div class="row-meta">{{ n.authorName }} 기자 · {{ dt(n.createdAt) }}</div>
+              </div>
+              <div v-if="canManage(n)" class="manage" @click.stop>
+                <button class="mini" @click="openEdit(n)">수정</button>
+                <button class="mini danger" @click="remove(n)">삭제</button>
+              </div>
+            </div>
+          </div>
+        </template>
       </template>
 
       <!-- 작성/수정 폼 -->
@@ -208,6 +231,26 @@ section { padding: 40px 0 60px; }
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
 .empty { border: 1px dashed var(--border2, #333); border-radius: 12px; padding: 40px 16px; text-align: center;
   color: var(--text3, #6c6c74); font-size: 13px; }
+/* 헤드라인 카드 — 첫 기사 크게 (항목 4) */
+.headline { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 0;
+  background: var(--bg2, #141418); border: 1px solid var(--border, #222); border-radius: 18px;
+  overflow: hidden; cursor: pointer; margin-bottom: 18px; transition: all .2s; }
+.headline:hover { border-color: #5b7cfa; box-shadow: 0 14px 44px rgba(91, 124, 250, .18); }
+.headline-media { position: relative; aspect-ratio: 16/9; background: var(--bg3, #1c1c22);
+  display: flex; align-items: center; justify-content: center; }
+.headline-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.headline-emoji { font-size: 54px; opacity: .4; }
+.headline-badge { position: absolute; top: 14px; left: 14px; font-size: 10px; font-weight: 800;
+  letter-spacing: 1.5px; color: #fff; background: linear-gradient(135deg, #5b7cfa, #9b5cff);
+  border-radius: 6px; padding: 4px 10px; }
+.headline-body { padding: 26px 28px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.headline-title { font-size: 22px; font-weight: 800; color: var(--text, #eee); line-height: 1.4; margin-bottom: 12px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.headline-excerpt { font-size: 13.5px; color: var(--text3, #8a8a92); line-height: 1.7;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.headline-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text3, #6c6c74); margin-top: 14px; }
+@media (max-width: 800px) { .headline { grid-template-columns: 1fr; } .headline-body { padding: 16px 18px; } .headline-title { font-size: 17px; } }
+
 .list { display: flex; flex-direction: column; gap: 12px; }
 .row { display: flex; gap: 16px; align-items: center; background: var(--bg2, #141418); border: 1px solid var(--border, #222);
   border-radius: 14px; padding: 14px; cursor: pointer; transition: all .2s; }

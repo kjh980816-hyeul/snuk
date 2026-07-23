@@ -26,6 +26,14 @@ public class AppSettingService {
                 .orElse(DEFAULT_THRESHOLD);
     }
 
+    /** 숫자 설정 조회(미설정/파싱 실패 시 fallback). */
+    @Transactional(readOnly = true)
+    public int getInt(String key, int fallback) {
+        return repository.findBySettingKey(key)
+                .map(s -> parseIntSafe(s.getSettingValue(), fallback))
+                .orElse(fallback);
+    }
+
     @Transactional(readOnly = true)
     public List<AppSetting> findAll() {
         return repository.findAll();

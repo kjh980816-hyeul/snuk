@@ -120,6 +120,14 @@ public class Campaign {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /** 키 등록 시 자동으로 고유 키 배포 모드로 전환(승인 시 키 자동 배정이 동작하도록). */
+    public void enableUniqueKeyMode() {
+        if (this.keyMode != KeyMode.UNIQUE_KEY) {
+            this.keyMode = KeyMode.UNIQUE_KEY;
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
+
     /** 스트리머 본인 등록 컨텐츠 표시. */
     public void assignOwner(Long memberId) {
         this.ownerMemberId = memberId;

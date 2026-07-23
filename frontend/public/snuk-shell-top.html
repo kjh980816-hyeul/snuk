@@ -18,14 +18,15 @@
     <input type="text" placeholder="검색..." onkeydown="if(event.key==='Enter'){closeMobileMenu();window.__snukSearch(this.value);this.value='';}">
   </div>
   <div class="rs-nav">
-    <button class="rs-item" onclick="__snukNav('/')">HOME</button>
-    <button class="rs-item" onclick="__snukNav('/campaigns')">컨텐츠·대회</button>
-    <button class="rs-item" onclick="__snukNav('/games')">게임체험단</button>
-    <button class="rs-item" onclick="__snukNav('/streamers')">스트리머</button>
-    <button class="rs-item" onclick="__snukNav('/news')">스눅 뉴스</button>
-    <button class="rs-item" onclick="__snukNav('/videos')">영상</button>
-    <button class="rs-item" onclick="__snukNav('/goods')">굿즈샵</button>
-    <button class="rs-item" onclick="__snukNav('/clients')">협력사</button>
+    <button class="rs-item" data-menu="HOME" onclick="__snukNav('/')">HOME</button>
+    <button class="rs-item" data-menu="CAMPAIGNS" onclick="__snukNav('/campaigns')">컨텐츠·대회</button>
+    <button class="rs-item" data-menu="GAMES" onclick="__snukNav('/games')">게임체험단</button>
+    <button class="rs-item" data-menu="STREAMERS" onclick="__snukNav('/streamers')">스트리머</button>
+    <button class="rs-item" data-menu="NEWS" onclick="__snukNav('/news')">스눅 뉴스</button>
+    <button class="rs-item" data-menu="VIDEOS" onclick="__snukNav('/videos')">영상</button>
+    <button class="rs-item" data-menu="GOODS" onclick="__snukNav('/goods')">굿즈샵</button>
+    <button class="rs-item" data-menu="RESOURCES" onclick="__snukNav('/resources')">무료소스</button>
+    <button class="rs-item" data-menu="CLIENTS" onclick="__snukNav('/clients')">협력사</button>
     <button class="rs-item rs-admin-item" style="display:none;color:#ffb300;" onclick="__snukNav('/admin')">관리자</button>
   </div>
 </div>
@@ -62,14 +63,15 @@
   </div>
 
   <div class="rs-nav">
-    <button class="rs-item" onclick="__snukNav('/')">HOME</button>
-    <button class="rs-item" onclick="__snukNav('/campaigns')">컨텐츠·대회</button>
-    <button class="rs-item" onclick="__snukNav('/games')">게임체험단</button>
-    <button class="rs-item" onclick="__snukNav('/streamers')">스트리머</button>
-    <button class="rs-item" onclick="__snukNav('/news')">스눅 뉴스</button>
-    <button class="rs-item" onclick="__snukNav('/videos')">영상</button>
-    <button class="rs-item" onclick="__snukNav('/goods')">굿즈샵</button>
-    <button class="rs-item" onclick="__snukNav('/clients')">협력사</button>
+    <button class="rs-item" data-menu="HOME" onclick="__snukNav('/')">HOME</button>
+    <button class="rs-item" data-menu="CAMPAIGNS" onclick="__snukNav('/campaigns')">컨텐츠·대회</button>
+    <button class="rs-item" data-menu="GAMES" onclick="__snukNav('/games')">게임체험단</button>
+    <button class="rs-item" data-menu="STREAMERS" onclick="__snukNav('/streamers')">스트리머</button>
+    <button class="rs-item" data-menu="NEWS" onclick="__snukNav('/news')">스눅 뉴스</button>
+    <button class="rs-item" data-menu="VIDEOS" onclick="__snukNav('/videos')">영상</button>
+    <button class="rs-item" data-menu="GOODS" onclick="__snukNav('/goods')">굿즈샵</button>
+    <button class="rs-item" data-menu="RESOURCES" onclick="__snukNav('/resources')">무료소스</button>
+    <button class="rs-item" data-menu="CLIENTS" onclick="__snukNav('/clients')">협력사</button>
     <button class="rs-item rs-admin-item" style="display:none;color:#ffb300;" onclick="__snukNav('/admin')">관리자</button>
   </div>
 

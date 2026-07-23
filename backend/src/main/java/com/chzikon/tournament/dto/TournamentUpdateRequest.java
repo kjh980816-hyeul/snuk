@@ -17,6 +17,7 @@ public record TournamentUpdateRequest(
         Integer capacity,
         TournamentStatus status,
         String resultText,
+        java.util.List<ApplyFormJson.ApplyQuestion> applyQuestions,
         Boolean featured,
         Integer sortOrder
 ) {

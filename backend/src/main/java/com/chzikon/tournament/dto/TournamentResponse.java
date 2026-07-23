@@ -20,6 +20,7 @@ public record TournamentResponse(
         int filledSlots,
         String status,
         String resultText,
+        java.util.List<ApplyFormJson.ApplyQuestion> applyQuestions,
         boolean featured,
         int sortOrder,
         Long ownerMemberId
@@ -29,6 +30,7 @@ public record TournamentResponse(
                 t.getId(), t.getTitle(), t.getDescription(), t.getGameName(), t.getBannerImageUrl(), t.getDetailImageUrl(),
                 t.getEventDate(), t.getApplyStart(), t.getApplyEnd(),
                 t.getCapacity(), t.getFilledSlots(), t.getStatus().name(),
-                t.getResultText(), t.isFeatured(), t.getSortOrder(), t.getOwnerMemberId());
+                t.getResultText(), ApplyFormJson.questionsFromJson(t.getApplyQuestions()),
+                t.isFeatured(), t.getSortOrder(), t.getOwnerMemberId());
     }
 }

@@ -39,10 +39,15 @@ public class TournamentParticipant {
     @Column(name = "decided_at")
     private LocalDateTime decidedAt;
 
-    public TournamentParticipant(Long tournamentId, Long memberId, int followerSnapshot) {
+    /** 참가 질문 답변(JSON 배열 문자열 — V15 항목 17). */
+    @Column(columnDefinition = "TEXT")
+    private String answers;
+
+    public TournamentParticipant(Long tournamentId, Long memberId, int followerSnapshot, String answers) {
         this.tournamentId = tournamentId;
         this.memberId = memberId;
         this.followerSnapshot = followerSnapshot;
+        this.answers = answers;
         this.status = Status.PENDING;
         this.appliedAt = LocalDateTime.now();
     }

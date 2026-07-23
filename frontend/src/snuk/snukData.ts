@@ -205,6 +205,10 @@ export async function loadSnukData(): Promise<SnukData> {
       name: s.streamerName, sub: s.title,
       platform: SPOTLIGHT_PLAT[s.platform] ?? 'chz',
       img: s.streamerImageUrl, url: s.streamUrl,
+      // 방송 예정 일시(선택) — "MM/DD HH:mm" 표기
+      when: s.scheduledAt
+        ? `${s.scheduledAt.slice(5, 10).replace('-', '/')} ${s.scheduledAt.slice(11, 16)}`
+        : '',
     })),
     roster: participants.map((p) => ({
       name: p.nickname, img: p.profileImageUrl,

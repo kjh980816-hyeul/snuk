@@ -24,7 +24,7 @@ export const adminApi = {
 
   // applications
   applications: (id: number) =>
-    api.get<Array<{ applicationId: number; memberId: number; status: string; followerSnapshot: number }>>(
+    api.get<Array<{ applicationId: number; memberId: number; nickname: string; profileImageUrl: string | null; status: string; followerSnapshot: number }>>(
       `/api/admin/campaigns/${id}/applications`,
     ).then((r) => r.data),
   approve: (applicationId: number) => api.post(`/api/admin/applications/${applicationId}/approve`),
@@ -48,7 +48,7 @@ export const adminApi = {
     api.put<Tournament>(`/api/admin/tournaments/${id}`, body).then((r) => r.data),
   deleteTournament: (id: number) => api.delete(`/api/admin/tournaments/${id}`),
   participants: (id: number) =>
-    api.get<Array<{ participantId: number; memberId: number; status: string; followerSnapshot: number }>>(
+    api.get<Array<{ participantId: number; memberId: number; nickname: string; profileImageUrl: string | null; status: string; followerSnapshot: number; answers: Array<{ text: string | null; imageUrl: string | null }> }>>(
       `/api/admin/tournaments/${id}/participants`,
     ).then((r) => r.data),
   approveParticipant: (participantId: number) => api.post(`/api/admin/participants/${participantId}/approve`),
@@ -88,6 +88,28 @@ export const adminApi = {
     api.get<Array<{ applicationId: number; memberId: number; nickname: string; campaignId: number; campaignTitle: string; reviewDeadline: string; warnedAt: string; deadlineExtended: boolean; reviewWritten: boolean }>>(
       '/api/admin/review-warnings',
     ).then((r) => r.data),
+
+  // 스트리머 게시판 신고함 (항목 3)
+  postReports: () =>
+    api.get<Array<{ reportId: number; postId: number; reason: string | null; reporterName: string; createdAt: string; postTitle: string; postContent: string; postAuthorName: string; streamerName: string }>>(
+      '/api/admin/post-reports',
+    ).then((r) => r.data),
+  dismissPostReport: (reportId: number) => api.delete(`/api/admin/post-reports/${reportId}`),
+  deleteReportedPost: (postId: number) => api.delete(`/api/streamer-posts/${postId}`),
+
+  // 무료소스 자료실 (항목 19) — 링크(주소) 또는 파일 중 하나 필수
+  createResource: (title: string, description: string, opts: { link?: string; file?: File | null; image?: File | null }) => {
+    const fd = new FormData()
+    fd.append('title', title)
+    fd.append('description', description)
+    if (opts.link) fd.append('link', opts.link)
+    if (opts.file) fd.append('file', opts.file)
+    if (opts.image) fd.append('image', opts.image)
+    return api.post('/api/admin/resources', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
+  deleteResource: (id: number) => api.delete(`/api/admin/resources/${id}`),
 
   // settings / members / logs
   settings: () => api.get<Array<{ settingKey: string; settingValue: string; description: string | null }>>(

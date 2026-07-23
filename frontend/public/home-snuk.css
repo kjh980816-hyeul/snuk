@@ -117,6 +117,9 @@
 /* 방송 화면 영역 */
 .spotlight-screen{width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;background:#000;}
 .spotlight-screen img{width:100%;height:100%;object-fit:cover;display:block;}
+/* 치지직 방송 크롭 임베드 (클릭은 카드로 통과) */
+.spot-embed-crop{position:absolute;inset:0;overflow:hidden;}
+.spot-embed{position:absolute;left:0;top:0;width:1620px;height:900px;border:0;transform-origin:0 0;pointer-events:none;}
 .spotlight-screen-overlay{position:absolute;inset:0;
   background:linear-gradient(transparent 50%, rgba(0,0,0,.75) 100%);
   pointer-events:none;}
@@ -571,10 +574,9 @@
 .goods-card.dummy .goods-name,.goods-card.dummy .goods-streamer{opacity:.75;}
 
 /* 스트리머 드래그 스트립 */
-.strip-scroll{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;cursor:grab;scrollbar-width:thin;-webkit-overflow-scrolling:touch;}
+.strip-scroll{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;cursor:grab;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .strip-scroll.dragging{cursor:grabbing;user-select:none;}
-.strip-scroll::-webkit-scrollbar{height:6px;}
-.strip-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.strip-scroll::-webkit-scrollbar{display:none;}
 .strip-card{flex:0 0 auto;width:132px;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px 10px 14px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .2s;cursor:pointer;user-select:none;}
 .strip-card:hover{transform:translateY(-4px);border-color:var(--border2);box-shadow:0 10px 28px rgba(0,0,0,.3);}
 .strip-avatar{width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--bg4);display:flex;align-items:center;justify-content:center;margin-bottom:6px;flex-shrink:0;}
@@ -784,8 +786,9 @@
 
 /* ── 홈 피처드 레이아웃(큰 카드 + 작은 부가 카드, 항목 3/5) ── */
 .home-feature-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1fr);gap:16px;align-items:stretch;}
-.home-feature-main{min-height:420px;}
-.feature-main-card{position:relative;width:100%;height:100%;min-height:420px;border-radius:var(--radius2);overflow:hidden;cursor:pointer;border:1px solid var(--border);transition:all .25s;}
+.home-feature-main{min-height:0;}
+/* 메인 카드도 사이드 썸네일과 동일 비율(16/10) — 크기만 다르고 비율 통일 */
+.feature-main-card{position:relative;width:100%;aspect-ratio:16/10;border-radius:var(--radius2);overflow:hidden;cursor:pointer;border:1px solid var(--border);transition:all .25s;}
 .feature-main-card:hover{border-color:var(--grad1);box-shadow:0 14px 44px rgba(91,124,250,.25);}
 .feature-main-card>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;}
 .feature-main-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;opacity:.4;}
@@ -811,7 +814,7 @@
 .feature-side-more{align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:var(--text2);border-style:dashed;min-height:80px;}
 .feature-side-more:hover{color:var(--text);}
 @media(max-width:1024px){.home-feature-layout{grid-template-columns:1fr;}.home-feature-side{grid-template-columns:1fr 1fr;}}
-@media(max-width:480px){.home-feature-main,.feature-main-card{min-height:300px;}.feature-main-title{font-size:19px;}}
+@media(max-width:480px){.feature-main-title{font-size:19px;}}
 
 /* ── 메인 라이브 배너(히어로 아래, 항목 13/18) ── */
 #live-banner .inner{padding-top:0;padding-bottom:0;max-width:1560px;}
@@ -836,6 +839,17 @@
 .news-card-meta{font-size:11px;color:var(--text3);margin-top:8px;}
 @media(max-width:1024px){.news-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:480px){.news-grid{grid-template-columns:1fr;}}
+
+/* ── 모바일 정리(항목 13) — 배너·카드 비율/여백 통일 ── */
+@media(max-width:768px){
+  .home-live-banner{padding:11px 14px;gap:8px;}
+  .home-live-title{font-size:12.5px;}
+  #spotlight-section .spotlight-card{max-width:none;}
+  .feature-main-title{font-size:18px;margin-bottom:6px;}
+  .feature-main-caption{padding:14px;}
+  .feature-main-desc{display:none;}
+  .news-grid{grid-template-columns:1fr 1fr;gap:10px;}
+}
 
 /* ── 라이브 칩(스트리머 카드) ── */
 .strip-live-chip{position:absolute;top:0;right:6px;z-index:2;font-size:9px;font-weight:800;letter-spacing:.5px;color:#fff;background:#ff4040;border-radius:5px;padding:2px 6px;box-shadow:0 2px 8px rgba(255,64,64,.5);}

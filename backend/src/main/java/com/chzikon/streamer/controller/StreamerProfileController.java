@@ -64,4 +64,28 @@ public class StreamerProfileController {
         service.deletePost(postId, principal.memberId());
         return ResponseEntity.noContent().build();
     }
+
+    /** 글 신고 — 로그인 회원(1인 1신고). 어드민 신고함으로 접수. (항목 3) */
+    @PostMapping("/api/streamer-posts/{postId}/report")
+    public ResponseEntity<Void> report(@PathVariable Long postId,
+                                       @RequestBody(required = false) Map<String, String> body,
+                                       @AuthenticationPrincipal MemberPrincipal principal) {
+        service.reportPost(postId, principal.memberId(), body != null ? body.get("reason") : null);
+        return ResponseEntity.ok().build();
+    }
+
+    /** 어드민 신고함 목록. */
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/post-reports")
+    public ResponseEntity<List<Map<String, Object>>> reports() {
+        return ResponseEntity.ok(service.listReportsForAdmin());
+    }
+
+    /** 어드민 신고 기각(글 유지). 글 삭제는 기존 DELETE /api/streamer-posts/{postId}. */
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/api/admin/post-reports/{reportId}")
+    public ResponseEntity<Void> dismissReport(@PathVariable Long reportId) {
+        service.dismissReport(reportId);
+        return ResponseEntity.noContent().build();
+    }
 }

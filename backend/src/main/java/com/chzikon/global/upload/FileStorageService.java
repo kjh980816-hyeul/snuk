@@ -22,6 +22,14 @@ public class FileStorageService {
 
     private static final Set<String> ALLOWED_EXT = Set.of("jpg", "jpeg", "png", "gif", "webp");
 
+    /** 무료소스 자료(항목 19) — 이미지 + 압축/오디오/영상/문서. 실행파일류는 차단. */
+    private static final Set<String> ALLOWED_RESOURCE_EXT = Set.of(
+            "jpg", "jpeg", "png", "gif", "webp", "svg",
+            "zip", "7z", "rar",
+            "mp3", "wav", "ogg",
+            "mp4", "webm", "mov",
+            "pdf", "txt", "psd");
+
     private final Path uploadDir;
 
     public FileStorageService(@Value("${app.upload.dir}") String dir) {
@@ -45,6 +53,27 @@ public class FileStorageService {
             return "/uploads/" + name;
         } catch (IOException e) {
             log.error("file store failed", e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    /** 무료소스 파일 저장(zip/오디오/영상/문서 허용, 원본 파일명 유지 다운로드를 위해 확장자 보존). */
+    public String storeResourceFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "파일이 비어 있습니다.");
+        }
+        String ext = extOf(file.getOriginalFilename());
+        if (!ALLOWED_RESOURCE_EXT.contains(ext)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT,
+                    "허용되지 않는 파일 형식입니다. (이미지/zip/7z/rar/mp3/wav/ogg/mp4/webm/mov/pdf/txt/psd)");
+        }
+        try {
+            Files.createDirectories(uploadDir);
+            String name = UUID.randomUUID() + "." + ext;
+            Files.copy(file.getInputStream(), uploadDir.resolve(name), StandardCopyOption.REPLACE_EXISTING);
+            return "/uploads/" + name;
+        } catch (IOException e) {
+            log.error("resource file store failed", e);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
     }

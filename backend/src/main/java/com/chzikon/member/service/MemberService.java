@@ -25,6 +25,7 @@ public class MemberService {
     private final List<OAuthProviderClient> oauthClients;
     private final com.chzikon.global.util.ExternalUrlValidator urlValidator;
     private final com.chzikon.global.upload.FileStorageService fileStorage;
+    private final com.chzikon.admin.service.AppSettingService appSettingService;
 
     @Value("${app.admin.channel-id:}")
     private String adminChannelId;
@@ -40,7 +41,7 @@ public class MemberService {
                 && adminChannelId != null && !adminChannelId.isBlank()
                 && adminChannelId.equals(profile.channelId());
         Role recomputed = isDesignatedAdmin ? Role.ADMIN : roleCalculator.compute(profile.followerCount());
-        return memberRepository.findByProviderAndChannelId(profile.provider(), profile.channelId())
+        Member member = memberRepository.findByProviderAndChannelId(profile.provider(), profile.channelId())
                 .map(existing -> {
                     existing.refreshOnLogin(profile.nickname(), profile.profileImageUrl(),
                             profile.followerCount(), recomputed);
@@ -49,6 +50,9 @@ public class MemberService {
                 .orElseGet(() -> memberRepository.save(Member.create(
                         profile.provider(), profile.channelId(), profile.nickname(),
                         profile.profileImageUrl(), profile.followerCount(), recomputed)));
+        // 하루 첫 로그인 포인트 적립(V15) — 금액은 어드민 설정 POINT_DAILY_AMOUNT
+        member.grantDailyPoint(appSettingService.getInt("POINT_DAILY_AMOUNT", 10), java.time.LocalDate.now());
+        return member;
     }
 
     @Transactional(readOnly = true)

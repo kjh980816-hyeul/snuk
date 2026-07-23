@@ -249,9 +249,7 @@ function initLiveBanner() {
     if (!s.live) { wrap.style.display = 'none'; return; }
     wrap.style.display = '';
     const pl = document.getElementById('live-embed-player');
-    const chat = document.getElementById('live-embed-chat');
     if (pl && !pl.src.includes(ch)) pl.src = `https://chzzk.naver.com/live/${ch}`;
-    if (chat && !chat.src.includes(ch)) chat.src = `https://chzzk.naver.com/live/${ch}/chat`;
     fitLivePlayerCrop();
     if (!window.__liveCropBound) {
       window.__liveCropBound = true;
@@ -415,6 +413,8 @@ function openStreamerPost(kind) {
     <input id="spc-title" style="${SP_INP}" placeholder="제목 *">
     <input id="spc-game" style="${SP_INP}" placeholder="게임명">
     <textarea id="spc-desc" style="${SP_INP}resize:vertical;" rows="3" placeholder="설명"></textarea>
+    ${isT ? `<textarea id="spc-questions" style="${SP_INP}resize:vertical;" rows="3"
+      placeholder="참가 신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 붙이면 선택 항목)"></textarea>` : ''}
     <div style="display:flex;gap:8px;">
       <input id="spc-date" type="date" style="${SP_INP}flex:1;" title="진행일">
       <input id="spc-cap" type="number" min="0" style="${SP_INP}flex:1;" placeholder="${isT ? '정원(명)' : '모집 인원'}">
@@ -439,6 +439,8 @@ async function spEdit(kind, id) {
     document.getElementById('spc-desc').value = d.description || '';
     document.getElementById('spc-date').value = d.eventDate || '';
     document.getElementById('spc-cap').value = kind === 'tournament' ? d.capacity : d.totalSlots;
+    const qEl = document.getElementById('spc-questions');
+    if (qEl) qEl.value = (d.applyQuestions || []).map((q) => (q.required ? q.q : `[선택] ${q.q}`)).join('\n');
     const sel = document.getElementById('spc-status');
     sel.value = ['OPEN', 'SCHEDULED', 'CLOSED'].includes(d.status) ? d.status : 'CLOSED';
     const img = d.promoImageUrl || d.bannerImageUrl;
@@ -471,6 +473,7 @@ async function spParticipants(tourId, title) {
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.nickname)}</div>
         <div style="font-size:11px;color:var(--text3);">팔로워 ${p.followerSnapshot.toLocaleString()}</div>
+        ${(p.answers || []).map((a, i) => `<div style="font-size:11px;color:var(--text2);margin-top:2px;"><b>Q${i + 1}.</b> ${esc((a && a.text) || '')}${a && a.imageUrl ? ` <a href="${esc(a.imageUrl)}" target="_blank" rel="noopener" style="color:var(--accent);">[사진 보기]</a>` : ''}</div>`).join('')}
       </div>
       <span class="badge ${stCls[p.status] || ''}">${stLabel[p.status] || p.status}</span>
       ${p.status === 'PENDING' ? `
@@ -482,7 +485,16 @@ async function spParticipants(tourId, title) {
     <div class="modal-title">👥 참가자 관리</div>
     <div class="modal-sub">${esc(title)} — 승인 ${approved}${t && t.max > 0 ? `/${t.max}` : ''}명 · 신청 ${list.length}건</div>
     ${rows || '<div style="font-size:13px;color:var(--text3);padding:16px 0;">아직 신청자가 없습니다.</div>'}
-    <button class="btn btn-outline" style="width:100%;margin-top:14px;padding:10px;" onclick="openStreamerPost('tournament')">← 내 대회 목록으로</button>`);
+    ${list.length ? `<button class="btn btn-outline" style="width:100%;margin-top:14px;padding:10px;" onclick="spExportCsv(${tourId})">📄 신청 내역 엑셀(CSV) 다운로드</button>` : ''}
+    <button class="btn btn-outline" style="width:100%;margin-top:8px;padding:10px;" onclick="openStreamerPost('tournament')">← 내 대회 목록으로</button>`);
+}
+
+async function spExportCsv(tourId) {
+  try {
+    await A().exportParticipants(tourId);
+  } catch (e) {
+    showToast('다운로드에 실패했습니다');
+  }
 }
 
 async function spDecide(tourId, pid, approve, title) {
@@ -522,11 +534,17 @@ async function spSubmit(kind) {
     const date = v('spc-date') || null;
     const cap = parseInt(v('spc-cap') || '0', 10) || 0;
     const status = v('spc-status');
+    const qEl = document.getElementById('spc-questions');
+    const questions = qEl ? qEl.value.split('\n').map((s) => s.trim()).filter(Boolean)
+      .map((s) => s.startsWith('[선택]')
+        ? { q: s.slice(4).trim(), required: false }
+        : { q: s, required: true })
+      .filter((q) => q.q) : [];
     const body = kind === 'tournament'
       ? { title, gameName: game, description: desc, bannerImageUrl: img,
           detailImageUrl: _spRaw ? _spRaw.detailImageUrl : null,
           eventDate: date, applyStart: _spRaw ? _spRaw.applyStart : null, applyEnd: _spRaw ? _spRaw.applyEnd : null,
-          capacity: cap, status, resultText: _spRaw ? _spRaw.resultText : null,
+          capacity: cap, status, resultText: _spRaw ? _spRaw.resultText : null, applyQuestions: questions,
           featured: _spRaw ? _spRaw.featured : false, sortOrder: _spRaw ? _spRaw.sortOrder : 0 }
       : { title, gameName: game, description: desc, promoImageUrl: img,
           eventDate: date, applyStart: _spRaw ? _spRaw.applyStart : null, applyEnd: _spRaw ? _spRaw.applyEnd : null,
@@ -1361,8 +1379,11 @@ async function submitSpotlight() {
   if (!title.trim()) { showToast('방송 제목을 입력해주세요'); return; }
   if (!/^https:\/\//.test(url.trim())) { showToast('https:// 로 시작하는 방송 링크를 입력해주세요'); return; }
   const platformMap = { chz: 'CHZZK', soop: 'SOOP', yt: 'YOUTUBE' };
+  const spDate = (document.getElementById('sp-date') || {}).value || '';
+  const spTime = (document.getElementById('sp-time') || {}).value || '';
+  const scheduledAt = spDate ? `${spDate}T${spTime || '00:00'}:00` : null;
   try {
-    await A().createSpotlight({ title: title.trim(), platform: platformMap[selectedPlatform] || 'CHZZK', streamUrl: url.trim() });
+    await A().createSpotlight({ title: title.trim(), platform: platformMap[selectedPlatform] || 'CHZZK', streamUrl: url.trim(), scheduledAt });
     showToast('✅ 스포트라이트가 등록됐습니다! (2시간 노출)');
     closeModal('spotlight-modal');
     if (A().reloadData) A().reloadData();
@@ -1394,10 +1415,20 @@ function initSpotlight() {
   const pc = { chz: '#00c73c', soop: '#34c7ff', yt: '#ff4040' };
   const pn = { chz: '치지직', soop: '숲', yt: '유튜브' };
 
-  cards.innerHTML = '<div class="spotlight-grid">' + spotlights.slice(0, 4).map((s) => `
+  // 치지직 방송이면 라이브 배너와 같은 방식으로 방송 화면을 크롭 임베드 (그 외 플랫폼은 프사 이미지)
+  const chzChannel = (s) => {
+    if (s.platform !== 'chz') return null;
+    const m = /chzzk\.naver\.com\/live\/([0-9a-f]{32})/.exec(s.url || '');
+    return m ? m[1] : null;
+  };
+  cards.innerHTML = '<div class="spotlight-grid">' + spotlights.slice(0, 4).map((s) => {
+    const ch = chzChannel(s);
+    return `
     <div class="spotlight-card" onclick="window.open('${esc(s.url)}','_blank')">
       <div class="spotlight-screen">
-        ${s.img ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" onerror="this.remove()">` : ''}
+        ${ch ? `<div class="spot-embed-crop"><iframe class="spot-embed" title="${esc(s.name)} 방송"
+            src="https://chzzk.naver.com/live/${ch}" allow="autoplay; encrypted-media" scrolling="no"></iframe></div>`
+          : s.img ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" onerror="this.remove()">` : ''}
         <div class="spotlight-screen-overlay"></div>
         <div class="spotlight-live">LIVE</div>
       </div>
@@ -1406,13 +1437,38 @@ function initSpotlight() {
           <div class="spotlight-name">${esc(s.name)}</div>
           <div class="spotlight-plat" style="color:${pc[s.platform] || '#aaa'};">${pn[s.platform] || ''}</div>
         </div>
-        <div class="spotlight-sub">${esc(s.sub)}</div>
+        <div class="spotlight-sub">${esc(s.when ? `${s.when} · ${s.sub}` : s.sub)}</div>
       </div>
-    </div>`).join('') + '</div>';
+    </div>`;
+  }).join('') + '</div>';
+  fitSpotlightCrops();
+  if (!window.__spotCropBound) {
+    window.__spotCropBound = true;
+    window.addEventListener('resize', fitSpotlightCrops);
+  }
+}
+
+// 스포트라이트 임베드 크롭 — 라이브 배너와 동일 좌표(1620 로드, x240,y60,1026 폭)
+function fitSpotlightCrops() {
+  document.querySelectorAll('.spot-embed-crop').forEach((crop) => {
+    const f = crop.querySelector('.spot-embed');
+    if (!f || !crop.clientWidth) return;
+    const s = crop.clientWidth / 1026;
+    f.style.transform = `scale(${s}) translate(-240px, -60px)`;
+  });
 }
 
 function openSpotlight() {
   if (!window.__snukLoggedIn) { showToast('로그인 후 등록할 수 있습니다'); openLogin(); return; }
+  // 포인트 비용 안내(항목 9) — 하루 첫 로그인 적립 포인트로 등록
+  const costLine = document.getElementById('sp-cost-line');
+  if (costLine) {
+    const cost = parseInt(((D() && D().siteSettings) || {}).SPOTLIGHT_POINT_COST || '50', 10) || 0;
+    const mine = (window.__snukMe && window.__snukMe.points) || 0;
+    costLine.textContent = cost > 0
+      ? `등록 시 ${cost}P 차감 (내 포인트: ${mine}P — 매일 첫 로그인마다 적립)`
+      : '지금은 무료로 등록할 수 있어요.';
+  }
   document.getElementById('spotlight-modal').classList.add('open');
 }
 
@@ -1545,6 +1601,14 @@ function __snukInit() {
   setActiveNav(location.pathname);
 }
 
+// 사이드바 메뉴 표시/숨김 (어드민 설정 MENU_{KEY}='0' 이면 숨김, 미설정·'1'=표시 — 항목 8)
+function applyMenuVisibility(ss) {
+  document.querySelectorAll('.rs-item[data-menu]').forEach((btn) => {
+    const v = ss[`MENU_${btn.dataset.menu}`];
+    btn.style.display = v === '0' ? 'none' : '';
+  });
+}
+
 // 히어로 실데이터 스탯 (파트너 스트리머 / 모집중 컨텐츠 / 대회)
 function initHeroStats() {
   const el = document.getElementById('hero-stats');
@@ -1557,15 +1621,19 @@ function initHeroStats() {
   el.innerHTML = stat(streamers, '파트너 스트리머') + stat(openContents, '모집중 컨텐츠') + stat(activeTours, '진행 · 예정 대회');
 }
 
-// 어드민 "설정" 탭에서 바꾼 히어로/배너 이미지·문구 적용 ('-'=미설정 → 마크업 기본값 유지)
+// 어드민 "설정" 탭에서 바꾼 히어로/배너 이미지·문구 적용 ('-'=미설정 → 마크업 기본값 유지, 'none'=이미지 제거)
 function applySiteImages() {
   const ss = (D() && D().siteSettings) || {};
   const set = (v) => v && v !== '-';
   const applyImg = (sel, url) => {
     if (!set(url)) return;
     const el = document.querySelector(sel);
-    if (el && el.getAttribute('src') !== url) el.setAttribute('src', url);
+    if (!el) return;
+    if (url === 'none') { el.style.display = 'none'; return; } // 이미지 없애기(항목 16)
+    el.style.display = '';
+    if (el.getAttribute('src') !== url) el.setAttribute('src', url);
   };
+  applyMenuVisibility(ss);
   const applyText = (sel, text) => {
     const el = document.querySelector(sel);
     if (!el) return;

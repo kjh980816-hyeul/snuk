@@ -1,6 +1,6 @@
 import api from './client'
 import type {
-  Campaign, ClientLogo, CollabGame, ContentVideo, Goods, Me, MyApplication,
+  ApplyAnswer, Campaign, ClientLogo, CollabGame, ContentVideo, FreeResource, Goods, Me, MyApplication,
   MyParticipation, MypageSummary, News, Notice, OrderCreateRequest, OrderResponse, OrderView,
   ParticipantPublic, Review, Spotlight, SpotlightPlatform, StreamerLive, StreamerPost,
   StreamerProfile, StreamerPublic, Tournament,
@@ -96,8 +96,9 @@ export const liveApi = {
 export const tournamentApi = {
   list: () => api.get<Tournament[]>('/api/tournaments').then((r) => r.data),
   detail: (id: number) => api.get<Tournament>(`/api/tournaments/${id}`).then((r) => r.data),
-  apply: (id: number) =>
-    api.post<{ participantId: number; status: string }>(`/api/tournaments/${id}/apply`).then((r) => r.data),
+  apply: (id: number, answers?: ApplyAnswer[]) =>
+    api.post<{ participantId: number; status: string }>(`/api/tournaments/${id}/apply`,
+      answers && answers.length ? { answers } : {}).then((r) => r.data),
   myParticipation: (id: number) =>
     api.get<MyParticipation>(`/api/tournaments/${id}/my-participation`).then((r) => r.data),
   participants: (id: number) =>
@@ -111,8 +112,19 @@ export const tournamentApi = {
   manageParticipants: (id: number) =>
     api.get<Array<{
       participantId: number; memberId: number; nickname: string; profileImageUrl: string | null
-      followerSnapshot: number; status: string; appliedAt: string
+      followerSnapshot: number; status: string; appliedAt: string; answers: ApplyAnswer[]
     }>>(`/api/tournaments/${id}/participants/manage`).then((r) => r.data),
+  /** 참가 신청 내역 CSV 다운로드(소유자/ADMIN) — blob 저장 */
+  exportParticipants: (id: number) =>
+    api.get(`/api/tournaments/${id}/participants/export`, { responseType: 'blob' })
+      .then((r) => {
+        const url = URL.createObjectURL(r.data as Blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `tournament-${id}-participants.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+      }),
   approveParticipant: (id: number, pid: number) =>
     api.post(`/api/tournaments/${id}/participants/${pid}/approve`),
   rejectParticipant: (id: number, pid: number) =>
@@ -131,6 +143,14 @@ export const streamerApi = {
   writePost: (id: number, body: { title: string; content: string }) =>
     api.post<StreamerPost>(`/api/streamers/${id}/posts`, body).then((r) => r.data),
   deletePost: (postId: number) => api.delete(`/api/streamer-posts/${postId}`),
+  /** 글 신고(로그인 회원, 1인 1신고) — 어드민 신고함으로 접수 */
+  reportPost: (postId: number, reason?: string) =>
+    api.post(`/api/streamer-posts/${postId}/report`, { reason: reason ?? '' }),
+}
+
+// ----- 무료소스 자료실 (public, 항목 19) -----
+export const resourceApi = {
+  list: () => api.get<FreeResource[]>('/api/resources').then((r) => r.data),
 }
 
 // ----- 공지 (public) -----
@@ -141,7 +161,7 @@ export const noticeApi = {
 // ----- 스포트라이트 -----
 export const spotlightApi = {
   active: () => api.get<Spotlight[]>('/api/spotlights/active').then((r) => r.data),
-  create: (body: { title: string; platform: SpotlightPlatform; streamUrl: string }) =>
+  create: (body: { title: string; platform: SpotlightPlatform; streamUrl: string; scheduledAt?: string | null }) =>
     api.post<Spotlight>('/api/spotlights', body).then((r) => r.data),
 }
 

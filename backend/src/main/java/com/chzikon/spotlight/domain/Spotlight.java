@@ -48,19 +48,28 @@ public class Spotlight {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
-    public Spotlight(Long memberId, String title, Platform platform, String streamUrl) {
+    /** 방송 예정 일시(선택, V15). */
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
+    public Spotlight(Long memberId, String title, Platform platform, String streamUrl, LocalDateTime scheduledAt) {
         this.memberId = memberId;
         this.title = title;
         this.platform = platform;
         this.streamUrl = streamUrl;
+        this.scheduledAt = scheduledAt;
         this.createdAt = LocalDateTime.now();
-        this.expiresAt = this.createdAt.plusHours(EXPOSURE_HOURS);
+        // 예정 일시가 있으면 그 시각부터 2시간, 없으면 등록 시각부터 2시간
+        this.expiresAt = (scheduledAt != null ? scheduledAt : this.createdAt).plusHours(EXPOSURE_HOURS);
     }
 
-    /** 승인 — 노출 2시간은 승인 시각부터 다시 계산. */
+    /**
+     * 승인 — 예정 일시가 있으면 [예정 일시, +2시간] 창에서 자동 노출·자동 종료.
+     * 예정 없으면 승인 시각부터 2시간.
+     */
     public void approve() {
         this.approved = true;
         this.approvedAt = LocalDateTime.now();
-        this.expiresAt = this.approvedAt.plusHours(EXPOSURE_HOURS);
+        this.expiresAt = (this.scheduledAt != null ? this.scheduledAt : this.approvedAt).plusHours(EXPOSURE_HOURS);
     }
 }

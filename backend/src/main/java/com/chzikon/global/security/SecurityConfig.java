@@ -58,7 +58,8 @@ public class SecurityConfig {
                                 "/api/streamers", "/api/streamers/*", "/api/streamers/*/posts",
                                 "/api/goods", "/api/goods/*",
                                 "/api/news", "/api/news/*",
-                                "/api/site-settings", "/api/live/status", "/api/live/streamers").permitAll()
+                                "/api/site-settings", "/api/live/status", "/api/live/streamers",
+                                "/api/resources").permitAll()
                         // PG 결제 웹훅(서버-서버, JWT 없음) — 서버가 재조회로 검증
                         .requestMatchers("/api/payments/webhook").permitAll()
                         .requestMatchers("/api/auth/refresh").permitAll()

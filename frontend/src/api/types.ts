@@ -10,6 +10,7 @@ export interface Me {
   profileImageOverridden?: boolean
   followerCount: number | null
   role: Role
+  points: number
 }
 
 export interface Campaign {
@@ -79,6 +80,11 @@ export interface MyApplication {
 // ----- 대회 -----
 export type TournamentStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED' | 'DONE'
 
+/** 참가 신청 질문(주최자 작성) — required=false 면 선택 항목. */
+export interface ApplyQuestion { q: string; required: boolean }
+/** 참가 신청 답변 — 텍스트/사진 중 하나 이상. */
+export interface ApplyAnswer { text: string | null; imageUrl: string | null }
+
 export interface Tournament {
   id: number
   title: string
@@ -93,6 +99,7 @@ export interface Tournament {
   filledSlots: number
   status: TournamentStatus
   resultText: string | null
+  applyQuestions: ApplyQuestion[]
   featured: boolean
   sortOrder: number
   ownerMemberId: number | null
@@ -163,6 +170,17 @@ export interface Spotlight {
   approved: boolean
   createdAt: string
   expiresAt: string
+  scheduledAt: string | null
+}
+
+// ----- 무료소스 자료실 (항목 19) -----
+export interface FreeResource {
+  id: number
+  title: string
+  description: string | null
+  fileUrl: string | null
+  imageUrl: string | null
+  createdAt: string
 }
 
 // ----- 스눅 뉴스 (REPORTER+ 작성) -----

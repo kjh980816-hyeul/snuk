@@ -44,6 +44,13 @@ public class Member {
     @Column(name = "profile_image_overridden", nullable = false)
     private boolean profileImageOverridden = false;
 
+    /** 포인트 — 하루 첫 로그인 적립, 스포트라이트 등록 등에 사용(V15). */
+    @Column(nullable = false)
+    private int points = 0;
+
+    @Column(name = "last_daily_point_at")
+    private java.time.LocalDate lastDailyPointAt;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -78,6 +85,30 @@ public class Member {
         if (!this.roleOverridden && this.role != Role.ADMIN) {
             this.role = recomputedRole;
         }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 하루 첫 로그인 포인트 적립 — 오늘 이미 받았으면 false. */
+    public boolean grantDailyPoint(int amount, java.time.LocalDate today) {
+        if (amount <= 0 || today.equals(this.lastDailyPointAt)) {
+            return false;
+        }
+        this.points += amount;
+        this.lastDailyPointAt = today;
+        this.updatedAt = LocalDateTime.now();
+        return true;
+    }
+
+    /** 포인트 차감 — 부족하면 예외. */
+    public void spendPoints(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        if (this.points < amount) {
+            throw new com.chzikon.global.error.BusinessException(
+                    com.chzikon.global.error.ErrorCode.POINT_INSUFFICIENT);
+        }
+        this.points -= amount;
         this.updatedAt = LocalDateTime.now();
     }
 

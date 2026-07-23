@@ -8,10 +8,11 @@ public record MeResponse(
         String profileImageUrl,
         Integer followerCount,
         String role,
-        boolean profileImageOverridden
+        boolean profileImageOverridden,
+        int points
 ) {
     public static MeResponse from(Member m) {
         return new MeResponse(m.getId(), m.getNickname(), m.getProfileImageUrl(),
-                m.getFollowerCount(), m.getRole().name(), m.isProfileImageOverridden());
+                m.getFollowerCount(), m.getRole().name(), m.isProfileImageOverridden(), m.getPoints());
     }
 }

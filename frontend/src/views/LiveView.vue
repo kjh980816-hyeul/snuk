@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { OFFICIAL_CHZZK_CHANNEL_ID } from '@/config'
 import { siteSettingsApi } from '@/api'
 
@@ -37,6 +37,18 @@ onMounted(async () => {
 function liveUrl() {
   return channelId.value ? `https://chzzk.naver.com/live/${channelId.value}` : 'https://chzzk.naver.com'
 }
+
+// 크롭 스케일: 컨테이너 폭에 맞춰 치지직 페이지(1620 로드)의 영상 영역(x240,y60,1026 폭)만 보이게
+const cropEl = ref<HTMLElement | null>(null)
+const frameEl = ref<HTMLIFrameElement | null>(null)
+function fitCrop() {
+  if (!cropEl.value || !frameEl.value || !cropEl.value.clientWidth) return
+  const s = cropEl.value.clientWidth / 1026
+  frameEl.value.style.transform = `scale(${s}) translate(-240px, -60px)`
+}
+watch(loaded, async (v) => { if (v) { await nextTick(); fitCrop() } })
+window.addEventListener('resize', fitCrop)
+onBeforeUnmount(() => window.removeEventListener('resize', fitCrop))
 </script>
 
 <template>
@@ -83,9 +95,10 @@ function liveUrl() {
           <div style="font-size: 48px; margin-bottom: 10px;">▶</div>
           <div style="font-size: 14px; font-weight: 700;">라이브 보기 버튼을 눌러주세요</div>
         </div>
-        <div v-else class="live-frames">
-          <iframe :src="liveUrl()" class="live-video" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
-          <iframe :src="`https://chzzk.naver.com/chat/${channelId}`" class="live-chat"></iframe>
+        <!-- 치지직 전체 페이지를 확대 로드 후 영상 영역만 크롭 (채팅 없이 영상만) -->
+        <div v-else ref="cropEl" class="live-crop">
+          <iframe ref="frameEl" :src="liveUrl()" class="live-video-frame" allowfullscreen
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
         </div>
       </div>
     </div>
@@ -133,11 +146,9 @@ function liveUrl() {
   aspect-ratio: 16 / 9; display: flex; flex-direction: column; align-items: center; justify-content: center;
   cursor: pointer; color: var(--text2); background: linear-gradient(135deg, #0d0010, #1a0030);
 }
-.live-frames { display: flex; gap: 0; }
-.live-video { flex: 1; aspect-ratio: 16 / 9; border: none; display: block; min-width: 0; }
-.live-chat { width: 320px; border: none; border-left: 1px solid var(--border); display: block; }
-@media (max-width: 900px) {
-  .live-frames { flex-direction: column; }
-  .live-chat { width: 100%; height: 360px; border-left: none; border-top: 1px solid var(--border); }
+.live-crop { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #000; }
+.live-video-frame {
+  position: absolute; left: 0; top: 0; width: 1620px; height: 900px;
+  border: none; transform-origin: 0 0;
 }
 </style>
