@@ -14,11 +14,12 @@ public record MemberSummary(
         Integer followerCount,
         String role,
         boolean roleOverridden,
+        boolean partner,
         LocalDateTime createdAt
 ) {
     public static MemberSummary from(Member m) {
         return new MemberSummary(m.getId(), m.getProvider().name(), m.getChannelId(), m.getNickname(),
                 m.getProfileImageUrl(), m.getFollowerCount(), m.getRole().name(),
-                m.isRoleOverridden(), m.getCreatedAt());
+                m.isRoleOverridden(), m.isPartner(), m.getCreatedAt());
     }
 }

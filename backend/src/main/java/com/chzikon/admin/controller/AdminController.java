@@ -73,6 +73,17 @@ public class AdminController {
                 .map(MemberSummary::from));
     }
 
+    // ----- 파트너 스트리머 지정/해제 (V16) -----
+    @PostMapping("/members/{id}/partner")
+    public ResponseEntity<Map<String, Object>> setPartner(@PathVariable Long id,
+                                                          @RequestBody Map<String, Boolean> body,
+                                                          @AuthenticationPrincipal MemberPrincipal principal) {
+        boolean partner = Boolean.TRUE.equals(body.get("partner"));
+        Member member = memberService.setPartner(id, partner);
+        adminLogService.record(principal.memberId(), "PARTNER_SET", "member", id, "partner=" + partner);
+        return ResponseEntity.ok(Map.of("memberId", member.getId(), "partner", member.isPartner()));
+    }
+
     // ----- 권한 수동 오버라이드 (AUTH-05) -----
     @PostMapping("/members/{id}/role-override")
     public ResponseEntity<Map<String, Object>> overrideRole(@PathVariable Long id,

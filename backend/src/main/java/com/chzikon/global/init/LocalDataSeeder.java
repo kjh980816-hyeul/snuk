@@ -74,7 +74,7 @@ public class LocalDataSeeder implements ApplicationRunner {
      * STREAMER 가 하나도 없을 때만 삽입(멱등) — 실계정 로그인 후 재기동해도 중복·간섭 없음.
      */
     private void seedStreamers() {
-        if (!memberRepository.findTop60ByRoleOrderByFollowerCountDesc(Role.STREAMER).isEmpty()) return;
+        if (memberRepository.existsByRole(Role.STREAMER)) return;
         record S(Provider p, String nick, int followers, String bg) {}
         java.util.List<S> seeds = java.util.List.of(
                 new S(Provider.CHZZK, "네온셔틀", 12400, "1a1a2e"),
@@ -87,9 +87,11 @@ public class LocalDataSeeder implements ApplicationRunner {
                 new S(Provider.CHZZK, "달빛골키퍼", 640, "4a148c"));
         for (int i = 0; i < seeds.size(); i++) {
             S s = seeds.get(i);
-            memberRepository.save(Member.create(s.p(), "seed-streamer-" + (i + 1), s.nick(),
+            Member seeded = Member.create(s.p(), "seed-streamer-" + (i + 1), s.nick(),
                     "https://placehold.co/200x200/" + s.bg() + "/ffffff?text=S" + (i + 1),
-                    s.followers(), Role.STREAMER));
+                    s.followers(), Role.STREAMER);
+            seeded.changePartner(true); // 시드는 파트너 노출까지 포함(V16 지정제)
+            memberRepository.save(seeded);
         }
         log.info("[seed] streamer member {}건 삽입", seeds.size());
     }

@@ -356,6 +356,7 @@ interface MemberRow {
   followerCount: number | null
   role: string
   roleOverridden: boolean
+  partner: boolean
   createdAt: string
 }
 const members = ref<MemberRow[]>([])
@@ -369,6 +370,10 @@ async function changeMemberRole(m: MemberRow, role: string) {
 }
 async function resetMemberRole(m: MemberRow) {
   await adminApi.clearOverride(m.id)
+  await loadMembers()
+}
+async function togglePartner(m: MemberRow) {
+  await adminApi.setPartner(m.id, !m.partner)
   await loadMembers()
 }
 
@@ -1245,7 +1250,7 @@ function onTab(t: Tab) {
     <!-- 회원 -->
     <section v-else-if="tab === 'members'">
       <table class="grid">
-        <thead><tr><th>ID</th><th>닉네임</th><th>플랫폼</th><th>채널ID</th><th>팔로워</th><th>등급</th><th>가입일</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>닉네임</th><th>플랫폼</th><th>채널ID</th><th>팔로워</th><th>등급</th><th>파트너</th><th>가입일</th><th></th></tr></thead>
         <tbody>
           <tr v-for="m in members" :key="m.id">
             <td>{{ m.id }}</td>
@@ -1262,15 +1267,21 @@ function onTab(t: Tab) {
               </select>
               <span v-if="m.roleOverridden" class="badge">수동</span>
             </td>
+            <td>
+              <button class="btn xs" :class="m.partner ? 'orange' : ''" @click="togglePartner(m)">
+                {{ m.partner ? '파트너 ✓' : '지정' }}
+              </button>
+            </td>
             <td>{{ m.createdAt?.slice(0, 10) }}</td>
             <td class="acts">
               <button v-if="m.roleOverridden" @click="resetMemberRole(m)">자동 복귀</button>
             </td>
           </tr>
-          <tr v-if="!members.length"><td colspan="8" class="empty">회원이 없습니다.</td></tr>
+          <tr v-if="!members.length"><td colspan="9" class="empty">회원이 없습니다.</td></tr>
         </tbody>
       </table>
-      <p class="hint">등급을 바꾸면 수동 고정(자동 재산정 제외)됩니다. "자동 복귀"를 누르면 다음 로그인부터 팔로워 기준으로 다시 계산돼요.</p>
+      <p class="hint">등급을 바꾸면 수동 고정(자동 재산정 제외)됩니다. "자동 복귀"를 누르면 다음 로그인부터 팔로워 기준으로 다시 계산돼요.
+        <br />홈/스트리머 페이지의 "파트너 스트리머"에는 <b>파트너로 지정한 회원만</b> 노출됩니다(등급과 별개).</p>
     </section>
 
     <section v-else-if="tab === 'settings'">

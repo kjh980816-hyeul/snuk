@@ -14,6 +14,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     boolean existsByRole(Role role);
 
-    /** 공개 스트리머 목록 — 팔로워 많은 순 상위 60명. */
-    List<Member> findTop60ByRoleOrderByFollowerCountDesc(Role role);
+    /** 공개 파트너 스트리머 목록(관리자 지정) — 팔로워 많은 순 상위 60명. */
+    List<Member> findTop60ByPartnerTrueOrderByFollowerCountDesc();
 }

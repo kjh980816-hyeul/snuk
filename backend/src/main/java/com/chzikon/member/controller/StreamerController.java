@@ -1,6 +1,5 @@
 package com.chzikon.member.controller;
 
-import com.chzikon.member.domain.Role;
 import com.chzikon.member.dto.StreamerPublicView;
 import com.chzikon.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,10 +17,10 @@ public class StreamerController {
 
     private final MemberRepository memberRepository;
 
-    /** 공식 파트너 스트리머(STREAMER 등급) — 공개, 팔로워순 상위 60명. */
+    /** 공식 파트너 스트리머(관리자 지정, is_partner) — 공개, 팔로워순 상위 60명. */
     @GetMapping
     public ResponseEntity<List<StreamerPublicView>> list() {
-        return ResponseEntity.ok(memberRepository.findTop60ByRoleOrderByFollowerCountDesc(Role.STREAMER)
+        return ResponseEntity.ok(memberRepository.findTop60ByPartnerTrueOrderByFollowerCountDesc()
                 .stream().map(StreamerPublicView::from).toList());
     }
 }

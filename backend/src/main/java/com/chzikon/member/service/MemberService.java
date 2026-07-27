@@ -107,6 +107,14 @@ public class MemberService {
         return member;
     }
 
+    /** 파트너 스트리머 지정/해제(관리자) — 공개 스트리머 섹션 노출 제어. */
+    @Transactional
+    public Member setPartner(Long memberId, boolean partner) {
+        Member member = getById(memberId);
+        member.changePartner(partner);
+        return member;
+    }
+
     @Transactional
     public Member clearOverride(Long memberId) {
         Member member = getById(memberId);

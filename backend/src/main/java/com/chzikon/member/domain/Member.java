@@ -44,6 +44,10 @@ public class Member {
     @Column(name = "profile_image_overridden", nullable = false)
     private boolean profileImageOverridden = false;
 
+    /** 파트너 스트리머(관리자 지정) — 공개 스트리머 섹션 노출 여부. 등급과 별개(V16). */
+    @Column(name = "is_partner", nullable = false)
+    private boolean partner = false;
+
     /** 포인트 — 하루 첫 로그인 적립, 스포트라이트 등록 등에 사용(V15). */
     @Column(nullable = false)
     private int points = 0;
@@ -109,6 +113,12 @@ public class Member {
                     com.chzikon.global.error.ErrorCode.POINT_INSUFFICIENT);
         }
         this.points -= amount;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 파트너 스트리머 지정/해제(관리자). */
+    public void changePartner(boolean partner) {
+        this.partner = partner;
         this.updatedAt = LocalDateTime.now();
     }
 

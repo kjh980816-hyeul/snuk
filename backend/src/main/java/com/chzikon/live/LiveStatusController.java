@@ -49,7 +49,7 @@ public class LiveStatusController {
         return ResponseEntity.ok(Map.of("live", cachedLive, "liveTitle", cachedTitle));
     }
 
-    /** 파트너 스트리머(STREAMER 등급, CHZZK) 라이브 여부 일괄 — [{memberId, live, liveTitle}]. */
+    /** 파트너 스트리머(관리자 지정, CHZZK) 라이브 여부 일괄 — [{memberId, live, liveTitle}]. */
     @GetMapping("/streamers")
     public ResponseEntity<java.util.List<Map<String, Object>>> streamers() {
         long now = System.currentTimeMillis();
@@ -62,8 +62,7 @@ public class LiveStatusController {
 
     private void refreshStreamers() {
         try {
-            var members = memberRepository.findTop60ByRoleOrderByFollowerCountDesc(
-                    com.chzikon.member.domain.Role.STREAMER);
+            var members = memberRepository.findTop60ByPartnerTrueOrderByFollowerCountDesc();
             java.util.List<Map<String, Object>> out = new java.util.ArrayList<>();
             for (var m : members) {
                 if (m.getProvider() != com.chzikon.member.domain.Provider.CHZZK) {
