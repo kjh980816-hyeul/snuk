@@ -334,11 +334,11 @@ onMounted(async () => {
 .mp-pic-edit { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .hidden-file { display: none; }
 .mp-btn {
-  padding: 8px 14px; font-size: 12px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer;
-  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+  padding: 9px 16px; font-size: 12px; font-weight: 700; border-radius: 999px; border: none; cursor: pointer;
+  background: var(--accent); color: #fff;
 }
-.mp-btn.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-.mp-btn.promote { background: linear-gradient(135deg, #00c73c, #00a832); }
+.mp-btn.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+.mp-btn.promote { background: var(--green); }
 .mp-promote-hint { font-size: 11px; color: var(--text3); margin-top: 8px; }
 .mp-btn:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -350,7 +350,14 @@ onMounted(async () => {
 .mp-stat strong { display: block; font-size: 20px; font-weight: 800; color: var(--text); }
 .mp-stat span { font-size: 11px; color: var(--text3); }
 
-.mp-tabs { margin-bottom: 16px; }
+/* 데모 마이페이지 탭 — 언더라인 스타일(.tabs.line) */
+.mp-tabs { margin-bottom: 18px; border-bottom: 1px solid var(--border); gap: 4px; flex-wrap: wrap; }
+.mp-tabs :deep(.tab), .mp-tabs .tab {
+  background: none; border: none; border-radius: 0; border-bottom: 2px solid transparent;
+  color: var(--text2); font-size: 15px; font-weight: 600; padding: 10px 6px; margin: 0 10px 0 0;
+}
+.mp-tabs .tab:hover { background: none; color: var(--text); }
+.mp-tabs .tab.active { background: none; color: var(--text); border-bottom-color: var(--accent); }
 
 .mp-item {
   display: flex; align-items: center; gap: 14px;

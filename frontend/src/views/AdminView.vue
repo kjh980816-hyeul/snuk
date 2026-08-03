@@ -752,26 +752,34 @@ function onTab(t: Tab) {
   <div class="admin-page" :data-theme="theme">
   <div class="admin-wrap">
     <header class="admin-head">
-      <h2>SNUK <span>관리자</span></h2>
+      <div>
+        <span class="adm-badge">관리자 콘솔</span>
+        <h2>SNUK <span>관리자</span></h2>
+      </div>
       <div class="head-acts">
         <button class="home-link" @click="toggleTheme">{{ theme === 'light' ? '다크 모드' : '라이트 모드' }}</button>
         <a href="/" class="home-link">← 사이트로</a>
       </div>
     </header>
-    <nav class="tabs">
+    <div class="adm-layout">
+    <nav class="adm-side">
+      <p class="adm-glabel">운영</p>
       <button :class="{ on: tab === 'campaigns' }" @click="onTab('campaigns')">컨텐츠·대회</button>
       <button :class="{ on: tab === 'games' }" @click="onTab('games')">게임체험단</button>
-      <button :class="{ on: tab === 'videos' }" @click="onTab('videos')">영상</button>
-      <button :class="{ on: tab === 'goods' }" @click="onTab('goods')">굿즈샵</button>
-      <button :class="{ on: tab === 'clients' }" @click="onTab('clients')">협력사</button>
-      <button :class="{ on: tab === 'notices' }" @click="onTab('notices')">공지/스포트라이트</button>
+      <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
       <button :class="{ on: tab === 'warnings' }" @click="onTab('warnings')">후기 경고</button>
       <button :class="{ on: tab === 'reports' }" @click="onTab('reports')">신고함</button>
+      <p class="adm-glabel">발행</p>
+      <button :class="{ on: tab === 'notices' }" @click="onTab('notices')">공지/스포트라이트</button>
+      <button :class="{ on: tab === 'videos' }" @click="onTab('videos')">영상</button>
       <button :class="{ on: tab === 'resources' }" @click="onTab('resources')">무료소스</button>
-      <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
+      <button :class="{ on: tab === 'goods' }" @click="onTab('goods')">굿즈샵</button>
+      <button :class="{ on: tab === 'clients' }" @click="onTab('clients')">협력사</button>
+      <p class="adm-glabel">사이트</p>
       <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정</button>
       <button :class="{ on: tab === 'logs' }" @click="onTab('logs')">감사로그</button>
     </nav>
+    <div class="adm-content">
 
     <!-- 컨텐츠·대회 통합 — 한 목록·같은 양식. 스눅 공식 컨텐츠는 여기 "+ 새 컨텐츠"로 등록 -->
     <section v-if="tab === 'campaigns'">
@@ -1496,6 +1504,8 @@ function onTab(t: Tab) {
         </tbody>
       </table>
     </section>
+    </div><!-- /adm-content -->
+    </div><!-- /adm-layout -->
   </div>
   </div>
 </template>
@@ -1506,7 +1516,8 @@ function onTab(t: Tab) {
   --a-bg: #131211; --a-bg2: #1B1A18; --a-bg3: #232220; --a-bg4: #2B2A27;
   --a-text: #EDEAE3; --a-text2: #ADA89E; --a-text3: #8A857C;
   --a-border: #2E2C29; --a-border2: #403D38;
-  --a-accent: #8163FF; --a-red: #FF4F65; --a-radius: 10px; --a-radius2: 16px;
+  --a-accent: #8163FF; --a-tint: #241C4A; --a-accent-ink: #C9B8FF;
+  --a-red: #FF4F65; --a-radius: 10px; --a-radius2: 16px;
   min-height: 100vh; background: var(--a-bg); color: var(--a-text);
   font-family: 'Pretendard', 'Noto Sans KR', -apple-system, 'Segoe UI', sans-serif;
 }
@@ -1573,12 +1584,31 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
   --a-bg: #FAF9F6; --a-bg2: #ffffff; --a-bg3: #F4F2ED; --a-bg4: #EEEBE4;
   --a-text: #191816; --a-text2: #5C5952; --a-text3: #7D7972;
   --a-border: #E9E6DE; --a-border2: #D9D5CB;
-  --a-accent: #5B34E8; --a-red: #E23A4E;
+  --a-accent: #5B34E8; --a-tint: #EEEAFD; --a-accent-ink: #3A1E96; --a-red: #E23A4E;
 }
 .admin-page[data-theme="light"] .tabs button.on { border-bottom-color: var(--a-accent); }
 .admin-page[data-theme="light"] .grid tr.sel { background: rgba(91, 52, 232, .07); }
 
 .head-acts { display: flex; gap: 8px; align-items: center; }
+
+/* 데모 어드민 콘솔 레이아웃 — 좌측 그룹 네비 + 콘텐츠 */
+.adm-badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .04em;
+  color: var(--a-accent-ink); background: var(--a-tint); border-radius: 999px; padding: 3px 11px; margin-bottom: 6px; }
+.adm-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 26px; align-items: start; }
+.adm-side { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 2px; }
+.adm-glabel { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--a-text3);
+  padding: 14px 12px 5px; margin: 0; }
+.adm-side button { text-align: left; background: none; border: none; color: var(--a-text2);
+  font-size: 14px; font-weight: 600; padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  transition: background-color .14s, color .14s; font-family: inherit; }
+.adm-side button:hover { background: rgba(129, 99, 255, .10); color: var(--a-text); }
+.adm-side button.on { background: var(--a-tint); color: var(--a-accent-ink); font-weight: 700; }
+.adm-content { min-width: 0; }
+@media (max-width: 860px) {
+  .adm-layout { grid-template-columns: 1fr; }
+  .adm-side { position: static; flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .adm-glabel { width: 100%; padding: 8px 4px 2px; }
+}
 .head-acts button.home-link { background: transparent; cursor: pointer; font: inherit; font-size: 13px; }
 
 /* 목록 썸네일 */
