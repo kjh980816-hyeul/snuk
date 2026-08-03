@@ -1120,7 +1120,8 @@ let streamerChanPos = 0;
 
 let _streamerQuery = '';
 function filterStreamerChannels(q) {
-  _streamerQuery = (q || '').trim().toLowerCase();
+  // 공백 무시 — "혈 액"/"혈액" 둘 다 매칭
+  _streamerQuery = String(q == null ? '' : q).toLowerCase().replace(/\s+/g, '');
   initStreamerChannels();
 }
 
@@ -1129,7 +1130,7 @@ function initStreamerChannels() {
   if (!track) return;
   let streamers = D().streamers || [];
   if (_streamerQuery) {
-    streamers = streamers.filter((s) => s.name.toLowerCase().includes(_streamerQuery));
+    streamers = streamers.filter((s) => String(s.name || '').toLowerCase().replace(/\s+/g, '').includes(_streamerQuery));
   }
   if (!streamers.length) {
     track.innerHTML = emptyCard(_streamerQuery ? `"${_streamerQuery}" 검색 결과가 없습니다.` : '아직 등록된 파트너 스트리머가 없습니다.');
@@ -1473,16 +1474,21 @@ function openSpotlight() {
 // ════════════════════════════════════════════
 // 검색 (실데이터 통합 검색)
 // ════════════════════════════════════════════
+// 공백 무시 정규화 — "혈 액" 으로도 "혈액" 이 검색되게 (질의·대상 양쪽 적용)
+const searchNorm = (s) => String(s == null ? '' : s).toLowerCase().replace(/\s+/g, '');
 function snukSearch(q) {
-  const query = (q || '').trim().toLowerCase();
+  const query = searchNorm(q);
   if (!query) return;
   const d = D();
   const results = [];
-  (d.snukContents || []).forEach((x) => { if (x.title.toLowerCase().includes(query)) results.push({ label: x.title, cat: 'SNUK 컨텐츠', path: '/campaigns' }); });
-  (d.mugContents || []).forEach((x) => { if (x.title.toLowerCase().includes(query)) results.push({ label: x.title, cat: '대회', path: '/championship' }); });
-  (d.games || []).forEach((x) => { if (x.name.toLowerCase().includes(query)) results.push({ label: x.name, cat: '게임체험단', path: '/campaigns' }); });
-  (d.goods || []).forEach((x) => { if (x.name.toLowerCase().includes(query)) results.push({ label: x.name, cat: '굿즈', path: '/goods' }); });
-  (d.videos || []).forEach((x) => { if (x.title.toLowerCase().includes(query)) results.push({ label: x.title, cat: '영상', path: '/videos' }); });
+  const hit = (v) => searchNorm(v).includes(query);
+  (d.streamers || []).forEach((x) => { if (hit(x.name)) results.push({ label: x.name, cat: '스트리머', path: `/streamers/${x.id}` }); });
+  (d.snukContents || []).forEach((x) => { if (hit(x.title)) results.push({ label: x.title, cat: 'SNUK 컨텐츠', path: '/campaigns' }); });
+  (d.mugContents || []).forEach((x) => { if (hit(x.title)) results.push({ label: x.title, cat: '대회', path: '/championship' }); });
+  (d.games || []).forEach((x) => { if (hit(x.name)) results.push({ label: x.name, cat: '게임체험단', path: '/campaigns' }); });
+  (d.goods || []).forEach((x) => { if (hit(x.name)) results.push({ label: x.name, cat: '굿즈', path: '/goods' }); });
+  (d.videos || []).forEach((x) => { if (hit(x.title)) results.push({ label: x.title, cat: '영상', path: '/videos' }); });
+  (d.news || []).forEach((x) => { if (hit(x.title)) results.push({ label: x.title, cat: '뉴스', path: `/news/${x.id}` }); });
 
   openDynamicModal(`<div class="modal-title">검색: ${esc(q)}</div>
     <div class="modal-sub">${results.length}건의 결과</div>
@@ -1599,11 +1605,34 @@ function __snukInit() {
   setActiveNav(location.pathname);
 }
 
-// 사이드바 메뉴 표시/숨김 (어드민 설정 MENU_{KEY}='0' 이면 숨김, 미설정·'1'=표시 — 항목 8)
+// 사이드바 메뉴 (어드민 설정 — 항목 8 확장):
+//  MENU_{KEY}='0' 숨김 · MENU_LABEL_{KEY} 메뉴명 변경 · MENU_CUSTOM=JSON 커스텀 메뉴 추가
 function applyMenuVisibility(ss) {
   document.querySelectorAll('.rs-item[data-menu]').forEach((btn) => {
     const v = ss[`MENU_${btn.dataset.menu}`];
     btn.style.display = v === '0' ? 'none' : '';
+    const label = ss[`MENU_LABEL_${btn.dataset.menu}`];
+    if (label && label !== '-') btn.textContent = label;
+  });
+  // 커스텀 메뉴 — 관리자 항목 바로 앞에 삽입 (데스크톱 사이드바 + 모바일 드로어 둘 다)
+  let custom = [];
+  try { custom = JSON.parse(ss.MENU_CUSTOM || '[]'); } catch (e) { custom = []; }
+  if (!Array.isArray(custom)) custom = [];
+  document.querySelectorAll('.rs-item[data-custom]').forEach((el) => el.remove());
+  document.querySelectorAll('.rs-item.rs-admin-item').forEach((adminBtn) => {
+    custom.forEach((m) => {
+      if (!m || !m.label) return;
+      const b = document.createElement('button');
+      b.className = 'rs-item';
+      b.dataset.custom = '1';
+      b.textContent = m.label;
+      b.onclick = () => {
+        const url = String(m.url || '/');
+        if (/^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener');
+        else if (window.__snukNav) window.__snukNav(url);
+      };
+      adminBtn.parentElement.insertBefore(b, adminBtn);
+    });
   });
 }
 
@@ -1641,6 +1670,9 @@ function applySiteImages() {
     el.textContent = text;
   };
   applyImg('#hero .hero-banner-card > img', ss.HERO_IMAGE_URL);
+  // 메인 히어로 글씨 on/off — HERO_TEXT_ENABLED='0' 이면 배너 위 문구·버튼·스탯 전부 숨김
+  const heroContent = document.querySelector('#hero .hero-banner-content');
+  if (heroContent) heroContent.style.display = ss.HERO_TEXT_ENABLED === '0' ? 'none' : '';
   // 페이지 배너: 이미지 + 제목 + 문구 (키=BANNER_{PAGE}_{URL|TITLE|SUB}, V12 시드)
   const BANNER_SECTIONS = {
     CONTENTS: '#snuk-contents .page-banner',

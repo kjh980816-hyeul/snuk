@@ -119,13 +119,13 @@ watch(() => route.query.buy, openByQuery)
 .buy-panel { position: relative; background: #1c1c1f; color: #e8e8e8; border: 1px solid #2e2e33; border-radius: 14px; padding: 26px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
 .buy-panel h3 { margin: 0 0 6px; font-size: 17px; }
 .buy-close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: #aaa; font-size: 16px; cursor: pointer; }
-.buy-price { color: #ffb300; font-weight: 700; margin: 0 0 10px; }
+.buy-price { color: var(--gold); font-weight: 700; margin: 0 0 10px; }
 .buy-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #b8b8c0; margin-top: 12px; }
 .buy-field input { padding: 9px 11px; border: 1px solid #2e2e33; background: #131316; color: #e8e8e8; border-radius: 8px; font-size: 14px; outline: none; }
 .buy-total { margin: 18px 0 12px; font-size: 15px; }
-.buy-total b { color: #ffb300; font-size: 18px; }
+.buy-total b { color: var(--gold); font-size: 18px; }
 .buy-btn { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, #6a5cff, #8c5cff); cursor: pointer; }
 .buy-btn:disabled { opacity: .5; cursor: not-allowed; }
 .buy-notice { margin: 14px 0; color: #b8b8c0; }
-.buy-msg { margin-top: 14px; color: #ffb300; font-weight: 700; }
+.buy-msg { margin-top: 14px; color: var(--gold); font-weight: 700; }
 </style>

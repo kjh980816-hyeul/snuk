@@ -199,7 +199,7 @@ watch(() => route.params.id, load)
 .info h1 { font-size: 26px; font-weight: 800; color: var(--text); margin: 10px 0 12px; line-height: 1.3; }
 .meta-row { display: flex; align-items: center; gap: 10px; }
 .badge { font-size: 11px; font-weight: 800; border-radius: 999px; padding: 3px 10px; }
-.badge.open { background: rgba(52, 199, 120, 0.14); color: #34c878; border: 1px solid rgba(52, 199, 120, 0.4); }
+.badge.open { background: rgba(52, 199, 120, 0.14); color: var(--green); border: 1px solid rgba(52, 199, 120, 0.4); }
 .badge.ongoing { background: rgba(212, 212, 212, 0.12); color: var(--text2); border: 1px solid var(--border2); }
 .badge.closed { background: rgba(255, 255, 255, 0.06); color: var(--text3); border: 1px solid var(--border); }
 .game { font-size: 13px; color: var(--text2); font-weight: 600; }
@@ -221,13 +221,13 @@ watch(() => route.params.id, load)
 .apply-q textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 9px;
   padding: 9px 11px; color: var(--text); font-size: 13px; outline: none; resize: vertical;
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
-.q-req { font-size: 10px; font-weight: 800; color: #ff7070; margin-left: 6px; }
+.q-req { font-size: 10px; font-weight: 800; color: var(--live); margin-left: 6px; }
 .q-opt { font-size: 10px; font-weight: 700; color: var(--text3); margin-left: 6px; }
 .q-img-row { display: flex; align-items: center; gap: 8px; }
 .q-img-btn { font-size: 11.5px; color: var(--text2); border: 1px dashed var(--border); border-radius: 8px;
   padding: 6px 12px; cursor: pointer; }
 .q-img-prev { height: 44px; border-radius: 7px; }
-.q-img-del { font-size: 11px; color: #ff7070; background: transparent; border: none; cursor: pointer; }
+.q-img-del { font-size: 11px; color: var(--live); background: transparent; border: none; cursor: pointer; }
 .result { margin-top: 20px; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius2); padding: 16px 20px; }
 .result h3 { font-size: 14px; color: var(--text); margin: 0 0 8px; }
 .result p { font-size: 14px; color: var(--text2); white-space: pre-line; margin: 0; }

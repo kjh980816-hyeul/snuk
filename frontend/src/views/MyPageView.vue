@@ -1,15 +1,45 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { authApi, mypageApi } from '@/api'
-import type { MypageSummary } from '@/api/types'
+import { computed, onMounted, ref, watch } from 'vue'
+import { authApi, campaignApi, mypageApi, streamerApi } from '@/api'
+import type { MypageSummary, Review, StreamerPost } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const summary = ref<MypageSummary | null>(null)
 const loading = ref(true)
 
-type MpTab = 'apply' | 'tour' | 'codes' | 'reviews' | 'orders'
+type MpTab = 'apply' | 'tour' | 'codes' | 'reviews' | 'orders' | 'fans'
 const tab = ref<MpTab>('apply')
+
+// ----- 시청자 반응 (스트리머 전용) — 내 게시판에 달린 글 + 내 컨텐츠에 달린 후기 -----
+const isStreamer = computed(() => auth.me?.role === 'STREAMER' || auth.me?.role === 'ADMIN')
+const fanPosts = ref<StreamerPost[]>([])
+const fanReviews = ref<Array<Review & { campaignTitle: string }>>([])
+const fansLoading = ref(false)
+let fansLoaded = false
+async function loadFans() {
+  if (fansLoaded || !auth.me) return
+  fansLoading.value = true
+  try {
+    const meId = auth.me.id
+    const [posts, campaigns] = await Promise.all([
+      streamerApi.posts(meId).catch(() => []),
+      campaignApi.list().catch(() => []),
+    ])
+    fanPosts.value = posts
+    const mine = campaigns.filter((c) => c.ownerMemberId === meId)
+    const reviewLists = await Promise.all(
+      mine.map((c) => campaignApi.reviews(c.id).then(
+        (rs) => rs.map((r) => ({ ...r, campaignTitle: c.title })), () => [])),
+    )
+    fanReviews.value = reviewLists.flat()
+      .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1))
+    fansLoaded = true
+  } finally {
+    fansLoading.value = false
+  }
+}
+watch(tab, (t) => { if (t === 'fans') void loadFans() })
 
 // ----- 프사 변경 (파일 업로드) -----
 const fileEl = ref<HTMLInputElement | null>(null)
@@ -165,6 +195,7 @@ onMounted(async () => {
           <button class="tab" :class="{ active: tab === 'codes' }" @click="tab = 'codes'">게임 코드</button>
           <button class="tab" :class="{ active: tab === 'reviews' }" @click="tab = 'reviews'">내 후기</button>
           <button class="tab" :class="{ active: tab === 'orders' }" @click="tab = 'orders'">굿즈 주문</button>
+          <button v-if="isStreamer" class="tab" :class="{ active: tab === 'fans' }" @click="tab = 'fans'">시청자 반응</button>
         </div>
 
         <!-- 신청 현황 -->
@@ -232,6 +263,34 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- 시청자 반응 (스트리머 전용) — 내 게시판 글 + 내 컨텐츠 후기 -->
+        <div v-else-if="tab === 'fans'">
+          <div v-if="fansLoading" class="mp-empty">불러오는 중…</div>
+          <template v-else>
+            <h5 class="mp-sec-title">내 게시판에 달린 글 {{ fanPosts.length }}건
+              <RouterLink v-if="auth.me" :to="`/streamers/${auth.me.id}`" class="mp-link" style="margin-left:8px;">게시판 열기 ›</RouterLink>
+            </h5>
+            <div v-if="!fanPosts.length" class="mp-empty">아직 시청자가 남긴 글이 없습니다.</div>
+            <div v-for="p in fanPosts" :key="'p' + p.id" class="mp-item">
+              <div class="mp-item-main">
+                <div class="mp-item-title">{{ p.title }}</div>
+                <div class="mp-item-sub">{{ p.authorName }} · {{ dt(p.createdAt) }}</div>
+                <div v-if="p.content" class="mp-item-sub" style="margin-top:5px;white-space:pre-line;">{{ p.content.slice(0, 200) }}</div>
+              </div>
+            </div>
+            <h5 class="mp-sec-title" style="margin-top:22px;">내 컨텐츠에 달린 후기 {{ fanReviews.length }}건</h5>
+            <div v-if="!fanReviews.length" class="mp-empty">아직 내 컨텐츠에 달린 후기가 없습니다.</div>
+            <div v-for="r in fanReviews" :key="'r' + r.id" class="mp-item">
+              <div class="mp-item-main">
+                <div class="mp-item-title">{{ r.title }}</div>
+                <div class="mp-item-sub">{{ r.campaignTitle }} · {{ dt(r.createdAt) }}</div>
+                <div v-if="r.content" class="mp-item-sub" style="margin-top:5px;white-space:pre-line;">{{ r.content.slice(0, 200) }}</div>
+              </div>
+              <RouterLink v-if="r.campaignId" :to="`/campaigns/${r.campaignId}/reviews`" class="mp-link">게시판 ›</RouterLink>
+            </div>
+          </template>
+        </div>
+
         <!-- 굿즈 주문 -->
         <div v-else-if="tab === 'orders'">
           <div v-if="!summary.orders.length" class="mp-empty">주문 내역이 없습니다.</div>
@@ -270,7 +329,7 @@ onMounted(async () => {
   background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
 }
 .mp-role.STREAMER { background: rgba(0, 199, 60, .12); color: #00c73c; border-color: rgba(0, 199, 60, .35); }
-.mp-role.ADMIN { background: rgba(255, 179, 0, .12); color: #ffb300; border-color: rgba(255, 179, 0, .35); }
+.mp-role.ADMIN { background: rgba(255, 179, 0, .12); color: var(--gold); border-color: rgba(255, 179, 0, .35); }
 .mp-sub { font-size: 13px; color: var(--text3); margin-top: 5px; }
 .mp-pic-edit { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .hidden-file { display: none; }
@@ -302,31 +361,34 @@ onMounted(async () => {
 .mp-item-title { font-size: 14px; font-weight: 700; color: var(--text); }
 .mp-item-sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
 .mp-item-code {
-  font-family: monospace; font-size: 13px; color: var(--gold, #ffb300);
+  font-family: monospace; font-size: 13px; color: var(--gold);
   background: var(--bg3); border-radius: 6px; padding: 4px 10px; display: inline-block; margin-top: 6px;
 }
 .mp-pill {
   flex: none; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
   background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
 }
-.mp-pill.APPROVED, .mp-pill.PAID { background: rgba(52, 199, 120, .12); color: #34c878; border-color: rgba(52, 199, 120, .35); }
-.mp-pill.PENDING { background: rgba(255, 179, 0, .12); color: #ffb300; border-color: rgba(255, 179, 0, .35); }
-.mp-pill.REJECTED, .mp-pill.CANCELLED, .mp-pill.FAILED { background: rgba(239, 68, 68, .12); color: #ef4444; border-color: rgba(239, 68, 68, .35); }
+.mp-pill.APPROVED, .mp-pill.PAID { background: rgba(52, 199, 120, .12); color: var(--green); border-color: rgba(52, 199, 120, .35); }
+.mp-pill.PENDING { background: rgba(255, 179, 0, .12); color: var(--gold); border-color: rgba(255, 179, 0, .35); }
+.mp-pill.REJECTED, .mp-pill.CANCELLED, .mp-pill.FAILED { background: rgba(239, 68, 68, .12); color: var(--live); border-color: rgba(239, 68, 68, .35); }
 
 /* 후기 마감/연장(항목 19) */
-.mp-deadline { margin-top: 7px; font-size: 12px; font-weight: 700; color: #8fa8ff; }
-.mp-deadline.danger { color: #ff7070; }
-.mp-deadline.done { color: #34c878; }
+.mp-deadline { margin-top: 7px; font-size: 12px; font-weight: 700; color: var(--accent3); }
+.mp-deadline.danger { color: var(--live); }
+.mp-deadline.done { color: var(--green); }
 .mp-deadline-date { font-weight: 500; color: var(--text3); margin-left: 4px; }
 .mp-warn-chip { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; color: #fff;
-  background: #ef4444; border-radius: 5px; padding: 1px 6px; vertical-align: 1px; }
+  background: var(--live); border-radius: 5px; padding: 1px 6px; vertical-align: 1px; }
 .mp-item-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
 .mp-btn.small { font-size: 11px; padding: 5px 10px; text-decoration: none; text-align: center; }
 .mp-extended { font-size: 11px; color: var(--text3); }
-.mp-link { flex: none; font-size: 12px; font-weight: 700; color: var(--accent3, #5cf0fc); text-decoration: none; }
+.mp-link { flex: none; font-size: 12px; font-weight: 700; color: var(--accent3); text-decoration: none; }
 
 .mp-empty {
   border: 1px dashed var(--border2); border-radius: 12px; padding: 36px 16px;
   text-align: center; color: var(--text3); font-size: 13px; line-height: 1.8;
 }
+
+/* 시청자 반응 탭 */
+.mp-sec-title { font-size: 14px; font-weight: 800; color: var(--text); margin: 4px 0 10px; }
 </style>

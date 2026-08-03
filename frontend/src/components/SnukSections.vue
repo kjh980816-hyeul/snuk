@@ -30,6 +30,14 @@ onMounted(async () => {
       root.querySelectorAll<HTMLElement>('.page-banner').forEach((el) => {
         el.style.display = ''
       })
+      // 배너에 같은 제목이 크게 들어가므로 상단 텍스트 제목은 숨김 — "스트리머/스트리머" 중복 제거
+      // (헤더 안의 검색창 등은 유지해야 하므로 제목 요소만 숨긴다)
+      root.querySelectorAll<HTMLElement>('section').forEach((sec) => {
+        if (sec.querySelector('.page-banner')) {
+          const title = sec.querySelector<HTMLElement>('.section-header .section-title')
+          if (title) title.style.display = 'none'
+        }
+      })
     }
   }
   // 실데이터 렌더러 재실행 (스크립트 로드 전이면 no-op — SnukShell 이 로드 후 실행)

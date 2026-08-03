@@ -254,13 +254,13 @@ watch(() => route.params.id, load)
 .sp-post-btns { display: flex; gap: 6px; flex: none; }
 .sp-del {
   flex: none; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer;
-  background: rgba(239, 68, 68, .1); color: #ef4444; border: 1px solid rgba(239, 68, 68, .3);
+  background: rgba(239, 68, 68, .1); color: var(--live); border: 1px solid rgba(239, 68, 68, .3);
 }
 .sp-report {
   flex: none; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer;
   background: var(--bg3); color: var(--text3); border: 1px solid var(--border);
 }
-.sp-report:hover { color: #ffb300; border-color: rgba(255, 179, 0, .4); }
+.sp-report:hover { color: var(--gold); border-color: rgba(255, 179, 0, .4); }
 .sp-post-content { margin: 10px 0 0 46px; font-size: 13px; color: var(--text2); white-space: pre-wrap; line-height: 1.7; }
 
 .sp-empty {

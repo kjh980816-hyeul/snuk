@@ -42,6 +42,20 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config
     const isRefreshCall = original?.url?.includes('/api/auth/refresh')
+    // 403: 가입 후 관리자/스트리머로 승격돼도 기존 access 토큰에 옛 role 이 박혀 거부됨
+    // (2026-07-28 뮤마랭 어드민 저장/업로드 전부 403 사건). refresh 는 DB 최신 role 로
+    // 재발급하므로 1회 갱신 후 재시도하면 재로그인 없이 즉시 권한이 반영된다.
+    if (error.response?.status === 403 && !original?._retry403 && !isRefreshCall && getRefreshToken()) {
+      original._retry403 = true
+      try {
+        const r = await axios.post('/api/auth/refresh', { refreshToken: getRefreshToken() })
+        setTokens(r.data.accessToken, r.data.refreshToken)
+        original.headers.Authorization = `Bearer ${r.data.accessToken}`
+        return api(original)
+      } catch {
+        return Promise.reject(error)
+      }
+    }
     if (error.response?.status === 401 && !original?._retry && !isRefreshCall && getRefreshToken()) {
       original._retry = true
       try {

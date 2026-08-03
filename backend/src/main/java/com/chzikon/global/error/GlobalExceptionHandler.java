@@ -28,6 +28,8 @@ public class GlobalExceptionHandler {
         List<ErrorResponse.FieldErrorDetail> details = e.getBindingResult().getFieldErrors().stream()
                 .map(this::toDetail)
                 .toList();
+        // 운영 장애 추적용 — 4xx 도 무엇이 거절됐는지 남긴다 (2026-07-28 침묵 403 사건 교훈)
+        log.warn("Validation failed: {}", details);
         return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
                 .body(ErrorResponse.of(ErrorCode.INVALID_INPUT, details));
     }

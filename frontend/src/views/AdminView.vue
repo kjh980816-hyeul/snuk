@@ -1,8 +1,33 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { adminApi } from '@/api/admin'
 import { campaignApi, collabApi, noticeApi, resourceApi, tournamentApi } from '@/api'
+import api from '@/api/client'
 import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, Notice, OrderView, Spotlight, Tournament } from '@/api/types'
+
+// 어드민 변경 요청(POST/PUT/DELETE/PATCH) 실패를 전부 알림으로 표출 — 침묵 실패 금지
+// (2026-07-28 뮤마랭: 저장·업로드가 전부 403인데 화면엔 아무 표시가 없어 "안된다"로만 보임)
+function apiErrorMessage(e: unknown): string {
+  const err = e as { response?: { status?: number; data?: { message?: string } } }
+  const status = err?.response?.status
+  if (status === 403) return '권한이 없습니다. 계속 실패하면 로그아웃 후 다시 로그인해 주세요.'
+  if (status === 413) return '파일이 너무 큽니다 — 10MB 이하로 줄여주세요.'
+  return err?.response?.data?.message ?? '요청에 실패했습니다.'
+}
+const MUTATING = new Set(['post', 'put', 'delete', 'patch'])
+const alertInterceptor = api.interceptors.response.use(
+  (r) => r,
+  (error: unknown) => {
+    const err = error as { config?: { method?: string }; _alerted?: boolean }
+    const method = (err?.config?.method ?? '').toLowerCase()
+    if (MUTATING.has(method) && !err._alerted) {
+      err._alerted = true
+      alert(apiErrorMessage(error))
+    }
+    return Promise.reject(error)
+  },
+)
+onBeforeUnmount(() => api.interceptors.response.eject(alertInterceptor))
 
 // 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (컨텐츠·대회 통합 탭 + 게임체험단·영상·굿즈샵·협력사)
 type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'members' | 'settings' | 'logs'
@@ -254,9 +279,18 @@ function editGame(g: CollabGame) { gameEditing.value = { ...g } }
 async function saveGame() {
   const b = gameEditing.value
   if (!b) return
-  if (b.id) await adminApi.updateGame(b.id, b); else await adminApi.createGame(b)
+  let savedId = b.id
+  if (b.id) {
+    await adminApi.updateGame(b.id, b)
+  } else {
+    const created = await adminApi.createGame(b) as unknown as { data?: CollabGame }
+    savedId = (created?.data as CollabGame | undefined)?.id
+  }
   gameEditing.value = null
   await loadCollab()
+  // 새 게임은 바로 모집·키(키 등록) 패널을 열어 다음 단계가 보이게
+  const fresh = games.value.find((x) => x.id === savedId)
+  if (fresh && !fresh.campaignId) await openGameManage(fresh)
 }
 async function delGame(id: number) {
   if (!confirm('이 콜라보 게임을 삭제할까요?')) return
@@ -297,7 +331,7 @@ async function pickImage(e: Event, obj: object | null, field: string) {
     const { url } = await adminApi.uploadImage(file)
     ;(obj as Record<string, unknown>)[field] = url
   } catch {
-    alert('업로드 실패 — 이미지 파일(jpg/png/gif/webp)인지 확인해주세요.')
+    // 실패 원인은 전역 인터셉터가 알림으로 표시 (403/413/서버 메시지)
   } finally {
     imgUploading.value = false
     input.value = ''
@@ -439,6 +473,7 @@ async function saveLiveBanner() {
 }
 const SITE_KEYS = [
   'LIVE_CHANNEL_ID', 'LIVE_BANNER_ENABLED', 'LIVE_BANNER_URL', 'LIVE_BANNER_TITLE',
+  'HERO_TEXT_ENABLED', 'POINT_DAILY_AMOUNT', 'SPOTLIGHT_POINT_COST',
   ...SITE_IMAGES.map((s) => s.key),
   ...BANNER_TEXTS.flatMap((b) => [`BANNER_${b.page}_TITLE`, `BANNER_${b.page}_SUB`]),
 ]
@@ -459,19 +494,62 @@ const MENU_ITEMS = [
   { key: 'CLIENTS', label: '협력사' },
 ]
 const menuInputs = ref<Record<string, boolean>>({})
+// 메뉴명 변경(MENU_LABEL_*) + 커스텀 메뉴 추가/삭제(MENU_CUSTOM JSON) — 뮤마랭 요청(07-28)
+const menuLabelInputs = ref<Record<string, string>>({})
+type CustomMenu = { label: string; url: string }
+const customMenus = ref<CustomMenu[]>([])
 function loadMenuInputs() {
-  const next: Record<string, boolean> = {}
+  const nextOn: Record<string, boolean> = {}
+  const nextLabel: Record<string, string> = {}
   for (const m of MENU_ITEMS) {
-    next[m.key] = settingValue(`MENU_${m.key}`) !== '0'
+    nextOn[m.key] = settingValue(`MENU_${m.key}`) !== '0'
+    nextLabel[m.key] = settingValue(`MENU_LABEL_${m.key}`)
   }
-  menuInputs.value = next
+  menuInputs.value = nextOn
+  menuLabelInputs.value = nextLabel
+  try {
+    const parsed = JSON.parse(settingValue('MENU_CUSTOM') || '[]') as CustomMenu[]
+    customMenus.value = Array.isArray(parsed) ? parsed : []
+  } catch {
+    customMenus.value = []
+  }
 }
+function addCustomMenu() { customMenus.value.push({ label: '', url: '' }) }
+function removeCustomMenu(i: number) { customMenus.value.splice(i, 1) }
 async function saveMenus() {
   for (const m of MENU_ITEMS) {
     await adminApi.updateSetting(`MENU_${m.key}`, menuInputs.value[m.key] ? '1' : '0')
+    await adminApi.updateSetting(`MENU_LABEL_${m.key}`, menuLabelInputs.value[m.key]?.trim() || '-')
   }
+  const clean = customMenus.value
+    .filter((c) => c.label.trim())
+    .map((c) => ({ label: c.label.trim(), url: c.url.trim() || '/' }))
+  const json = JSON.stringify(clean)
+  if (json.length > 500) { // setting_value 512자 제한
+    alert('커스텀 메뉴가 너무 많아요 — 개수를 줄이거나 이름·주소를 짧게 해주세요.')
+    return
+  }
+  await adminApi.updateSetting('MENU_CUSTOM', json)
   await loadSettings()
   alert('저장되었습니다. 사이트 새로고침 시 반영돼요.')
+}
+
+// 메인 히어로 글씨 on/off (HERO_TEXT_ENABLED)
+const heroTextEnabled = ref(true)
+async function saveHeroText() {
+  await adminApi.updateSetting('HERO_TEXT_ENABLED', heroTextEnabled.value ? '1' : '0')
+  await loadSettings()
+  alert('저장되었습니다.')
+}
+
+// 포인트 관리 — 출석 적립·스포트라이트 차감
+const pointDailyInput = ref('')
+const spotlightCostInput = ref('')
+async function savePoints() {
+  await adminApi.updateSetting('POINT_DAILY_AMOUNT', pointDailyInput.value.trim() || '0')
+  await adminApi.updateSetting('SPOTLIGHT_POINT_COST', spotlightCostInput.value.trim() || '0')
+  await loadSettings()
+  alert('저장되었습니다.')
 }
 
 // 히어로/배너 이미지 제거·기본 복원(항목 16) — 'none'=이미지 없음, '-'=기본 이미지
@@ -490,6 +568,9 @@ async function loadSettings() {
   liveBannerEnabled.value = settingValue('LIVE_BANNER_ENABLED') === '1'
   liveBannerUrl.value = settingValue('LIVE_BANNER_URL')
   liveBannerTitle.value = settingValue('LIVE_BANNER_TITLE')
+  heroTextEnabled.value = settingValue('HERO_TEXT_ENABLED') !== '0'
+  pointDailyInput.value = settingValue('POINT_DAILY_AMOUNT')
+  spotlightCostInput.value = settingValue('SPOTLIGHT_POINT_COST')
   loadBannerTextInputs()
   loadMenuInputs()
 }
@@ -508,7 +589,7 @@ async function pickSettingImage(e: Event, key: string) {
     const { url } = await adminApi.uploadImage(file)
     await saveSetting(key, url)
   } catch {
-    alert('업로드 실패 — 이미지 파일(jpg/png/gif/webp)인지 확인해주세요.')
+    // 실패 원인은 전역 인터셉터가 알림으로 표시 (403/413/서버 메시지)
   } finally {
     imgUploading.value = false
     input.value = ''
@@ -640,9 +721,8 @@ async function submitResource() {
     resImage.value = null
     await loadResources()
     alert('무료소스가 등록됐습니다.')
-  } catch (e) {
-    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-    alert(msg ?? '등록에 실패했습니다.')
+  } catch {
+    // 실패 원인은 전역 인터셉터가 알림으로 표시
   } finally {
     resUploading.value = false
   }
@@ -860,7 +940,7 @@ function onTab(t: Tab) {
     <!-- 게임체험단 (콜라보 게임) -->
     <section v-else-if="tab === 'games'">
       <h4>게임체험단 게임 <button class="btn orange xs" @click="newGame">+ 추가</button></h4>
-      <p class="hint">게임사 협약 키 배포는 여기서 — 게임별 "모집·키" 버튼에서 키 등록·신청자 승인을 관리해요.</p>
+      <p class="hint">게임 키 등록은 여기서 — 게임별 "키 등록·모집" 버튼을 누르면 키 붙여넣기 등록·신청자 승인 화면이 열려요.</p>
       <table class="grid">
         <thead><tr><th>썸네일</th><th>게임명</th><th>모집·키</th><th>게임링크</th><th>정렬</th><th></th></tr></thead>
         <tbody>
@@ -871,7 +951,7 @@ function onTab(t: Tab) {
             <td class="url">{{ g.gameLinkUrl }}</td>
             <td>{{ g.sortOrder }}</td>
             <td class="acts">
-              <button @click="openGameManage(g)">모집·키</button>
+              <button @click="openGameManage(g)">키 등록·모집</button>
               <button @click="editGame(g)">수정</button>
               <button class="danger" @click="delGame(g.id)">삭제</button>
             </td>
@@ -1306,6 +1386,13 @@ function onTab(t: Tab) {
           </label>
           <button class="btn sm" style="margin-top:8px;" @click="saveLiveBanner">라이브 배너 저장</button>
         </div>
+        <div class="live-banner-box">
+          <h5 style="margin:14px 0 8px;">메인 히어로 글씨</h5>
+          <label class="chk" style="margin-bottom:8px;">
+            <input type="checkbox" v-model="heroTextEnabled" /> 히어로 배너 위 글씨·버튼·통계 표시 (끄면 이미지만 보여요)
+          </label>
+          <button class="btn sm" @click="saveHeroText">저장</button>
+        </div>
         <div class="site-images">
           <div v-for="si in SITE_IMAGES" :key="si.key" class="site-img">
             <span class="site-img-label">{{ si.label }}</span>
@@ -1334,15 +1421,42 @@ function onTab(t: Tab) {
         <p class="hint">비워두고 저장하면 문구가 <b>표시되지 않아요</b>. 기본 문구로 돌리려면 <code>-</code> 하나만 입력 후 저장.</p>
       </div>
 
-      <h4 style="margin-top:28px">사이드바 메뉴 표시</h4>
+      <h4 style="margin-top:28px">사이드바 메뉴 관리</h4>
       <div class="form-card site-card">
-        <div style="display:flex;flex-wrap:wrap;gap:14px;">
-          <label v-for="m in MENU_ITEMS" :key="m.key" class="chk" style="margin:0;">
-            <input type="checkbox" v-model="menuInputs[m.key]" /> {{ m.label }}
-          </label>
+        <table class="grid">
+          <thead><tr><th style="width:60px;">표시</th><th style="width:140px;">기본 이름</th><th>표시 이름 (비우면 기본)</th></tr></thead>
+          <tbody>
+            <tr v-for="m in MENU_ITEMS" :key="m.key">
+              <td style="text-align:center;"><input type="checkbox" v-model="menuInputs[m.key]" /></td>
+              <td>{{ m.label }}</td>
+              <td><input v-model="menuLabelInputs[m.key]" :placeholder="m.label" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <h5 style="margin:16px 0 8px;">커스텀 메뉴 <button class="btn ghost xs" @click="addCustomMenu">+ 메뉴 추가</button></h5>
+        <div v-for="(c, i) in customMenus" :key="i" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+          <input v-model="c.label" placeholder="메뉴 이름" style="width:160px;" />
+          <input v-model="c.url" placeholder="주소 — /news 또는 https://..." style="flex:1;" />
+          <button class="btn ghost xs danger" @click="removeCustomMenu(i)">삭제</button>
         </div>
-        <button class="btn sm" style="margin-top:10px;align-self:flex-start;" @click="saveMenus">메뉴 표시 저장</button>
+        <p v-if="!customMenus.length" class="hint" style="margin:0 0 8px;">추가한 커스텀 메뉴는 사이드바 관리자 메뉴 위에 표시돼요. https:// 로 시작하면 새 탭으로 열려요.</p>
+        <button class="btn sm" style="margin-top:6px;align-self:flex-start;" @click="saveMenus">메뉴 저장</button>
         <p class="hint">체크 해제한 메뉴는 사이드바·모바일 메뉴에서 숨겨져요. (페이지 주소로 직접 들어가는 건 막지 않아요)</p>
+      </div>
+
+      <h4 style="margin-top:28px">포인트 관리</h4>
+      <div class="form-card site-card">
+        <label>하루 첫 로그인 적립 포인트
+          <div class="live-row">
+            <input v-model="pointDailyInput" type="number" min="0" placeholder="예) 10" />
+          </div>
+        </label>
+        <label>스포트라이트 등록 차감 포인트 (0 = 무료)
+          <div class="live-row">
+            <input v-model="spotlightCostInput" type="number" min="0" placeholder="예) 50" />
+          </div>
+        </label>
+        <button class="btn sm" style="align-self:flex-start;" @click="savePoints">포인트 설정 저장</button>
       </div>
 
       <h4 style="margin-top:28px">설정값</h4>
@@ -1387,12 +1501,12 @@ function onTab(t: Tab) {
 </template>
 
 <style scoped>
-/* SNUK 시안 다크 모노톤 — 관리자 콘솔(셸 밖 bare 렌더라 자체 완결 스타일) */
+/* SNUK 통일 팔레트(메인과 동일 시안 토큰) — 관리자 콘솔(셸 밖 bare 렌더라 자체 완결 스타일) */
 .admin-page {
-  --a-bg: #111113; --a-bg2: #1c1c1f; --a-bg3: #262629; --a-bg4: #303035;
-  --a-text: #f0f0f2; --a-text2: #8a8a92; --a-text3: #505058;
-  --a-border: rgba(255, 255, 255, 0.1); --a-border2: rgba(255, 255, 255, 0.2);
-  --a-red: #ff6b6b; --a-radius: 10px; --a-radius2: 16px;
+  --a-bg: #131211; --a-bg2: #1B1A18; --a-bg3: #232220; --a-bg4: #2B2A27;
+  --a-text: #EDEAE3; --a-text2: #ADA89E; --a-text3: #8A857C;
+  --a-border: #2E2C29; --a-border2: #403D38;
+  --a-accent: #8163FF; --a-red: #FF4F65; --a-radius: 10px; --a-radius2: 16px;
   min-height: 100vh; background: var(--a-bg); color: var(--a-text);
   font-family: 'Pretendard', 'Noto Sans KR', -apple-system, 'Segoe UI', sans-serif;
 }
@@ -1407,13 +1521,13 @@ h4, h5 { color: var(--a-text); }
 .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--a-border); flex-wrap: wrap; }
 .tabs button { background: none; border: 0; padding: 10px 16px; font-weight: 700; font-size: 14px; color: var(--a-text2); border-bottom: 2px solid transparent; cursor: pointer; transition: 0.15s; }
 .tabs button:hover { color: var(--a-text); }
-.tabs button.on { color: var(--a-text); border-bottom-color: var(--a-text); }
+.tabs button.on { color: var(--a-text); border-bottom-color: var(--a-accent); }
 
 /* 버튼 — 시안 CTA(라이트 온 다크) 톤 */
 .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--a-border2); background: var(--a-bg3); color: var(--a-text); border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.15s; }
 .btn:hover { background: var(--a-bg4); }
-.btn.orange { background: #e8e8e8; color: #18181c; border-color: transparent; }
-.btn.orange:hover { background: #fff; }
+.btn.orange { background: var(--a-accent); color: #fff; border-color: transparent; }
+.btn.orange:hover { opacity: .88; }
 .btn.ghost { background: transparent; }
 .btn.sm { padding: 6px 12px; font-size: 13px; }
 .btn.xs, .xs { font-size: 12px; padding: 3px 10px; margin-left: 6px; }
@@ -1456,13 +1570,13 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 
 /* 라이트 테마 — 메인 사이트(snuk-theme)와 동일 키 공유 */
 .admin-page[data-theme="light"] {
-  --a-bg: #f8f8f9; --a-bg2: #ffffff; --a-bg3: #f0f0f2; --a-bg4: #e4e4e8;
-  --a-text: #18181c; --a-text2: #505058; --a-text3: #909098;
-  --a-border: rgba(0, 0, 0, 0.1); --a-border2: rgba(0, 0, 0, 0.2);
+  --a-bg: #FAF9F6; --a-bg2: #ffffff; --a-bg3: #F4F2ED; --a-bg4: #EEEBE4;
+  --a-text: #191816; --a-text2: #5C5952; --a-text3: #7D7972;
+  --a-border: #E9E6DE; --a-border2: #D9D5CB;
+  --a-accent: #5B34E8; --a-red: #E23A4E;
 }
-.admin-page[data-theme="light"] .btn.orange { background: #18181c; color: #fff; }
-.admin-page[data-theme="light"] .btn.orange:hover { background: #303035; }
-.admin-page[data-theme="light"] .tabs button.on { border-bottom-color: #18181c; }
+.admin-page[data-theme="light"] .tabs button.on { border-bottom-color: var(--a-accent); }
+.admin-page[data-theme="light"] .grid tr.sel { background: rgba(91, 52, 232, .07); }
 
 .head-acts { display: flex; gap: 8px; align-items: center; }
 .head-acts button.home-link { background: transparent; cursor: pointer; font: inherit; font-size: 13px; }
