@@ -1,13 +1,13 @@
-﻿
 
-<!-- ── 모바일 상단바 ── -->
+
+<!-- ── 모바일 상단바 (데모 .mobtop 스타일) ── -->
 <div class="mobile-topbar" id="mobile-topbar">
-  <div class="mobile-logo">SNUK</div>
+  <div class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()">
+    <span></span><span></span><span></span>
+  </div>
+  <div class="mobile-logo">SN<span>U</span>K</div>
   <div class="mobile-topbar-right">
     <button class="mobile-login-btn" onclick="openLogin()">로그인</button>
-    <div class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()">
-      <span></span><span></span><span></span>
-    </div>
   </div>
 </div>
 <!-- 오버레이 -->
@@ -15,10 +15,10 @@
 <!-- 드로어 -->
 <div class="mobile-drawer" id="mobile-drawer">
   <div class="mobile-drawer-search">
-    <input type="text" placeholder="검색..." onkeydown="if(event.key==='Enter'){closeMobileMenu();window.__snukSearch(this.value);this.value='';}">
+    <input type="text" placeholder="검색어를 입력하세요" onkeydown="if(event.key==='Enter'){closeMobileMenu();window.__snukSearch(this.value);this.value='';}">
   </div>
   <div class="rs-nav">
-    <button class="rs-item" data-menu="HOME" onclick="__snukNav('/')">HOME</button>
+    <button class="rs-item" data-menu="HOME" onclick="__snukNav('/')">홈</button>
     <button class="rs-item" data-menu="CAMPAIGNS" onclick="__snukNav('/campaigns')">컨텐츠·대회</button>
     <button class="rs-item" data-menu="GAMES" onclick="__snukNav('/games')">게임체험단</button>
     <button class="rs-item" data-menu="STREAMERS" onclick="__snukNav('/streamers')">스트리머</button>
@@ -31,39 +31,42 @@
   </div>
 </div>
 
-<!-- ── RIGHT SIDEBAR ── -->
+<!-- ── RIGHT SIDEBAR (데모 .side 스타일) ── -->
 <aside class="rs" id="rs">
-  <div class="rs-top">
-    <div class="rs-top-row">
-      <div class="rs-logo">SNUK</div>
-      <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">라이트 모드</button>
-    </div>
-    <div class="rs-auth-btns" id="rs-auth-btns">
-      <button class="rs-auth-btn" onclick="openSignup()">회원가입</button>
-      <button class="rs-auth-btn primary" onclick="openLogin()">로그인</button>
-    </div>
-  </div>
-  <!-- 로그인 후 프로필 -->
-  <div class="rs-profile" id="rs-profile">
-    <div class="rs-profile-inner" onclick="openMypage()">
-      <div class="rs-avatar" id="rs-av">S</div>
-      <div><div class="rs-uname" id="rs-uname">SNUK유저</div></div>
-    </div>
-    <button class="rs-mypage-btn" onclick="openMypage()">마이페이지</button>
-    <button class="rs-mypage-btn" style="margin-top:6px;opacity:.75;" onclick="doLogout()">로그아웃</button>
-  </div>
+  <div class="rs-brand">SN<span>U</span>K</div>
 
   <!-- 검색창 -->
   <div class="rs-search">
     <div class="rs-search-box">
       <span class="rs-search-icon">🔍</span>
-      <input class="rs-search-input" type="text" placeholder="검색..."
+      <input class="rs-search-input" type="text" placeholder="검색어를 입력하세요"
         onkeydown="if(event.key==='Enter'){window.__snukSearch(this.value);this.value='';}">
     </div>
   </div>
 
+  <!-- 계정 박스 -->
+  <div class="rs-acct">
+    <div class="rs-auth-btns" id="rs-auth-btns">
+      <p class="rs-welcome">스눅에 오신 것을 환영합니다</p>
+      <div class="rs-auth-row">
+        <button class="rs-auth-btn" onclick="openSignup()">회원가입</button>
+        <button class="rs-auth-btn primary" onclick="openLogin()">로그인</button>
+      </div>
+    </div>
+    <div class="rs-profile" id="rs-profile">
+      <div class="rs-profile-inner" onclick="openMypage()">
+        <div class="rs-avatar" id="rs-av">S</div>
+        <div><div class="rs-uname" id="rs-uname">SNUK유저</div></div>
+      </div>
+      <button class="rs-mypage-btn" onclick="openMypage()">마이페이지</button>
+      <button class="rs-mypage-btn ghost" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="rs-navsep"></div>
+
   <div class="rs-nav">
-    <button class="rs-item" data-menu="HOME" onclick="__snukNav('/')">HOME</button>
+    <button class="rs-item" data-menu="HOME" onclick="__snukNav('/')">홈</button>
     <button class="rs-item" data-menu="CAMPAIGNS" onclick="__snukNav('/campaigns')">컨텐츠·대회</button>
     <button class="rs-item" data-menu="GAMES" onclick="__snukNav('/games')">게임체험단</button>
     <button class="rs-item" data-menu="STREAMERS" onclick="__snukNav('/streamers')">스트리머</button>
@@ -75,7 +78,7 @@
     <button class="rs-item rs-admin-item" style="display:none;color:var(--gold);" onclick="__snukNav('/admin')">관리자</button>
   </div>
 
-  <!-- 공지사항: 광고 바로 아래 고정 -->
+  <!-- 공지사항 -->
   <div class="rs-notice">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <span class="rs-notice-title" style="margin-bottom:0;">공지사항</span>
@@ -84,7 +87,7 @@
     <div id="rs-notice-list"></div>
   </div>
 
-  <!-- 스포트라이트: 메인 배너 아래 섹션(#spotlight-section)으로 이동, 등록은 마이페이지 -->
+  <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">라이트 모드</button>
 </aside>
 
 <!-- ══════════════════════════════════════════
