@@ -39,25 +39,44 @@ function cardWidth(n, mobileN) {
 // ════════════════════════════════════════════
 // 컨텐츠/대회 카드 (실데이터: SnukCard)
 // ════════════════════════════════════════════
+// 데모 시안 .contcard — 썸네일+D-day / 종류·상태 태그 / 소개 / 스펙 / 주최 byline / 와이드 버튼
+function ddayOf(eventDate) {
+  if (!eventDate) return null;
+  const d = Math.ceil((new Date(`${eventDate}T00:00:00`).getTime() - Date.now()) / 86400000);
+  return Number.isFinite(d) ? d : null;
+}
 function makeContentCard(d, w, i) {
   const canApply = d.status === 'open';
-  const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
-  const badge = `<span class="badge ${badgeCls}">${esc(d.statusLabel)}</span>`;
-  const slots = d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
-  return `<div class="content-card" style="width:${w};min-width:${w};cursor:pointer;" ${d.kind === 'tournament' ? `onclick="__snukNav('/championship/${d.id}')"` : canApply ? `onclick="openApply('${d.kind}',${d.id})"` : ''}>
-    <div class="card-thumb" style="background:${bgOf(i)};position:relative;">
-      ${thumbHtml(d.img, i)}
-      <span class="big-kind" style="position:absolute;top:8px;right:8px;">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>
-    </div>
-    <div class="card-body">
-      <div class="card-meta">${badge}${d.eventDate ? `<span style="font-size:11px;color:var(--text3);margin-left:auto;">${esc(d.eventDate)}</span>` : ''}</div>
-      <div class="card-title">${esc(d.title)}</div>
-      <div class="card-desc">${esc(d.desc)}</div>
-      <div class="card-footer">
-        <div class="card-members">${slots}</div>
-        ${canApply ? `<button class="btn-apply" onclick="event.stopPropagation();openApply('${d.kind}',${d.id})">신청하기</button>` : ''}
-        ${d.kind === 'tournament' && d.resultText ? `<button class="btn btn-outline" style="padding:6px 12px;font-size:11px;" onclick="event.stopPropagation();showResult(${d.id})">결과 보기</button>` : ''}
-      </div>
+  const stTag = `<span class="tag ${d.status === 'open' ? 't-go' : d.status === 'ongoing' ? 't-warn' : 't-neu'}">${esc(d.statusLabel)}</span>`;
+  const kindTag = `<span class="tag t-neu">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>`;
+  const dd = canApply ? ddayOf(d.eventDate) : null;
+  const click = d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')`
+    : canApply ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
+  const spec = [
+    d.max > 0 ? `<dt>모집 인원</dt><dd>${d.filled}/${d.max}명</dd>` : '',
+    d.eventDate ? `<dt>진행일</dt><dd>${esc(d.eventDate)}</dd>` : '',
+  ].join('');
+  const byline = d.adminMade === false
+    ? `<span class="bava">✦</span><span>스트리머 컨텐츠</span>`
+    : `<span class="bava">S</span><span>SNUK</span><span class="tag t-pri">공식</span>`;
+  const btn = canApply
+    ? `<button class="btn-w" onclick="event.stopPropagation();openApply('${d.kind}',${d.id})">신청하기</button>`
+    : d.kind === 'tournament' && d.resultText
+      ? `<button class="btn-w ghost" onclick="event.stopPropagation();showResult(${d.id})">결과 보기</button>`
+      : `<button class="btn-w ghost">자세히 보기</button>`;
+  const widthStyle = w ? `width:${w};min-width:${w};` : '';
+  return `<div class="contcard" style="${widthStyle}" onclick="${click}">
+    <span class="cthumb" style="background:${bgOf(i)};">
+      ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : ''}
+      ${dd != null && dd >= 0 ? `<span class="dday${dd <= 3 ? ' urgent' : ''}">${dd === 0 ? 'D-DAY' : `D-${dd}`}</span>` : ''}
+    </span>
+    <div class="cbody">
+      <div class="crow">${kindTag}${stTag}</div>
+      <p class="ctitle">${esc(d.title)}</p>
+      <p class="cintro">${esc(d.desc)}</p>
+      ${spec ? `<dl class="cspec">${spec}</dl>` : ''}
+      <div class="byline">${byline}</div>
+      ${btn}
     </div>
   </div>`;
 }
@@ -176,57 +195,20 @@ function makeFeatureSideCard(d, i) {
 }
 
 // 컨텐츠+대회 통합 섹션 — 큰 칸=스눅 공식(관리자 등록) 컨텐츠 전용, 나머지(대회·스트리머 컨텐츠)는 작은 카드
+// 홈 "모집 중인 컨텐츠" — 데모 시안 카드 그리드(피처드 우선, 모집중 우선 정렬)
 function initHomeFeature() {
-  const main = document.getElementById('home-feature-main');
-  const sideL = document.getElementById('home-feature-side-l');
-  const sideR = document.getElementById('home-feature-side-r');
-  if (!main || !sideL || !sideR) return;
-  const openFirst = (arr) => [...arr].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
-  const campaigns = D().snukContents || [];
-  const tournaments = D().mugContents || [];
-  // 큰 칸 후보 = 스눅 공식(관리자 등록 컨텐츠·대회)만 — 스트리머 등록분은 작은 카드로만
-  const adminPool = openFirst([...campaigns, ...tournaments].filter((x) => x.adminMade !== false));
-  const everything = openFirst([...campaigns, ...tournaments]);                // 작은 칸 = 컨텐츠+대회 전부
+  const grid = document.getElementById('home-feature-main');
+  if (!grid) return;
   if (_autoTimers.homeFeature) { clearInterval(_autoTimers.homeFeature); _autoTimers.homeFeature = null; }
-  if (!campaigns.length && !tournaments.length) {
-    main.innerHTML = emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
-    sideL.innerHTML = '';
-    sideR.innerHTML = '';
-    return;
-  }
-  // 큰 칸을 가운데 두고 작은 카드를 좌 2 / 우 2 로 배치
-  const renderSide = (excl) => {
-    const rest = everything
-      .filter((x) => !(excl && x.kind === excl.kind && x.id === excl.id))
-      .slice(0, 4);
-    sideL.innerHTML = rest.slice(0, 2).map((d, i) => makeFeatureSideCard(d, i)).join('');
-    sideR.innerHTML = rest.slice(2, 4).map((d, i) => makeFeatureSideCard(d, i + 2)).join('');
-  };
-  if (!adminPool.length) {
-    main.innerHTML = emptyCard('SNUK 공식 컨텐츠 준비 중입니다.');
-    renderSide(null);
-    return;
-  }
-  const featured = D().snukFeatured || D().mugFeatured; // featured 는 어드민 폼에서만 체크 가능 = 항상 공식(컨텐츠 우선, 없으면 대회)
-  if (featured) {
-    main.innerHTML = makeFeatureMainCard(featured, 0, '');
-    renderSide(featured);
-    return;
-  }
-  // 미지정 — 공식 컨텐츠 상위 5개 자동 슬라이드(4초, 호버 시 정지)
-  const rotation = adminPool.slice(0, 5);
-  _featureIdx = _featureIdx % rotation.length;
-  const dots = () => `<div class="feature-dots">${rotation.map((_, i) =>
-    `<span class="${i === _featureIdx ? 'on' : ''}"></span>`).join('')}</div>`;
-  const paint = () => { main.innerHTML = makeFeatureMainCard(rotation[_featureIdx], _featureIdx, dots()); };
-  paint();
-  renderSide(rotation[_featureIdx]);
-  setAutoLoop('homeFeature', () => {
-    if (!document.getElementById('home-feature-main')) return;
-    if (hoverPaused(main)) return;
-    _featureIdx = (_featureIdx + 1) % rotation.length;
-    paint();
-  }, 4000);
+  const openFirst = (arr) => [...arr].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
+  const all = openFirst([...(D().snukContents || []), ...(D().mugContents || [])]);
+  const featured = D().snukFeatured || D().mugFeatured;
+  const list = featured
+    ? [featured, ...all.filter((x) => !(x.kind === featured.kind && x.id === featured.id))]
+    : all;
+  grid.innerHTML = list.length
+    ? list.slice(0, 6).map((d, i) => makeContentCard(d, null, i)).join('')
+    : emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
 }
 
 // ── 라이브 배너 (히어로 아래, 어드민 on/off — 항목 13/18)
@@ -939,7 +921,7 @@ function initStreamerStrip() {
     box.innerHTML = emptyCard('아직 등록된 파트너 스트리머가 없습니다.');
     return;
   }
-  const items = real.map((s) => ({ id: s.id, name: s.name, img: s.img, platform: s.platform, followers: s.followers, dummy: false }));
+  const items = real.map((s) => ({ id: s.id, name: s.name, img: s.img, platform: s.platform, followers: s.followers, live: s.live, dummy: false }));
   box.innerHTML = items.map((s) => {
     const avatar = s.img
       ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" draggable="false" onerror="this.parentElement.textContent='${esc(s.name.slice(0, 1))}';">`

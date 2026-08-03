@@ -979,3 +979,56 @@
 
 /* 푸터 */
 footer{border-top:1px solid var(--border);}
+
+/* ── 데모 모집 카드(.contcard) + 카드 그리드 ── */
+.cardgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:1024px){.cardgrid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.cardgrid{grid-template-columns:1fr;}}
+.see-all{margin-left:auto;font-size:13px;color:var(--text2);cursor:pointer;font-weight:600;}
+.see-all:hover{color:var(--text);}
+.contcard{display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius2);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;
+  box-shadow:0 1px 2px rgba(25,24,22,.04);}
+.contcard:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(25,24,22,.10);}
+.cthumb{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;flex-shrink:0;}
+.cthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.dday{position:absolute;top:10px;right:10px;background:rgba(10,9,8,.72);color:#fff;font-size:11px;font-weight:800;
+  border-radius:999px;padding:3px 10px;letter-spacing:.02em;}
+.dday.urgent{background:var(--live);}
+.cbody{display:flex;flex-direction:column;flex:1;padding:16px 16px 14px;gap:8px;min-width:0;}
+.crow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap;}
+.t-pri{background:rgba(129,99,255,.14);color:var(--accent3);}
+.snuk-page[data-theme="light"] .t-pri{background:#EEEAFD;color:#3A1E96;}
+.t-go{background:rgba(43,194,106,.14);color:var(--green);}
+.t-warn{background:rgba(232,169,63,.15);color:var(--yellow);}
+.t-neu{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
+.ctitle{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.01em;line-height:1.45;margin:0;}
+.cintro{font-size:12.5px;color:var(--text2);line-height:1.6;margin:0;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden;min-height:40px;}
+.cspec{display:grid;grid-template-columns:70px 1fr;gap:4px 8px;margin:2px 0 0;font-size:12px;
+  border-top:1px dashed var(--border2);padding-top:10px;}
+.cspec dt{color:var(--text3);font-weight:600;}
+.cspec dd{color:var(--text);margin:0;font-weight:600;}
+.byline{display:flex;align-items:center;gap:7px;margin-top:auto;padding-top:8px;font-size:12.5px;font-weight:600;color:var(--text2);}
+.bava{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;}
+.btn-w{width:100%;padding:10px 0;border-radius:999px;border:none;background:var(--accent);color:#fff;
+  font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;}
+.btn-w:hover{opacity:.9;}
+.btn-w.ghost{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+.btn-w.ghost:hover{background:var(--bg3);color:var(--text);}
+/* 슬라이더 트랙 안에서도 카드가 세로로 늘어나게 */
+.slider-track .contcard{flex-shrink:0;}
+
+/* ── 스트리머 줄: 데모 .strcard 룩(흰 카드 + 라이브 링) ── */
+.strip-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);
+  box-shadow:0 1px 2px rgba(25,24,22,.04);transition:transform .15s,box-shadow .15s;}
+.strip-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(25,24,22,.10);}
+
+/* 라이트 모드: 페이지 배너가 인라인 다크(#222226)로 남아 검은 박스로 보이던 것 — 밝은 톤으로 */
+.snuk-page[data-theme="light"] .page-banner,
+.snuk-page[data-theme="light"] .goods-banner{background:#EEEBE4!important;}
+.snuk-page[data-theme="light"] .goods-banner-text h2{color:#191816;}
+.snuk-page[data-theme="light"] .goods-banner-text p{color:#5C5952;}
+.snuk-page[data-theme="light"] .goods-banner-overlay{background:linear-gradient(90deg,rgba(250,249,246,.55),rgba(250,249,246,.05));}
