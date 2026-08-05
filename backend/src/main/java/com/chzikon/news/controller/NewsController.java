@@ -2,6 +2,8 @@ package com.chzikon.news.controller;
 
 import com.chzikon.global.security.MemberPrincipal;
 import com.chzikon.global.upload.FileStorageService;
+import com.chzikon.news.dto.NewsDtos.CommentRequest;
+import com.chzikon.news.dto.NewsDtos.CommentResponse;
 import com.chzikon.news.dto.NewsDtos.NewsCreateRequest;
 import com.chzikon.news.dto.NewsDtos.NewsResponse;
 import com.chzikon.news.service.NewsService;
@@ -51,6 +53,28 @@ public class NewsController {
     public ResponseEntity<Void> delete(@PathVariable Long id,
                                        @AuthenticationPrincipal MemberPrincipal principal) {
         newsService.delete(id, principal.memberId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // ----- 댓글: 조회 공개 / 작성 로그인 / 삭제 작성자+ADMIN(서비스 재검증) -----
+
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<List<CommentResponse>> comments(@PathVariable Long id) {
+        return ResponseEntity.ok(newsService.comments(id));
+    }
+
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<CommentResponse> addComment(@PathVariable Long id,
+                                                      @Valid @RequestBody CommentRequest req,
+                                                      @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(newsService.addComment(id, principal.memberId(), req));
+    }
+
+    @DeleteMapping("/{id}/comments/{commentId}")
+    public ResponseEntity<Void> deleteComment(@PathVariable Long id,
+                                              @PathVariable Long commentId,
+                                              @AuthenticationPrincipal MemberPrincipal principal) {
+        newsService.deleteComment(id, commentId, principal.memberId());
         return ResponseEntity.noContent().build();
     }
 

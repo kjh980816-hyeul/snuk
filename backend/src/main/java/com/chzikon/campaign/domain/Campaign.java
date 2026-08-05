@@ -120,6 +120,12 @@ public class Campaign {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /** 키 등록 시 모집 정원을 키 수량에 맞춰 자동 반영(이미 확정된 인원 밑으로는 안 내려감). 어드민 수동 수정 가능. */
+    public void syncTotalSlotsToKeys(int keyCount) {
+        this.totalSlots = Math.max(keyCount, this.filledSlots);
+        this.updatedAt = LocalDateTime.now();
+    }
+
     /** 키 등록 시 자동으로 고유 키 배포 모드로 전환(승인 시 키 자동 배정이 동작하도록). */
     public void enableUniqueKeyMode() {
         if (this.keyMode != KeyMode.UNIQUE_KEY) {

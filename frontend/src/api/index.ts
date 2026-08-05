@@ -1,7 +1,7 @@
 import api from './client'
 import type {
   ApplyAnswer, Campaign, ClientLogo, CollabGame, ContentVideo, FreeResource, Goods, Me, MyApplication,
-  MyParticipation, MypageSummary, News, Notice, OrderCreateRequest, OrderResponse, OrderView,
+  MyParticipation, MypageSummary, News, NewsComment, Notice, OrderCreateRequest, OrderResponse, OrderView,
   ParticipantPublic, Review, Spotlight, SpotlightPlatform, StreamerLive, StreamerPost,
   StreamerProfile, StreamerPublic, Tournament,
 } from './types'
@@ -77,6 +77,10 @@ export const newsApi = {
   edit: (id: number, body: { title: string; content: string; thumbnailUrl?: string | null }) =>
     api.put<News>(`/api/news/${id}`, body).then((r) => r.data),
   remove: (id: number) => api.delete(`/api/news/${id}`),
+  comments: (id: number) => api.get<NewsComment[]>(`/api/news/${id}/comments`).then((r) => r.data),
+  addComment: (id: number, content: string) =>
+    api.post<NewsComment>(`/api/news/${id}/comments`, { content }).then((r) => r.data),
+  deleteComment: (id: number, commentId: number) => api.delete(`/api/news/${id}/comments/${commentId}`),
   uploadImage: (file: File) => {
     const fd = new FormData()
     fd.append('file', file)

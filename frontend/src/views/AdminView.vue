@@ -70,9 +70,13 @@ function newCampaign() {
     title: '', description: '', gameName: '', status: 'SCHEDULED',
     distributionType: 'FCFS', keyMode: 'QUANTITY', totalSlots: 0, featured: false,
   }
+  tourEditing.value = null
+  window.scrollTo({ top: 0 })
 }
 function editCampaign(c: Campaign) {
   editing.value = { ...c }
+  tourEditing.value = null
+  window.scrollTo({ top: 0 })
 }
 async function saveCampaign() {
   if (!editing.value) return
@@ -95,9 +99,13 @@ async function selectCampaign(c: Campaign) {
 // 키/신청자 유틸 — 컨텐츠 패널·게임체험단 패널 공용(campaignId 명시)
 async function submitKeys(campaignId: number) {
   const res = await adminApi.registerKeys(campaignId, rawKeys.value)
-  keyResult.value = `등록 ${res.registered} · 중복 ${res.duplicated} · 빈줄 ${res.blank} (가용 ${res.totalAvailable})`
+  keyResult.value = `등록 ${res.registered} · 중복 ${res.duplicated} · 빈줄 ${res.blank} (가용 ${res.totalAvailable}) — 모집 인원이 키 수량으로 자동 반영됐어요`
   rawKeys.value = ''
   keys.value = await adminApi.listKeys(campaignId)
+  // 키 수량만큼 모집 인원 자동 반영(서버) — 패널·목록의 값 갱신
+  await loadCampaigns()
+  const fresh = campaigns.value.find((c) => c.id === campaignId)
+  if (fresh && gmCampaign.value?.id === campaignId) gmCampaign.value = { ...fresh }
 }
 async function delKey(campaignId: number, keyId: number) {
   await adminApi.deleteKey(campaignId, keyId)
@@ -153,9 +161,13 @@ function newTournament() {
     title: '', description: '', gameName: '', status: 'SCHEDULED',
     capacity: 0, featured: false, sortOrder: tournaments.value.length,
   }
+  editing.value = null
+  window.scrollTo({ top: 0 })
 }
 function editTournament(t: Tournament) {
   tourEditing.value = { ...t }
+  editing.value = null
+  window.scrollTo({ top: 0 })
 }
 async function saveTournament() {
   if (!tourEditing.value) return
@@ -782,7 +794,7 @@ function onTab(t: Tab) {
     <div class="adm-content">
 
     <!-- 컨텐츠·대회 통합 — 한 목록·같은 양식. 스눅 공식 컨텐츠는 여기 "+ 새 컨텐츠"로 등록 -->
-    <section v-if="tab === 'campaigns'">
+    <section v-if="tab === 'campaigns' && !editing && !tourEditing">
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn orange sm" @click="tourEditing = null; newCampaign()">+ 새 컨텐츠 (스눅 공식)</button>
         <button class="btn orange sm" @click="editing = null; newTournament()">+ 새 대회</button>
@@ -807,11 +819,71 @@ function onTab(t: Tab) {
         </tbody>
       </table>
 
-      <!-- 편집 폼 -->
-      <div v-if="editing" class="form-card">
-        <h4>{{ editing.id ? '컨텐츠 수정' : '새 컨텐츠' }}</h4>
-        <label>제목<input v-model="editing.title" /></label>
-        <label>설명<textarea v-model="editing.description"></textarea></label>
+      <!-- 컨텐츠 참가자(신청자) — 대회 참가자와 동일 양식 -->
+      <div v-if="selected" class="manage">
+        <h4>‘{{ selected.title }}’ 참가자</h4>
+        <table class="grid">
+          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="a in applications" :key="a.applicationId">
+              <td>{{ a.nickname }} <span class="hint" style="margin:0">#{{ a.memberId }}</span></td>
+              <td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
+              <td class="acts">
+                <template v-if="a.status === 'PENDING'">
+                  <button @click="approveApp(a.applicationId, selected!.id)">승인</button>
+                  <button class="danger" @click="rejectApp(a.applicationId, selected!.id)">거절</button>
+                </template>
+              </td>
+            </tr>
+            <tr v-if="!applications.length"><td colspan="4" class="empty">신청자가 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 대회 참가자 패널 (통합 목록에서 진입 — 목록은 위 통합 테이블 하나) -->
+    <section v-if="tab === 'campaigns' && !editing && !tourEditing">
+      <!-- 선택 대회: 참가 신청자 승인/거절 + 답변 확인 + CSV(항목 14/17/18) -->
+      <div v-if="tourSelected" class="manage">
+        <h4>‘{{ tourSelected.title }}’ 참가 신청자
+          <button class="btn sm" style="margin-left:8px;" @click="exportParticipantsCsv(tourSelected!.id)">📄 엑셀(CSV) 다운로드</button>
+        </h4>
+        <table class="grid">
+          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th>답변</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="p in participants" :key="p.participantId">
+              <td>{{ p.nickname }} <span class="hint" style="margin:0">#{{ p.memberId }}</span></td>
+              <td>{{ p.followerSnapshot }}</td><td>{{ lbl(p.status) }}</td>
+              <td style="max-width:340px;">
+                <div v-for="(ans, i) in p.answers" :key="i" style="font-size:11.5px;line-height:1.5;">
+                  <b>Q{{ i + 1 }}.</b> {{ ans.text || '' }}
+                  <a v-if="ans.imageUrl" :href="ans.imageUrl" target="_blank" rel="noopener">
+                    <img :src="ans.imageUrl" alt="" style="height:34px;border-radius:5px;vertical-align:middle;margin-left:4px;" />
+                  </a>
+                </div>
+                <span v-if="!p.answers?.length" class="hint" style="margin:0">-</span>
+              </td>
+              <td class="acts">
+                <template v-if="p.status === 'PENDING'">
+                  <button @click="approveParticipant(p.participantId)">승인</button>
+                  <button class="danger" @click="rejectParticipant(p.participantId)">거절</button>
+                </template>
+              </td>
+            </tr>
+            <tr v-if="!participants.length"><td colspan="5" class="empty">참가 신청자가 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 컨텐츠/대회 등록·수정 전용 페이지 (목록 대신 풀사이즈 에디터) -->
+    <section v-if="tab === 'campaigns' && (editing || tourEditing)" class="editor-sec">
+      <button class="btn ghost sm" @click="editing = null; tourEditing = null">← 목록으로</button>
+
+      <div v-if="editing" class="form-card editor-page">
+        <h4>{{ editing.id ? '컨텐츠 수정' : '새 컨텐츠 등록' }}</h4>
+        <label>제목<input v-model="editing.title" placeholder="컨텐츠 제목" /></label>
+        <label>설명<textarea v-model="editing.description" placeholder="컨텐츠 소개를 입력하세요."></textarea></label>
         <label>게임명<input v-model="editing.gameName" /></label>
         <label>홍보 이미지
           <div class="logo-upload">
@@ -839,40 +911,15 @@ function onTab(t: Tab) {
           <label class="chk"><input type="checkbox" v-model="editing.featured" /> 메인 큰 카드 고정 (미체크 시 자동 슬라이드)</label>
         </div>
         <div class="form-acts">
-          <button class="btn sm" @click="saveCampaign">저장</button>
+          <button class="btn sm" @click="saveCampaign">{{ editing.id ? '수정 완료' : '등록' }}</button>
           <button class="btn ghost sm" @click="editing = null">취소</button>
         </div>
       </div>
 
-      <!-- 컨텐츠 참가자(신청자) — 대회 참가자와 동일 양식 -->
-      <div v-if="selected" class="manage">
-        <h4>‘{{ selected.title }}’ 참가자</h4>
-        <table class="grid">
-          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
-          <tbody>
-            <tr v-for="a in applications" :key="a.applicationId">
-              <td>{{ a.nickname }} <span class="hint" style="margin:0">#{{ a.memberId }}</span></td>
-              <td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
-              <td class="acts">
-                <template v-if="a.status === 'PENDING'">
-                  <button @click="approveApp(a.applicationId, selected!.id)">승인</button>
-                  <button class="danger" @click="rejectApp(a.applicationId, selected!.id)">거절</button>
-                </template>
-              </td>
-            </tr>
-            <tr v-if="!applications.length"><td colspan="4" class="empty">신청자가 없습니다.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 대회 편집/참가자 패널 (통합 목록에서 진입 — 목록은 위 통합 테이블 하나) -->
-    <section v-if="tab === 'campaigns'">
-      <!-- 편집 폼 (결과입력 포함) -->
-      <div v-if="tourEditing" class="form-card">
-        <h4>{{ tourEditing.id ? '대회 수정' : '새 대회' }}</h4>
-        <label>대회명<input v-model="tourEditing.title" /></label>
-        <label>설명<textarea v-model="tourEditing.description"></textarea></label>
+      <div v-if="tourEditing" class="form-card editor-page">
+        <h4>{{ tourEditing.id ? '대회 수정' : '새 대회 등록' }}</h4>
+        <label>대회명<input v-model="tourEditing.title" placeholder="대회 이름" /></label>
+        <label>설명<textarea v-model="tourEditing.description" placeholder="대회 소개를 입력하세요."></textarea></label>
         <label>게임명<input v-model="tourEditing.gameName" /></label>
         <label>배너 이미지 (포스터 — 목록/대표 노출)
           <div class="logo-upload">
@@ -907,41 +954,9 @@ function onTab(t: Tab) {
         </label>
         <label>정렬순서<input type="number" v-model.number="tourEditing.sortOrder" /></label>
         <div class="form-acts">
-          <button class="btn sm" @click="saveTournament">저장</button>
+          <button class="btn sm" @click="saveTournament">{{ tourEditing.id ? '수정 완료' : '등록' }}</button>
           <button class="btn ghost sm" @click="tourEditing = null">취소</button>
         </div>
-      </div>
-
-      <!-- 선택 대회: 참가 신청자 승인/거절 + 답변 확인 + CSV(항목 14/17/18) -->
-      <div v-if="tourSelected" class="manage">
-        <h4>‘{{ tourSelected.title }}’ 참가 신청자
-          <button class="btn sm" style="margin-left:8px;" @click="exportParticipantsCsv(tourSelected!.id)">📄 엑셀(CSV) 다운로드</button>
-        </h4>
-        <table class="grid">
-          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th>답변</th><th></th></tr></thead>
-          <tbody>
-            <tr v-for="p in participants" :key="p.participantId">
-              <td>{{ p.nickname }} <span class="hint" style="margin:0">#{{ p.memberId }}</span></td>
-              <td>{{ p.followerSnapshot }}</td><td>{{ lbl(p.status) }}</td>
-              <td style="max-width:340px;">
-                <div v-for="(ans, i) in p.answers" :key="i" style="font-size:11.5px;line-height:1.5;">
-                  <b>Q{{ i + 1 }}.</b> {{ ans.text || '' }}
-                  <a v-if="ans.imageUrl" :href="ans.imageUrl" target="_blank" rel="noopener">
-                    <img :src="ans.imageUrl" alt="" style="height:34px;border-radius:5px;vertical-align:middle;margin-left:4px;" />
-                  </a>
-                </div>
-                <span v-if="!p.answers?.length" class="hint" style="margin:0">-</span>
-              </td>
-              <td class="acts">
-                <template v-if="p.status === 'PENDING'">
-                  <button @click="approveParticipant(p.participantId)">승인</button>
-                  <button class="danger" @click="rejectParticipant(p.participantId)">거절</button>
-                </template>
-              </td>
-            </tr>
-            <tr v-if="!participants.length"><td colspan="5" class="empty">참가 신청자가 없습니다.</td></tr>
-          </tbody>
-        </table>
       </div>
     </section>
 
@@ -1570,6 +1585,14 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .form-card .chk { display: flex; align-items: center; gap: 6px; }
 .form-card .chk input { width: auto; }
 .form-acts { display: flex; gap: 8px; margin-top: 12px; }
+/* 컨텐츠/대회 등록·수정 — 전용 페이지형 에디터 (목록 대신 크게) */
+.editor-page { margin-top: 14px; padding: 26px 30px; }
+.editor-page h4 { font-size: 18px; margin-bottom: 18px; }
+.editor-page label { margin-bottom: 16px; font-size: 13.5px; }
+.editor-page input, .editor-page select { padding: 11px 12px; font-size: 14px; }
+.editor-page textarea { padding: 11px 12px; font-size: 14px; min-height: 150px; resize: vertical; }
+.editor-page .form-acts { margin-top: 18px; }
+.editor-page .form-acts .btn { padding: 10px 26px; font-size: 14px; }
 .keys textarea, .manage textarea { width: 100%; min-height: 90px; padding: 8px; margin-bottom: 8px; }
 .result { color: var(--a-text); font-weight: 700; }
 .collab-admin { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }

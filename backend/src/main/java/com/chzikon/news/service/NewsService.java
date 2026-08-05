@@ -6,8 +6,12 @@ import com.chzikon.member.domain.Member;
 import com.chzikon.member.domain.Role;
 import com.chzikon.member.repository.MemberRepository;
 import com.chzikon.member.service.MemberService;
+import com.chzikon.news.domain.NewsComment;
+import com.chzikon.news.dto.NewsDtos.CommentRequest;
+import com.chzikon.news.dto.NewsDtos.CommentResponse;
 import com.chzikon.news.dto.NewsDtos.NewsCreateRequest;
 import com.chzikon.news.dto.NewsDtos.NewsResponse;
+import com.chzikon.news.repository.NewsCommentRepository;
 import com.chzikon.review.domain.Post;
 import com.chzikon.review.domain.PostCategory;
 import com.chzikon.review.repository.PostRepository;
@@ -28,6 +32,7 @@ public class NewsService {
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
     private final MemberService memberService;
+    private final NewsCommentRepository newsCommentRepository;
 
     @Transactional(readOnly = true)
     public List<NewsResponse> list() {
@@ -72,6 +77,43 @@ public class NewsService {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
         postRepository.delete(post);
+    }
+
+    // ----- 댓글 — 조회 공개, 작성=로그인 회원, 삭제=작성자 본인 + ADMIN -----
+
+    @Transactional(readOnly = true)
+    public List<CommentResponse> comments(Long newsId) {
+        getVisibleNews(newsId);
+        List<NewsComment> comments = newsCommentRepository.findByPostIdOrderByCreatedAtAsc(newsId);
+        Map<Long, Member> authors = memberRepository.findAllById(
+                        comments.stream().map(NewsComment::getMemberId).distinct().toList())
+                .stream().collect(Collectors.toMap(Member::getId, Function.identity()));
+        return comments.stream()
+                .map(c -> CommentResponse.of(c, authors.get(c.getMemberId())))
+                .toList();
+    }
+
+    @Transactional
+    public CommentResponse addComment(Long newsId, Long memberId, CommentRequest req) {
+        getVisibleNews(newsId);
+        Member member = memberService.getById(memberId);
+        String content = req.content().trim();
+        if (content.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+        NewsComment saved = newsCommentRepository.save(new NewsComment(newsId, memberId, content));
+        return CommentResponse.of(saved, member);
+    }
+
+    @Transactional
+    public void deleteComment(Long newsId, Long commentId, Long memberId) {
+        NewsComment comment = newsCommentRepository.findByIdAndPostId(commentId, newsId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Member actor = memberService.getById(memberId);
+        if (!comment.isOwnedBy(memberId) && actor.getRole() != Role.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        newsCommentRepository.delete(comment);
     }
 
     /** 업로드 등 부가 동작 전 권한 확인용(컨트롤러 공용). */

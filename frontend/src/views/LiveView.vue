@@ -97,7 +97,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', fitCrop))
         </div>
         <!-- 치지직 전체 페이지를 확대 로드 후 영상 영역만 크롭 (채팅 없이 영상만) -->
         <div v-else ref="cropEl" class="live-crop">
-          <iframe ref="frameEl" :src="liveUrl()" class="live-video-frame" allowfullscreen
+          <iframe ref="frameEl" :src="liveUrl()" class="live-video-frame" allowfullscreen scrolling="no"
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
         </div>
       </div>

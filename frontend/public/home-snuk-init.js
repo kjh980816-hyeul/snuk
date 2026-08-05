@@ -331,7 +331,7 @@ function showResult(tournamentId) {
 }
 
 // ── 동적 모달(공지/결과 공용)
-function openDynamicModal(innerHtml, width) {
+function openDynamicModal(innerHtml, width, fullPage) {
   let ov = document.getElementById('snuk-dyn-modal');
   if (!ov) {
     ov = document.createElement('div');
@@ -340,17 +340,22 @@ function openDynamicModal(innerHtml, width) {
     ov.addEventListener('click', (e) => { if (e.target === ov) ov.classList.remove('open'); });
     (document.querySelector('.snuk-page') || document.body).appendChild(ov);
   }
-  ov.innerHTML = `<div class="modal" style="width:${width || '480px'};max-height:80vh;overflow-y:auto;">
+  // fullPage: 작은 모달 대신 페이지처럼 전체 화면 전환 (스트리머 등록 등)
+  ov.innerHTML = `<div class="modal${fullPage ? ' modal-fullpage' : ''}" style="${fullPage ? '' : `width:${width || '480px'};max-height:80vh;overflow-y:auto;`}">
     <button class="modal-close" onclick="document.getElementById('snuk-dyn-modal').classList.remove('open')">✕</button>
-    ${innerHtml}</div>`;
+    ${fullPage ? `<div class="modal-fullpage-inner">
+      <button class="btn btn-outline" style="margin-bottom:18px;padding:8px 16px;font-size:13px;"
+        onclick="document.getElementById('snuk-dyn-modal').classList.remove('open')">← 돌아가기</button>
+      ${innerHtml}</div>` : innerHtml}</div>`;
   ov.classList.add('open');
+  if (fullPage) ov.scrollTop = 0;
 }
 
 // ════════════════════════════════════════════
 // 스트리머 컨텐츠·대회 등록 (STREAMER+ — 백엔드가 등급·소유자 재검증)
 // 공식(featured·큰 칸)은 관리자 전용, 스트리머 등록분은 작은 카드로만 노출.
 // ════════════════════════════════════════════
-const SP_INP = 'width:100%;margin-bottom:8px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box;';
+const SP_INP = 'width:100%;margin-bottom:10px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit;box-sizing:border-box;';
 let _spEditId = null;
 let _spRaw = null; // 수정 시 원본(미노출 필드 보존용 — update 는 전필드 전송이라 유실 방지)
 
@@ -394,7 +399,7 @@ function openStreamerPost(kind) {
     ${mine.length ? `<div style="margin-bottom:14px;">${rows}</div>` : ''}
     <input id="spc-title" style="${SP_INP}" placeholder="제목 *">
     <input id="spc-game" style="${SP_INP}" placeholder="게임명">
-    <textarea id="spc-desc" style="${SP_INP}resize:vertical;" rows="3" placeholder="설명"></textarea>
+    <textarea id="spc-desc" style="${SP_INP}resize:vertical;" rows="6" placeholder="설명"></textarea>
     ${isT ? `<textarea id="spc-questions" style="${SP_INP}resize:vertical;" rows="3"
       placeholder="참가 신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 붙이면 선택 항목)"></textarea>` : ''}
     <div style="display:flex;gap:8px;">
@@ -408,7 +413,7 @@ function openStreamerPost(kind) {
       <input id="spc-img" type="file" accept="image/*" style="font-size:12px;flex:1;color:var(--text2);">
       <img id="spc-img-prev" alt="" style="display:none;width:56px;height:36px;object-fit:cover;border-radius:6px;">
     </div>
-    <button id="spc-submit" class="btn-apply" style="width:100%;padding:11px;" onclick="spSubmit('${kind}')">등록하기</button>`);
+    <button id="spc-submit" class="btn-apply" style="width:100%;padding:13px;font-size:15px;" onclick="spSubmit('${kind}')">등록하기</button>`, null, true);
 }
 
 async function spEdit(kind, id) {
@@ -468,7 +473,7 @@ async function spParticipants(tourId, title) {
     <div class="modal-sub">${esc(title)} — 승인 ${approved}${t && t.max > 0 ? `/${t.max}` : ''}명 · 신청 ${list.length}건</div>
     ${rows || '<div style="font-size:13px;color:var(--text3);padding:16px 0;">아직 신청자가 없습니다.</div>'}
     ${list.length ? `<button class="btn btn-outline" style="width:100%;margin-top:14px;padding:10px;" onclick="spExportCsv(${tourId})">📄 신청 내역 엑셀(CSV) 다운로드</button>` : ''}
-    <button class="btn btn-outline" style="width:100%;margin-top:8px;padding:10px;" onclick="openStreamerPost('tournament')">← 내 대회 목록으로</button>`);
+    <button class="btn btn-outline" style="width:100%;margin-top:8px;padding:10px;" onclick="openStreamerPost('tournament')">← 내 대회 목록으로</button>`, null, true);
 }
 
 async function spExportCsv(tourId) {

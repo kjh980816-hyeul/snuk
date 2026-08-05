@@ -19,6 +19,28 @@ public final class NewsDtos {
     ) {
     }
 
+    public record CommentRequest(
+            @NotBlank @Size(max = 1000) String content
+    ) {
+    }
+
+    /** 댓글 공개 노출용 — 작성자 닉네임/프사 포함. */
+    public record CommentResponse(
+            Long id,
+            Long memberId,
+            String nickname,
+            String profileImageUrl,
+            String content,
+            LocalDateTime createdAt
+    ) {
+        public static CommentResponse of(com.chzikon.news.domain.NewsComment c, Member author) {
+            return new CommentResponse(c.getId(), c.getMemberId(),
+                    author != null ? author.getNickname() : "탈퇴 회원",
+                    author != null ? author.getProfileImageUrl() : null,
+                    c.getContent(), c.getCreatedAt());
+        }
+    }
+
     /** 공개 노출용 — 기자 닉네임/프사 포함. */
     public record NewsResponse(
             Long id,

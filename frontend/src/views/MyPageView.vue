@@ -88,6 +88,21 @@ const orderStatusLabel: Record<string, string> = {
 const keyItems = computed(() =>
   (summary.value?.applications ?? []).filter((a) => a.hasAssignedKey))
 
+// ----- 게임 코드 평문 표시 — 본인 키는 마이페이지에서 바로 보이게 (본인 검증은 서버 reveal API) -----
+const plainKeys = ref<Record<number, string>>({})
+async function loadPlainKeys() {
+  for (const a of keyItems.value) {
+    if (plainKeys.value[a.applicationId]) continue
+    try {
+      const app = await campaignApi.myApplication(a.campaignId, true)
+      if (app.assignedKey) plainKeys.value[a.applicationId] = app.assignedKey
+    } catch { /* 실패 시 마스킹 표시 유지 */ }
+  }
+}
+function copyKey(code: string) {
+  navigator.clipboard?.writeText(code).then(() => alert('게임 코드가 복사됐어요!'), () => alert('복사에 실패했어요.'))
+}
+
 function dt(v: string | null | undefined) {
   return v ? v.slice(0, 16).replace('T', ' ') : '-'
 }
@@ -134,6 +149,7 @@ function promoteMyStream() {
 onMounted(async () => {
   try {
     summary.value = await mypageApi.summary()
+    void loadPlainKeys()
   } finally {
     loading.value = false
   }
@@ -231,8 +247,11 @@ onMounted(async () => {
           <div v-for="a in keyItems" :key="'k' + a.applicationId" class="mp-item">
             <div class="mp-item-main">
               <div class="mp-item-title">{{ a.campaignTitle }}</div>
-              <div class="mp-item-code">{{ a.maskedKey }}</div>
-              <div class="mp-item-sub">코드 전체 보기는 해당 컨텐츠 페이지에서 본인 확인 후 가능합니다.</div>
+              <div class="mp-item-code">
+                {{ plainKeys[a.applicationId] ?? a.maskedKey }}
+                <button v-if="plainKeys[a.applicationId]" class="mp-btn small" style="margin-left:8px;"
+                  @click="copyKey(plainKeys[a.applicationId])">복사</button>
+              </div>
               <div v-if="a.reviewDeadline" class="mp-deadline" :class="{ danger: !a.reviewWritten && (daysLeft(a.reviewDeadline) ?? 0) <= 3, done: a.reviewWritten }">
                 {{ deadlineText(a) }}
                 <span v-if="!a.reviewWritten" class="mp-deadline-date">({{ a.reviewDeadline.slice(0, 10) }}까지)</span>

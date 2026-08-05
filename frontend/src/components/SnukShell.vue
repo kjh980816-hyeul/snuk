@@ -105,7 +105,7 @@ onMounted(async () => {
     const link = document.createElement('link')
     link.id = 'snuk-home-css'
     link.rel = 'stylesheet'
-    link.href = '/home-snuk.css'
+    link.href = `/home-snuk.css?v=${__SNUK_ASSET_V__}`
     document.head.appendChild(link)
   }
   document.documentElement.setAttribute('data-theme', theme.value)
@@ -181,8 +181,8 @@ onMounted(async () => {
 
   // 셸 HTML + 실데이터 동시 로드 → 데이터 준비 후에만 렌더러 주입
   const [top, bottom, data] = await Promise.all([
-    fetch('/snuk-shell-top.html').then((r) => r.text()),
-    fetch('/snuk-shell-bottom.html').then((r) => r.text()),
+    fetch(`/snuk-shell-top.html?v=${__SNUK_ASSET_V__}`).then((r) => r.text()),
+    fetch(`/snuk-shell-bottom.html?v=${__SNUK_ASSET_V__}`).then((r) => r.text()),
     loadSnukData(),
   ])
   w.__SNUK_DATA = data
@@ -196,7 +196,7 @@ onMounted(async () => {
   if (!document.getElementById('snuk-init-js')) {
     const script = document.createElement('script')
     script.id = 'snuk-init-js'
-    script.src = '/home-snuk-init.js'
+    script.src = `/home-snuk-init.js?v=${__SNUK_ASSET_V__}`
     script.onload = () => {
       // 함수 선언(toggleTheme)을 Vue 상태 연동 버전으로 교체
       w.toggleTheme = () => applyTheme(theme.value === 'light' ? 'dark' : 'light')

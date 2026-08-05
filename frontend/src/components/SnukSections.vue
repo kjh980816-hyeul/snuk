@@ -12,7 +12,7 @@ const html = ref('')
 
 onMounted(async () => {
   if (sectionsCache === null) {
-    sectionsCache = await fetch('/snuk-sections.html').then((r) => r.text())
+    sectionsCache = await fetch(`/snuk-sections.html?v=${__SNUK_ASSET_V__}`).then((r) => r.text())
   }
   html.value = sectionsCache ?? ''
   await nextTick()

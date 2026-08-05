@@ -196,6 +196,15 @@ export interface News {
   updatedAt: string
 }
 
+export interface NewsComment {
+  id: number
+  memberId: number
+  nickname: string
+  profileImageUrl: string | null
+  content: string
+  createdAt: string
+}
+
 // ----- 라이브(스트리머 일괄) -----
 export interface StreamerLive {
   memberId: number

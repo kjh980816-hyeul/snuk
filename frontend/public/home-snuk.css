@@ -1032,3 +1032,33 @@ footer{border-top:1px solid var(--border);}
 .snuk-page[data-theme="light"] .goods-banner-text h2{color:#191816;}
 .snuk-page[data-theme="light"] .goods-banner-text p{color:#5C5952;}
 .snuk-page[data-theme="light"] .goods-banner-overlay{background:linear-gradient(90deg,rgba(250,249,246,.55),rgba(250,249,246,.05));}
+
+/* ── 모바일 배너 잘림 픽스 v2: 고정 높이+overflow hidden 이 히어로 "텍스트"를 위아래로 잘라내던 것
+   → 콘텐츠를 일반 흐름으로 두어 카드 높이 = 콘텐츠 높이 (이미지는 뒤 배경 cover) ── */
+@media(max-width:1024px){
+  .hero-banner-card{height:auto;min-height:150px;}
+  .hero-banner-card img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;}
+  .hero-banner-content{position:relative;inset:auto;justify-content:flex-start;padding:26px 20px 22px;}
+  .goods-banner,.page-banner{height:auto!important;min-height:64px;}
+  .goods-banner img{height:auto;object-fit:contain;}
+}
+
+/* ── 스트리머 등록/참가자 관리: 작은 모달 → 페이지형 전체 화면 전환 ── */
+.modal.modal-fullpage{
+  width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;
+  border-radius:0;border:none;overflow-y:auto;
+  padding:26px 18px 70px;background:var(--bg);
+}
+.modal-fullpage-inner{max-width:680px;margin:0 auto;}
+.modal-fullpage .modal-title{font-size:22px;}
+.modal-fullpage .modal-sub{font-size:14px;margin-bottom:20px;}
+
+/* ── 모바일 메뉴: 화면 전체를 덮던 풀스크린 → 좌측 부분폭 드로어(뒤 오버레이 노출) ── */
+@media(max-width:1024px){
+  .mobile-drawer{
+    width:min(78vw,300px);right:auto;
+    border-right:1px solid var(--border);
+    box-shadow:14px 0 44px rgba(0,0,0,.35);
+    border-radius:0 16px 16px 0;
+  }
+}

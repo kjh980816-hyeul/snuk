@@ -65,6 +65,11 @@ public class GameKeyService {
         }
 
         long available = gameKeyRepository.countByCampaignIdAndStatus(campaignId, GameKey.Status.AVAILABLE);
+        // 등록된 키 수량(배정+가용)만큼 모집 인원 자동 반영 — 이후 어드민 폼에서 수동 수정 가능
+        if (registered > 0) {
+            long assigned = gameKeyRepository.countByCampaignIdAndStatus(campaignId, GameKey.Status.ASSIGNED);
+            campaign.syncTotalSlotsToKeys((int) (available + assigned));
+        }
         adminLogService.record(actorId, "KEY_BULK_REGISTER", "campaign", campaignId,
                 "registered=" + registered + " duplicated=" + duplicated + " blank=" + blank);
         return new KeyRegisterResult(registered, duplicated, blank, (int) available);
