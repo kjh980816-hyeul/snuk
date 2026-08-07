@@ -3,10 +3,10 @@
  * 시안 더미 배열과 동일한 필드 계약을 유지하되, 실 데이터의 id/액션 정보를 추가한다.
  * 실패한 소스는 빈 배열로 두고 나머지는 정상 노출(부분 실패 허용).
  */
-import { campaignApi, collabApi, goodsApi, liveApi, newsApi, noticeApi, siteSettingsApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
+import { campaignApi, collabApi, communityApi, goodsApi, liveApi, newsApi, noticeApi, resourceApi, siteSettingsApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
 import type {
-  Campaign, CollabGame, ContentVideo, Goods, News, Notice, ParticipantPublic, Review, Spotlight,
-  StreamerLive, StreamerPublic, Tournament,
+  Campaign, CollabGame, CommunityPostSummary, ContentVideo, FreeResource, Goods, News, Notice,
+  ParticipantPublic, Review, Spotlight, StreamerLive, StreamerPublic, Tournament,
 } from '@/api/types'
 import { GOODS_READY, OFFICIAL_CHZZK_CHANNEL_ID } from '@/config'
 
@@ -23,6 +23,9 @@ export interface SnukCard {
   statusLabel: string
   img: string | null
   eventDate: string | null
+  /** 신청 기간(데모 카드 스펙 줄) */
+  applyStart: string | null
+  applyEnd: string | null
   resultText?: string | null
   /** 관리자 등록 여부(스눅 공식) — 홈 큰 카드는 관리자 컨텐츠만 */
   adminMade?: boolean
@@ -41,6 +44,10 @@ export interface SnukGame {
   members: number
   max: number
   applyOpen: boolean
+  /** 연결 캠페인의 모집 마감일(YYYY-MM-DD, 없으면 null) */
+  applyEnd: string | null
+  /** 선발 방식 — 데모 체험단 카드의 두 번째 태그 */
+  pick: '선착순' | '선정'
   reviewsCount: number
   reviews: Array<{ name: string; title: string; text: string }>
 }
@@ -74,6 +81,16 @@ export interface SnukData {
   chzzkChannelId: string
   /** 어드민 "설정" 탭에서 관리하는 공개 설정 (배너/히어로 이미지 등, '-'=미설정) */
   siteSettings: Record<string, string>
+  /** 방송도우미 무료소스 (홈 "방송도우미 인기 소스" 줄) */
+  resources: Array<{ id: number; title: string; desc: string; img: string | null; url: string | null; date: string }>
+  /** 체험단 후기 (홈 "체험단 후기" 카드) */
+  trialReviews: Array<{
+    id: number; campaignId: number | null; campaignTitle: string; publisher: string
+    img: string | null; videoUrl: string | null; title: string; content: string
+    author: string; date: string
+  }>
+  /** 커뮤니티 인기글 (홈 "커뮤니티 인기글" 목록) */
+  communityPosts: Array<{ id: number; boardName: string; title: string; date: string; comments: number }>
 }
 
 // ---------- 매핑 ----------
@@ -95,6 +112,8 @@ function campaignCard(c: Campaign): SnukCard {
     max: c.totalSlots, filled: c.filledSlots, status,
     statusLabel: c.status === 'OPEN' ? '모집중' : c.status === 'SCHEDULED' ? '오픈예정' : '마감',
     img: c.promoImageUrl, eventDate: c.eventDate,
+    applyStart: c.applyStart ? c.applyStart.slice(0, 10) : null,
+    applyEnd: c.applyEnd ? c.applyEnd.slice(0, 10) : null,
     adminMade: c.ownerMemberId == null, // 스눅 공식(관리자 등록) — 스트리머 등록은 작게만
     ownerId: c.ownerMemberId,
   }
@@ -107,7 +126,10 @@ function tournamentCard(t: Tournament): SnukCard {
     max: t.capacity, filled: t.filledSlots, status,
     statusLabel: t.status === 'OPEN' ? '모집중' : t.status === 'SCHEDULED' ? '오픈예정'
       : t.status === 'DONE' ? '종료' : '마감',
-    img: t.bannerImageUrl, eventDate: t.eventDate, resultText: t.resultText,
+    img: t.bannerImageUrl, eventDate: t.eventDate,
+    applyStart: t.applyStart ? t.applyStart.slice(0, 10) : null,
+    applyEnd: t.applyEnd ? t.applyEnd.slice(0, 10) : null,
+    resultText: t.resultText,
     adminMade: t.ownerMemberId == null, // 스눅 공식(관리자 등록) — 스트리머 등록은 작게만
     ownerId: t.ownerMemberId,
   }
@@ -126,7 +148,7 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 
 /** 전 페이지 공용 데이터 로드(공개 API만 — 로그인 불필요). */
 export async function loadSnukData(): Promise<SnukData> {
-  const [campaigns, tournaments, videos, goods, clients, games, notices, spotlights, streamers, siteSettings, news, liveStreamers] = await Promise.all([
+  const [campaigns, tournaments, videos, goods, clients, games, notices, spotlights, streamers, siteSettings, news, liveStreamers, resources, allReviews] = await Promise.all([
     safe<Campaign[]>(campaignApi.list(), []),
     safe<Tournament[]>(tournamentApi.list(), []),
     safe<ContentVideo[]>(collabApi.videos(), []),
@@ -139,11 +161,16 @@ export async function loadSnukData(): Promise<SnukData> {
     safe<Record<string, string>>(siteSettingsApi.get(), {}),
     safe<News[]>(newsApi.list(), []),
     safe<StreamerLive[]>(liveApi.streamers(), []),
+    safe<FreeResource[]>(resourceApi.list(), []),
+    safe<Review[]>(collabApi.allReviews(), []),
   ])
   const liveById = new Map(liveStreamers.map((l) => [l.memberId, l]))
 
   // 게임체험단: 콜라보 게임 ↔ 연결된 캠페인(V6) + 후기 3건 미리보기
   const campaignById = new Map(campaigns.map((c) => [c.id, c]))
+  const gameByCampaign = new Map(
+    games.filter((g) => g.campaignId != null).map((g) => [g.campaignId as number, g]),
+  )
   const games2: SnukGame[] = await Promise.all(games.map(async (g) => {
     const linked = g.campaignId != null ? campaignById.get(g.campaignId) : undefined
     const reviews = g.campaignId != null
@@ -158,6 +185,8 @@ export async function loadSnukData(): Promise<SnukData> {
       members: linked?.filledSlots ?? 0,
       max: linked?.totalSlots ?? 0,
       applyOpen: linked?.status === 'OPEN',
+      applyEnd: linked?.applyEnd ? linked.applyEnd.slice(0, 10) : null,
+      pick: linked?.distributionType === 'FCFS' ? '선착순' : '선정',
       reviewsCount: reviews.length,
       reviews: reviews.slice(0, 3).map((r) => ({
         name: `참가자 #${r.memberId}`, title: r.title, text: r.content ?? r.title,
@@ -170,6 +199,13 @@ export async function loadSnukData(): Promise<SnukData> {
   const participants = rosterTarget
     ? await safe<ParticipantPublic[]>(tournamentApi.participants(rosterTarget.id), [])
     : []
+
+  // 홈 "커뮤니티 인기글" — 커뮤니티 인기글 API(댓글·조회수 가중치) 상위 5건
+  const communityPosts = (await safe<CommunityPostSummary[]>(communityApi.popular(null, 5), []))
+    .map((p) => ({
+      id: p.id, boardName: p.boardName, title: p.title,
+      date: dateOf(p.createdAt), comments: p.commentCount,
+    }))
 
   // 게임체험단 연계 캠페인(키 배포용)은 컨텐츠 목록에서 제외 — 게임체험단 섹션에서만 노출
   const gameLinkedIds = new Set(games.map((g) => g.campaignId).filter((id) => id != null))
@@ -233,5 +269,23 @@ export async function loadSnukData(): Promise<SnukData> {
         ? siteSettings.LIVE_CHANNEL_ID
         : OFFICIAL_CHZZK_CHANNEL_ID,
     siteSettings,
+    resources: resources.map((r) => ({
+      id: r.id, title: r.title, desc: r.description ?? '',
+      img: r.imageUrl, url: r.fileUrl, date: dateOf(r.createdAt),
+    })),
+    trialReviews: allReviews.map((r) => {
+      const c = r.campaignId != null ? campaignById.get(r.campaignId) : undefined
+      const g = r.campaignId != null ? gameByCampaign.get(r.campaignId) : undefined
+      return {
+        id: r.id, campaignId: r.campaignId,
+        campaignTitle: g?.name ?? c?.title ?? '체험단',
+        publisher: c?.gameName ?? '',
+        img: g?.thumbnailUrl ?? c?.promoImageUrl ?? null,
+        videoUrl: g?.reviewLinkUrl ?? null,
+        title: r.title, content: r.content ?? '',
+        author: `참가자 #${r.memberId}`, date: dateOf(r.createdAt),
+      }
+    }),
+    communityPosts,
   }
 }

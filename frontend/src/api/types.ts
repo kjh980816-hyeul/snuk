@@ -308,3 +308,63 @@ export interface OrderView {
   paidAt: string | null
   createdAt: string
 }
+
+// ----- 커뮤니티 -----
+export interface CommunityBoard {
+  id: number
+  parentId: number | null
+  name: string
+  sortOrder: number
+  visible: boolean
+}
+
+export interface CommunityPostSummary {
+  id: number
+  boardId: number
+  boardName: string
+  groupName: string | null
+  title: string
+  authorId: number
+  authorName: string
+  authorImageUrl: string | null
+  viewCount: number
+  buffCount: number
+  commentCount: number
+  hidden: boolean
+  createdAt: string
+}
+
+export interface CommunityPostPage {
+  items: CommunityPostSummary[]
+  page: number
+  size: number
+  total: number
+  totalPages: number
+}
+
+export interface CommunityPostDetail extends CommunityPostSummary {
+  content: string | null
+  buffed: boolean
+  mine: boolean
+  updatedAt: string
+}
+
+export interface CommunityComment {
+  id: number
+  memberId: number
+  nickname: string
+  profileImageUrl: string | null
+  content: string
+  createdAt: string
+}
+
+export interface CommunityReport {
+  id: number
+  postId: number
+  postTitle: string
+  reporterId: number
+  reporterName: string
+  reason: string | null
+  postHidden: boolean
+  createdAt: string
+}

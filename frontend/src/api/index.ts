@@ -1,6 +1,7 @@
 import api from './client'
 import type {
-  ApplyAnswer, Campaign, ClientLogo, CollabGame, ContentVideo, FreeResource, Goods, Me, MyApplication,
+  ApplyAnswer, Campaign, ClientLogo, CollabGame, CommunityBoard, CommunityComment, CommunityPostDetail,
+  CommunityPostPage, CommunityPostSummary, ContentVideo, FreeResource, Goods, Me, MyApplication,
   MyParticipation, MypageSummary, News, NewsComment, Notice, OrderCreateRequest, OrderResponse, OrderView,
   ParticipantPublic, Review, Spotlight, SpotlightPlatform, StreamerLive, StreamerPost,
   StreamerProfile, StreamerPublic, Tournament,
@@ -191,4 +192,33 @@ export const collabApi = {
   videos: () => api.get<ContentVideo[]>('/api/collab/videos').then((r) => r.data),
   clients: () => api.get<ClientLogo[]>('/api/collab/clients').then((r) => r.data),
   allReviews: () => api.get<Review[]>('/api/reviews').then((r) => r.data),
+}
+
+// ----- 커뮤니티 (조회 public / 작성·댓글·버프·신고 로그인) -----
+export const communityApi = {
+  boards: () => api.get<CommunityBoard[]>('/api/community/boards').then((r) => r.data),
+  posts: (params: { boardId?: number | null; sort?: string; q?: string; page?: number; size?: number }) =>
+    api.get<CommunityPostPage>('/api/community/posts', { params }).then((r) => r.data),
+  popular: (boardId?: number | null, limit = 10) =>
+    api.get<CommunityPostSummary[]>('/api/community/posts/popular', { params: { boardId, limit } })
+      .then((r) => r.data),
+  detail: (id: number) => api.get<CommunityPostDetail>(`/api/community/posts/${id}`).then((r) => r.data),
+  nearby: (id: number) =>
+    api.get<CommunityPostSummary[]>(`/api/community/posts/${id}/nearby`).then((r) => r.data),
+  write: (body: { boardId: number; title: string; content: string }) =>
+    api.post<CommunityPostDetail>('/api/community/posts', body).then((r) => r.data),
+  edit: (id: number, body: { boardId: number; title: string; content: string }) =>
+    api.put<CommunityPostDetail>(`/api/community/posts/${id}`, body).then((r) => r.data),
+  remove: (id: number) => api.delete(`/api/community/posts/${id}`),
+  myPosts: () => api.get<CommunityPostSummary[]>('/api/community/my-posts').then((r) => r.data),
+  buff: (id: number) =>
+    api.post<{ buffed: boolean; buffCount: number }>(`/api/community/posts/${id}/buff`).then((r) => r.data),
+  comments: (id: number) =>
+    api.get<CommunityComment[]>(`/api/community/posts/${id}/comments`).then((r) => r.data),
+  addComment: (id: number, content: string) =>
+    api.post<CommunityComment>(`/api/community/posts/${id}/comments`, { content }).then((r) => r.data),
+  deleteComment: (id: number, commentId: number) =>
+    api.delete(`/api/community/posts/${id}/comments/${commentId}`),
+  report: (id: number, reason: string) =>
+    api.post(`/api/community/posts/${id}/report`, { reason }),
 }

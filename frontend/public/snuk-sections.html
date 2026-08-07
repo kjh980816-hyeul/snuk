@@ -1,3 +1,77 @@
+<!-- ══════════════════════════════════════════
+  0. 홈 (스눅 데모 시안 구성) — 광고 배너 / 라이브 스테이지 / 스트리머 스토리 /
+     모집 컨텐츠 / 모집 체험단 / 체험단 후기 / 커뮤니티·뉴스 / 방송도우미 소스
+     ※ 홈은 이 섹션 하나만 노출한다(HomeView.vue). 렌더러는 home-snuk-init.js 의 initDemoHome().
+══════════════════════════════════════════ -->
+<section id="home-demo">
+  <div class="inner dh">
+    <div class="board" id="dh-board"></div>
+
+    <div class="mainwrap" id="dh-livewrap">
+      <div class="mainlive"><div class="lvstage" id="dh-stage"></div></div>
+      <div class="nowside"><div class="nowlist" id="dh-nowlist"></div></div>
+    </div>
+    <div class="livesec"><div class="lvwrap"><div class="liverow" id="dh-liverow"></div></div></div>
+
+    <div class="dh-sec" id="dh-strsec">
+      <div class="sechead">
+        <span class="sectitle"></span>
+        <button class="btn sm" onclick="window.__snukNav('/streamers')">전체 보기</button>
+      </div>
+      <div class="strwrap"><div class="strrow" id="dh-strrow"></div></div>
+    </div>
+
+    <div class="dh-sec">
+      <div class="sechead">
+        <span class="sectitle">모집 중인 컨텐츠</span>
+        <button class="btn sm" onclick="window.__snukNav('/campaigns')">더 보기</button>
+      </div>
+      <div class="grid homerow3" id="dh-jobrow"></div>
+    </div>
+
+    <div class="dh-sec">
+      <div class="sechead">
+        <span class="sectitle">모집 중인 체험단</span>
+        <button class="btn sm" onclick="window.__snukNav('/games')">더 보기</button>
+      </div>
+      <div class="grid homerow4" id="dh-trialrow"></div>
+    </div>
+
+    <div class="dh-sec" id="dh-revsec">
+      <div class="sechead">
+        <span class="sectitle">체험단 후기</span>
+        <button class="btn sm" onclick="window.__snukNav('/games')">더 보기</button>
+      </div>
+      <div class="revrow-wrap"><div class="revrow" id="dh-revrow"></div></div>
+    </div>
+
+    <div class="grid g2 pcmix dh-sec">
+      <div>
+        <div class="sechead">
+          <span class="sectitle">커뮤니티 인기글</span>
+          <button class="btn sm" onclick="window.__snukNav('/community')">더 보기</button>
+        </div>
+        <div class="card ov homelist" id="dh-community"></div>
+      </div>
+      <div>
+        <div class="sechead">
+          <span class="sectitle">스눅 뉴스</span>
+          <button class="btn sm" onclick="window.__snukNav('/news')">더 보기</button>
+        </div>
+        <div class="card ov homelist" id="dh-newslist"></div>
+      </div>
+    </div>
+
+    <div class="dh-sec">
+      <div class="sechead">
+        <span class="sectitle">방송도우미 인기 소스</span>
+        <button class="btn sm" onclick="window.__snukNav('/resources')">더 보기</button>
+      </div>
+      <div class="cardrow-wrap"><div class="cardrow sq" id="dh-toolrow"></div></div>
+    </div>
+  </div>
+</section>
+
 <section id="hero">
   <div class="hero-banner-wrap">
     <div class="hero-banner-card">

@@ -1,5 +1,8 @@
 import api from './client'
-import type { Campaign, CollabGame, ClientLogo, ContentVideo, Goods, Notice, OrderView, Spotlight, Tournament } from './types'
+import type {
+  Campaign, CollabGame, ClientLogo, CommunityBoard, CommunityPostSummary, CommunityReport,
+  ContentVideo, Goods, Notice, OrderView, Spotlight, Tournament,
+} from './types'
 
 /** 어드민 API (ADMIN 토큰 필요). */
 export const adminApi = {
@@ -110,6 +113,23 @@ export const adminApi = {
     }).then((r) => r.data)
   },
   deleteResource: (id: number) => api.delete(`/api/admin/resources/${id}`),
+
+  // community (게시판 관리 / 글 숨김·삭제 / 신고함)
+  communityBoards: () =>
+    api.get<CommunityBoard[]>('/api/admin/community/boards').then((r) => r.data),
+  createCommunityBoard: (body: { parentId: number | null; name: string; sortOrder: number; visible: boolean }) =>
+    api.post<CommunityBoard>('/api/admin/community/boards', body).then((r) => r.data),
+  updateCommunityBoard: (id: number, body: { parentId?: number | null; name: string; sortOrder: number; visible: boolean }) =>
+    api.put<CommunityBoard>(`/api/admin/community/boards/${id}`, body).then((r) => r.data),
+  deleteCommunityBoard: (id: number) => api.delete(`/api/admin/community/boards/${id}`),
+  communityPosts: () =>
+    api.get<CommunityPostSummary[]>('/api/admin/community/posts').then((r) => r.data),
+  setCommunityPostHidden: (id: number, hidden: boolean) =>
+    api.patch<CommunityPostSummary>(`/api/admin/community/posts/${id}/hidden`, { hidden }).then((r) => r.data),
+  deleteCommunityPost: (id: number) => api.delete(`/api/admin/community/posts/${id}`),
+  communityReports: () =>
+    api.get<CommunityReport[]>('/api/admin/community/reports').then((r) => r.data),
+  dismissCommunityReport: (id: number) => api.delete(`/api/admin/community/reports/${id}`),
 
   // settings / members / logs
   settings: () => api.get<Array<{ settingKey: string; settingValue: string; description: string | null }>>(

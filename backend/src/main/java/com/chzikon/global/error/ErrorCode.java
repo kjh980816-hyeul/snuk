@@ -57,7 +57,12 @@ public enum ErrorCode {
     POINT_INSUFFICIENT(HttpStatus.CONFLICT, "P001", "포인트가 부족합니다."),
 
     // 신고 (RP)
-    ALREADY_REPORTED(HttpStatus.CONFLICT, "RP001", "이미 신고한 글입니다.");
+    ALREADY_REPORTED(HttpStatus.CONFLICT, "RP001", "이미 신고한 글입니다."),
+
+    // 커뮤니티 (CM)
+    BOARD_NOT_AVAILABLE(HttpStatus.CONFLICT, "CM001", "글을 쓸 수 없는 게시판입니다."),
+    BOARD_HAS_POSTS(HttpStatus.CONFLICT, "CM002", "글이 있는 게시판은 삭제할 수 없습니다. 숨김 처리해주세요."),
+    BOARD_HAS_CHILDREN(HttpStatus.CONFLICT, "CM003", "하위 게시판이 있는 그룹은 삭제할 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;

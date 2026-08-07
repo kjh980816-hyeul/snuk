@@ -1559,6 +1559,418 @@ window.addEventListener('resize', function () {
 });
 
 // ════════════════════════════════════════════
+// 홈 — 데모 시안 구성 (#home-demo)
+// 광고 배너 / 라이브 스테이지 / 스트리머 스토리 / 모집 컨텐츠·체험단 /
+// 체험단 후기 / 커뮤니티·뉴스 / 방송도우미 소스
+// 전부 실데이터(window.__SNUK_DATA). 없으면 빈 상태 문구.
+// ════════════════════════════════════════════
+const dhEmpty = (msg) => `<div class="dh-empty">${esc(msg)}</div>`;
+const AVA_BG = ['#6C4BE6', '#E0714A', '#C79212', '#D14A86', '#3F82C4', '#0E9F55'];
+function dhAva(name, img, cls) {
+  const i = String(name || '?').charCodeAt(0) % AVA_BG.length;
+  const inner = img ? `<img src="${esc(img)}" alt="" onerror="this.remove()">` : esc(String(name || '?').slice(0, 1));
+  return `<span class="ava ${cls || ''}" style="background:${AVA_BG[i]}">${inner}</span>`;
+}
+const CHZZK_ID_RE = /chzzk\.naver\.com\/(?:live\/)?([0-9a-f]{16,40})/i;
+function chzzkIdOf(url) {
+  const m = String(url || '').match(CHZZK_ID_RE);
+  return m ? m[1] : null;
+}
+function dhDday(dateStr) {
+  if (!dateStr) return null;
+  const d = Math.ceil((new Date(`${dateStr}T23:59:59`).getTime() - Date.now()) / 86400000);
+  return Number.isFinite(d) ? d : null;
+}
+
+// ── 상단 AD 배너 — 데모 #homeBoard (이미지 + AD 칩 + 점, 6초 자동 전환)
+// 슬라이드 = 어드민이 등록한 배너 이미지들(히어로 + 페이지 배너). 미설정값은 '-' 또는 'none'.
+const AD_BG = ['linear-gradient(120deg,#E0714A,#C9924A)', 'linear-gradient(120deg,#4B2E8F,#7B4BD8)',
+  'linear-gradient(120deg,#0E7A55,#2BC26A)', 'linear-gradient(120deg,#2E4C8F,#3F82C4)'];
+const isSet = (v) => { const s = String(v ?? '').trim(); return !!s && s !== '-' && s !== 'none'; };
+let _dhAd = 0;
+function dhAdSlides() {
+  const ss = D().siteSettings || {};
+  const keys = ['HERO_IMAGE_URL', 'BANNER_CONTENTS_URL', 'BANNER_GAMES_URL', 'BANNER_CHAMPIONSHIP_URL',
+    'BANNER_STREAMERS_URL', 'BANNER_LIVE_URL', 'BANNER_VIDEOS_URL'];
+  return keys.filter((k) => isSet(ss[k])).map((k) => ss[k].trim());
+}
+function dhBoard() {
+  const el = document.getElementById('dh-board');
+  if (!el) return;
+  const slides = dhAdSlides();
+  const n = Math.max(1, slides.length);
+  if (_dhAd >= n) _dhAd = 0;
+  el.innerHTML = `<span class="boardimg">
+      ${slides.length ? `<img src="${esc(slides[_dhAd])}" alt="" onerror="this.remove()">` : ''}
+      ${n > 1 ? `<span class="dots boarddots">${slides.map((_, i) =>
+        `<button class="dot${i === _dhAd ? ' on' : ''}" onclick="event.stopPropagation();dhPickAd(${i})"></button>`).join('')}</span>` : ''}
+    </span>
+    <span class="adlabel">AD</span>`;
+  el.style.background = slides.length ? '' : AD_BG[_dhAd % AD_BG.length];
+  el.onclick = () => window.__snukNav('/campaigns');
+  el.style.cursor = 'pointer';
+  if (n > 1) setAutoLoop('dhAd', () => { _dhAd = (_dhAd + 1) % n; dhPaintAd(); }, 6000);
+}
+// 데모 paintAds — 전체 재렌더 없이 이미지/점만 갈아끼운다
+function dhPaintAd() {
+  const el = document.getElementById('dh-board');
+  if (!el) return;
+  const slides = dhAdSlides();
+  if (!slides.length) return;
+  const img = el.querySelector('img');
+  if (img) img.src = slides[_dhAd];
+  el.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === _dhAd));
+}
+function dhPickAd(i) { _dhAd = i; dhPaintAd(); }
+
+// ── 라이브: 스포트라이트(홍보 중) + 방송 중 스트리머
+let _dhLiveOn = 0;
+function dhLiveList() {
+  const spots = (D().spotlights || []).map((s) => ({
+    name: s.name, title: s.sub || '스포트라이트 방송', img: s.img, url: s.url,
+    platform: s.platform, spot: true, chzzk: chzzkIdOf(s.url),
+  }));
+  const seen = new Set(spots.map((s) => s.name));
+  const lives = (D().streamers || []).filter((s) => s.live && !seen.has(s.name)).map((s) => ({
+    name: s.name, title: s.liveTitle || '방송 중', img: s.img, url: s.channelUrl,
+    platform: s.platform === 'soop' ? 'soop' : 'chz', spot: false,
+    chzzk: chzzkIdOf(s.channelUrl), streamerId: s.id,
+  }));
+  return [...spots, ...lives];
+}
+
+// 스눅 공식 채널(LIVE_CHANNEL_ID) 이 방송 중이면 라이브 스테이지에 노출 — 세션당 1회만 조회
+let _dhOfficial = null;
+function dhOfficialLive() {
+  const ch = (D().chzzkChannelId || '').trim();
+  if (!ch || ch === '-') return;
+  if (_dhOfficial === false) return;
+  if (_dhOfficial) { dhRenderOfficial(_dhOfficial, ch); return; }
+  fetch('/api/live/status').then((r) => r.json()).then((s) => {
+    if (!s || !s.live) { _dhOfficial = false; return; }
+    _dhOfficial = { title: s.liveTitle || '스눅 공식 방송' };
+    dhRenderOfficial(_dhOfficial, ch);
+  }).catch(() => { _dhOfficial = false; });
+}
+function dhRenderOfficial(info, ch) {
+  const wrap = document.getElementById('dh-livewrap');
+  const stage = document.getElementById('dh-stage');
+  const nl = document.getElementById('dh-nowlist');
+  if (!wrap || !stage) return;
+  wrap.style.display = '';
+  stage.innerHTML = `<iframe id="dh-stage-frame" title="스눅 공식 라이브" src="https://chzzk.naver.com/live/${esc(ch)}"
+      scrolling="no" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
+      style="width:1620px;height:900px;"></iframe>
+    <span class="lvbadge">LIVE</span>
+    <div class="lvover">${dhAva('SNUK')}
+      <div class="lvmeta2"><p class="lvtitle">${esc(info.title)}</p>
+      <p class="dh-row"><span class="micro">SNUK 공식</span></p></div>
+    </div>
+    <button class="lvopen" onclick="event.stopPropagation();window.open('https://chzzk.naver.com/live/${esc(ch)}','_blank')">방송 보러가기 →</button>`;
+  if (nl) {
+    nl.innerHTML = `<button class="nowrow on">
+      <span class="nowth"><span class="nl">LIVE</span></span>
+      <span class="nowmeta"><span class="nowt">${esc(info.title)}</span><span class="nown">SNUK 공식</span></span>
+    </button>`;
+  }
+  dhFitStage();
+  if (!window.__dhCropBound) {
+    window.__dhCropBound = true;
+    window.addEventListener('resize', dhFitStage);
+  }
+}
+
+function dhStage() {
+  const stage = document.getElementById('dh-stage');
+  const wrap = document.getElementById('dh-livewrap');
+  if (!stage || !wrap) return;
+  const list = dhLiveList();
+  if (!list.length) {
+    wrap.style.display = 'none';
+    const ls = document.querySelector('#home-demo .livesec');
+    if (ls) ls.style.display = 'none';
+    // 홍보/스트리머 방송이 없어도 스눅 공식 채널이 켜져 있으면 그걸 무대에 건다
+    dhOfficialLive();
+    return;
+  }
+  wrap.style.display = '';
+  if (_dhLiveOn >= list.length) _dhLiveOn = 0;
+  const cur = list[_dhLiveOn];
+  const player = cur.chzzk
+    // 치지직은 플레이어 전용 임베드가 없어 전체 페이지를 확대 로드 후 영상 영역만 크롭
+    ? `<iframe id="dh-stage-frame" title="${esc(cur.name)} 라이브" src="https://chzzk.naver.com/live/${esc(cur.chzzk)}"
+        scrolling="no" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
+        style="width:1620px;height:900px;"></iframe>`
+    : `<span class="lvposter"><span class="em">📺</span>${esc(cur.name)} 님이 방송 중입니다</span>`;
+  stage.innerHTML = `${player}
+    <span class="lvbadge">LIVE</span>
+    <div class="lvover">
+      ${dhAva(cur.name, cur.img)}
+      <div class="lvmeta2">
+        <p class="lvtitle">${esc(cur.title)}</p>
+        <p class="dh-row"><span class="micro">${esc(cur.name)}</span>
+          ${cur.spot ? '<span class="lvtag">스포트라이트</span>' : ''}</p>
+      </div>
+    </div>
+    ${cur.url ? `<button class="lvopen" onclick="event.stopPropagation();window.open('${esc(cur.url)}','_blank')">방송 보러가기 →</button>` : ''}`;
+  dhFitStage();
+  if (!window.__dhCropBound) {
+    window.__dhCropBound = true;
+    window.addEventListener('resize', dhFitStage);
+  }
+
+  const rows = list.map((x, i) => `<button class="nowrow${i === _dhLiveOn ? ' on' : ''}" onclick="dhPickLive(${i})">
+      <span class="nowth">${x.img ? `<img src="${esc(x.img)}" alt="" onerror="this.remove()">` : ''}<span class="nl">LIVE</span></span>
+      <span class="nowmeta"><span class="nowt">${esc(x.title)}</span><span class="nown">${esc(x.name)}</span></span>
+      ${x.spot ? '<span class="nowv">홍보중</span>' : ''}
+    </button>`).join('');
+  const nl = document.getElementById('dh-nowlist');
+  if (nl) nl.innerHTML = rows;
+
+  const lr = document.getElementById('dh-liverow');
+  if (lr) {
+    lr.innerHTML = list.map((x, i) => `<button class="livecard" onclick="dhPickLive(${i})">
+      <span class="livethumb">${x.img ? `<img src="${esc(x.img)}" alt="" onerror="this.remove()">` : ''}
+        <span class="lvbadge" style="left:8px;top:8px;font-size:10px;padding:3px 8px;">LIVE</span></span>
+      <span class="livebody"><span class="lvt">${esc(x.title)}</span>
+        <span class="dh-row" style="margin-top:6px">${dhAva(x.name, x.img)}<span class="lvn">${esc(x.name)}</span></span></span>
+    </button>`).join('');
+  }
+}
+// 크롭 스케일: 컨테이너 폭에 맞춰 치지직 페이지(1620 로드)의 영상 영역(x240,y60,1026 폭)만 보이게
+function dhFitStage() {
+  const stage = document.getElementById('dh-stage');
+  const fr = document.getElementById('dh-stage-frame');
+  if (!stage || !fr || !stage.clientWidth) return;
+  const s = stage.clientWidth / 1026;
+  fr.style.transform = `scale(${s}) translate(-240px, -60px)`;
+}
+function dhPickLive(i) {
+  _dhLiveOn = i;
+  dhStage();
+  const wrap = document.getElementById('dh-livewrap');
+  if (wrap && window.innerWidth <= 1180) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── 스트리머 스토리 줄
+function dhStreamers() {
+  const row = document.getElementById('dh-strrow');
+  if (!row) return;
+  const list = D().streamers || [];
+  const sec = document.getElementById('dh-strsec');
+  if (!list.length) { if (sec) sec.style.display = 'none'; return; }
+  if (sec) sec.style.display = '';
+  const live = dhLiveList();
+  row.innerHTML = list.map((s) => {
+    const idx = live.findIndex((x) => x.name === s.name);
+    const onclick = idx >= 0 ? `dhPickLive(${idx})` : `window.__snukNav('/streamers/${s.id}')`;
+    return `<button class="strcard" onclick="${onclick}">
+      <span class="stravwrap${s.live ? ' live' : ''}">${dhAva(s.name, s.img)}
+        ${s.live ? '<span class="strlive">LIVE</span>' : ''}</span>
+      <span class="strn">${esc(s.name)}</span>
+      <span class="strf">${s.followers != null ? `팔로워 ${s.followers.toLocaleString('ko-KR')}` : '스눅 스트리머'}</span>
+    </button>`;
+  }).join('');
+}
+
+// ── 모집 중인 컨텐츠 — 데모 homeJobCard 그대로
+// 데모 ddayTag: 0~14일 남았을 때만, 7일 이하면 urgent
+function dhDdayTag(n) {
+  if (n == null || n < 0 || n > 14) return '';
+  return `<span class="dwrap"><span class="dday${n <= 7 ? ' urgent' : ''}">D-${n}</span></span>`;
+}
+const dhFmtDate = (s) => (s ? String(s).slice(0, 10).replace(/-/g, '.') : '');
+// 데모 contSpecShort — 실제로 있는 값만 채운다(없는 항목을 임의로 "무료/제한 없음"으로 지어내지 않음)
+function dhJobSpec(d) {
+  const apply = d.applyStart
+    ? dhFmtDate(d.applyStart) + (d.applyEnd ? ` ~ ${dhFmtDate(d.applyEnd)}` : '')
+    : '상시 모집';
+  const sched = d.eventDate ? dhFmtDate(d.eventDate) : '비정기';
+  const rows = [
+    `<dt>신청 기간</dt><dd>${esc(apply)}</dd>`,
+    `<dt>진행 일시</dt><dd>${esc(sched)}</dd>`,
+    d.max > 0 ? `<dt>모집 인원</dt><dd>${d.filled}/${d.max}명</dd>` : '',
+  ].join('');
+  return `<dl class="spec">${rows}</dl>`;
+}
+function dhJobCard(d, i) {
+  const click = d.kind === 'tournament' ? `window.__snukNav('/championship/${d.id}')`
+    : d.status === 'open' ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
+  const dd = dhDdayTag(dhDday(d.applyEnd));
+  const byline = d.adminMade === false
+    ? `${dhAva('스')}<span style="min-width:0"><span class="dh-row" style="gap:5px">
+        <span style="font-weight:700;font-size:13px">스트리머 컨텐츠</span></span>
+        <span class="micro dim">스트리머 모집</span></span>`
+    : `<span class="ava" style="background:var(--accent);color:#fff">S</span>
+       <span style="min-width:0"><span class="dh-row" style="gap:5px">
+         <span style="font-weight:700;font-size:13px">SNUK</span><span class="tag t-pri">공식</span></span>
+       <span class="micro dim">지원 ${d.filled || 0}명</span></span>`;
+  return `<div class="card ov contcard clickcard" onclick="${click}">
+    <span class="thumb" style="background:${bgOf(i)};">
+      ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : ''}${dd}
+    </span>
+    <div class="cbody">
+      <div class="dh-row" style="gap:6px;margin-bottom:7px"><span class="tag t-neu">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span></div>
+      <p style="font-size:15px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px">${esc(d.title)}</p>
+      <p class="cintro">${esc(d.desc)}</p>
+      <div class="specfull">${dhJobSpec(d)}</div>
+      <div class="byline">${byline}</div>
+      <button class="btn sm wide" style="margin-top:10px" onclick="event.stopPropagation();${click}">자세히 보기</button>
+    </div>
+  </div>`;
+}
+function dhJobs() {
+  const row = document.getElementById('dh-jobrow');
+  if (!row) return;
+  // 데모와 동일하게 마감 안 된 것만 3장
+  const all = [...(D().snukContents || []), ...(D().mugContents || [])]
+    .filter((d) => d.status !== 'closed')
+    .sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
+  const featured = D().snukFeatured || D().mugFeatured;
+  const list = featured
+    ? [featured, ...all.filter((x) => !(x.kind === featured.kind && x.id === featured.id))]
+    : all;
+  row.innerHTML = list.length
+    ? list.slice(0, 3).map(dhJobCard).join('')
+    : dhEmpty('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
+}
+
+// ── 모집 중인 체험단
+// 데모 homeTrialCard 그대로
+function dhTrialCard(g, i) {
+  const left = Math.max(0, (g.max || 0) - (g.members || 0));
+  const n = dhDday(g.applyEnd);
+  const click = g.campaignId ? `openApply('campaign',${g.campaignId})` : `window.__snukNav('/games')`;
+  return `<div class="card ov contcard clickcard" onclick="${click}">
+    <span class="thumb" style="background:${bgOf(i + 3)};">
+      ${g.img ? `<img src="${esc(g.img)}" alt="" onerror="this.remove()">` : ''}${dhDdayTag(n)}
+    </span>
+    <div class="cbody">
+      <div class="dh-row" style="gap:7px;margin-bottom:8px">
+        <span class="tag t-neu">게임</span>
+        <span class="tag ${g.pick === '선착순' ? 't-warn' : 't-pri'}">${esc(g.pick || '선정')}</span>
+      </div>
+      <p style="font-size:15px;font-weight:700;letter-spacing:-.02em;margin-bottom:10px">${esc(g.name)}</p>
+      <div class="qtybar">
+        <span class="qb"><span class="ql">지원 수량</span><span class="qv">${g.max || 0}</span></span>
+        <span class="qb"><span class="ql">남은 수량</span><span class="qv"${left ? ' style="color:var(--green)"' : ''}>${left}</span></span>
+        <span class="qb"><span class="ql">지원 수</span><span class="qv">${g.members || 0}</span></span>
+        <span class="qb"><span class="ql">모집 마감</span><span class="qv" style="font-size:13px">${n == null ? '—' : n < 0 ? '마감' : `D-${n}`}</span></span>
+      </div>
+      ${g.applyEnd ? `<p class="micro dim" style="margin-top:6px">마감일 ${esc(dhFmtDate(g.applyEnd))}</p>` : ''}
+      <div class="byline"><span class="plogo">${esc((g.publisher || 'S').slice(0, 1))}</span>
+        <span><span style="display:block;font-weight:700;font-size:13px">${esc(g.publisher || 'SNUK')}</span>
+        <span class="micro dim">협력사</span></span></div>
+      ${g.applyOpen && g.campaignId
+        ? `<button class="btn pri sm wide" style="margin-top:10px" onclick="event.stopPropagation();openApply('campaign',${g.campaignId})">신청하기</button>`
+        : `<button class="btn sm wide" style="margin-top:10px" onclick="event.stopPropagation();${click}">자세히 보기</button>`}
+    </div>
+  </div>`;
+}
+function dhTrials() {
+  const row = document.getElementById('dh-trialrow');
+  if (!row) return;
+  const games = [...(D().games || [])].sort((a, b) => (a.applyOpen ? 0 : 1) - (b.applyOpen ? 0 : 1));
+  row.innerHTML = games.length
+    ? games.slice(0, 4).map(dhTrialCard).join('')
+    : dhEmpty('모집 중인 체험단이 없습니다.');
+}
+
+// ── 체험단 후기
+function dhReviews() {
+  const row = document.getElementById('dh-revrow');
+  if (!row) return;
+  const list = D().trialReviews || [];
+  if (!list.length) { row.innerHTML = dhEmpty('아직 등록된 체험단 후기가 없습니다.'); return; }
+  row.innerHTML = list.slice(0, 3).map((r, i) => {
+    const yt = r.videoUrl ? (r.videoUrl.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([\w-]{11})/) || [])[1] : null;
+    const vid = yt
+      ? `<div class="revvid"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/${esc(yt)}" allowfullscreen></iframe></div>`
+      : r.videoUrl
+        ? `<div class="revvid"><a class="nolink" href="${esc(r.videoUrl)}" target="_blank" rel="noopener"
+             onclick="event.stopPropagation()"><span class="pl">▶</span><b>후기 영상 보기</b></a></div>`
+        : '';
+    const go = r.campaignId ? `window.__snukNav('/campaigns/${r.campaignId}/reviews')` : `window.__snukNav('/games')`;
+    return `<div class="revcard">
+      <div class="revtop" style="background:${bgOf(i + 1)};">
+        ${r.img ? `<img class="bg" src="${esc(r.img)}" alt="" onerror="this.remove()">` : ''}
+        ${vid}
+      </div>
+      <div class="revname"><b>${esc(r.campaignTitle)}</b>
+        ${r.publisher ? `<span class="tag t-neu">${esc(r.publisher)}</span>` : ''}</div>
+      <div class="revbody">
+        <div class="dh-row"><span class="tag t-pri">체험단 후기</span><span class="micro dim">${esc(r.date)}</span></div>
+        <p class="ro" style="margin-top:8px">${esc(r.title)}</p>
+        <p class="rb">${esc(r.content)}</p>
+        <div class="dh-row" style="margin-top:auto">
+          <button class="btn sm" onclick="${go}">후기 전체 보기</button>
+        </div>
+      </div>
+      <div class="revadmin"><div class="dh-row">${dhAva(r.author)}
+        <span><span style="display:block;font-size:13px;font-weight:700">${esc(r.author)}</span>
+        <span class="micro dim">후기 작성자</span></span></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── 커뮤니티 인기글 / 스눅 뉴스
+function dhLists() {
+  const com = document.getElementById('dh-community');
+  if (com) {
+    const posts = D().communityPosts || [];
+    com.innerHTML = posts.length
+      ? posts.map((p, i) => `<button class="bestrow" onclick="window.__snukNav('/community/${p.id}')">
+          <span class="brk${i < 3 ? ' hot' : ''}">${i + 1}</span>
+          <span class="bt">${esc(p.title)}</span>
+          <span class="cmt">${esc(p.boardName)}</span>
+        </button>`).join('')
+      : dhEmpty('아직 등록된 게시글이 없습니다.');
+  }
+  const nw = document.getElementById('dh-newslist');
+  if (nw) {
+    const news = D().news || [];
+    nw.innerHTML = news.length
+      ? news.slice(0, 5).map((n) => `<button class="bestrow" onclick="window.__snukNav('/news/${n.id}')">
+          <span class="tag t-neu">뉴스</span>
+          <span class="bt">${esc(n.title)}</span>
+          <span class="cmt">${esc(n.date)}</span>
+        </button>`).join('')
+      : dhEmpty('아직 등록된 기사가 없습니다.');
+  }
+}
+
+// ── 방송도우미 인기 소스
+function dhTools() {
+  const row = document.getElementById('dh-toolrow');
+  if (!row) return;
+  const list = D().resources || [];
+  if (!list.length) { row.innerHTML = dhEmpty('등록된 소스가 없습니다.'); return; }
+  row.innerHTML = list.slice(0, 12).map((t, i) => {
+    const click = t.url ? `window.open('${esc(t.url)}','_blank')` : `window.__snukNav('/resources')`;
+    return `<button class="minicard" onclick="${click}">
+      <span class="minithumb sq" style="background:${bgOf(i)};">
+        ${t.img ? `<img src="${esc(t.img)}" alt="" onerror="this.remove()">` : ''}
+        <span class="minitag">무료소스</span>
+      </span>
+      <span class="minit">${esc(t.title)}</span>
+      <span class="micro dim">${esc(t.date)}</span>
+    </button>`;
+  }).join('');
+}
+
+function initDemoHome() {
+  if (!document.getElementById('home-demo')) return;
+  dhBoard();
+  dhStage();
+  dhStreamers();
+  dhJobs();
+  dhTrials();
+  dhReviews();
+  dhLists();
+  dhTools();
+}
+
+// ════════════════════════════════════════════
 // INIT (페이지 마운트마다 SnukSections/SnukShell 이 호출 — 멱등)
 // ════════════════════════════════════════════
 function __snukInit() {
@@ -1568,6 +1980,7 @@ function __snukInit() {
     chatInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
   }
   bindOverlayClose();
+  initDemoHome();
   renderContentSliders();
   initBigContents();
   initLiveBanner();

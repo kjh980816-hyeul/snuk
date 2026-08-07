@@ -27,10 +27,11 @@ public class PublicSettingsController {
     private static boolean isPublic(String key) {
         // BANNER_* = 페이지 배너 이미지·문구(V10/V12), LIVE_BANNER_* = 메인 라이브 배너(V13),
         // MENU_* = 사이드바 메뉴 표시/숨김·커스텀 메뉴(V15 항목 8),
-        // HERO_* = 메인 히어로 이미지·글씨 표시 여부 — 전부 노출용 값
+        // HERO_* = 메인 히어로 이미지·글씨 표시 여부,
+        // COMMUNITY_* = 커뮤니티 좌측 메뉴 배너·바로가기 링크(V19) — 전부 노출용 값
         return PUBLIC_KEYS.contains(key) || key.startsWith("BANNER_")
                 || key.startsWith("LIVE_BANNER_") || key.startsWith("MENU_")
-                || key.startsWith("HERO_");
+                || key.startsWith("HERO_") || key.startsWith("COMMUNITY_");
     }
 
     private final AppSettingService appSettingService;

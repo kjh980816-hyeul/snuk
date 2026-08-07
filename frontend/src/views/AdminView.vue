@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { adminApi } from '@/api/admin'
 import { campaignApi, collabApi, noticeApi, resourceApi, tournamentApi } from '@/api'
 import api from '@/api/client'
-import type { Campaign, CollabGame, ContentVideo, ClientLogo, Goods, Notice, OrderView, Spotlight, Tournament } from '@/api/types'
+import type {
+  Campaign, CollabGame, CommunityBoard, CommunityPostSummary, CommunityReport, ContentVideo, ClientLogo,
+  Goods, Notice, OrderView, Spotlight, Tournament,
+} from '@/api/types'
 
 // 어드민 변경 요청(POST/PUT/DELETE/PATCH) 실패를 전부 알림으로 표출 — 침묵 실패 금지
 // (2026-07-28 뮤마랭: 저장·업로드가 전부 403인데 화면엔 아무 표시가 없어 "안된다"로만 보임)
@@ -30,7 +33,7 @@ const alertInterceptor = api.interceptors.response.use(
 onBeforeUnmount(() => api.interceptors.response.eject(alertInterceptor))
 
 // 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (컨텐츠·대회 통합 탭 + 게임체험단·영상·굿즈샵·협력사)
-type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'members' | 'settings' | 'logs'
+type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'community' | 'members' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
 
 // 테마 — 메인 사이트와 동일 키(snuk-theme) 공유
@@ -499,6 +502,7 @@ const MENU_ITEMS = [
   { key: 'CAMPAIGNS', label: '컨텐츠·대회' },
   { key: 'GAMES', label: '게임체험단' },
   { key: 'STREAMERS', label: '스트리머' },
+  { key: 'COMMUNITY', label: '커뮤니티' },
   { key: 'NEWS', label: '스눅 뉴스' },
   { key: 'VIDEOS', label: '영상' },
   { key: 'GOODS', label: '굿즈샵' },
@@ -745,8 +749,128 @@ async function removeResource(id: number) {
   await loadResources()
 }
 
+// ── 커뮤니티 운영: 게시판 트리 관리 / 글 숨김·삭제 / 신고함
+const comBoards = ref<CommunityBoard[]>([])
+const comPosts = ref<CommunityPostSummary[]>([])
+const comReports = ref<CommunityReport[]>([])
+const comEditing = ref<CommunityBoard | null>(null)
+const comForm = ref<{ parentId: number | null; name: string; sortOrder: number; visible: boolean }>({
+  parentId: null, name: '', sortOrder: 0, visible: true,
+})
+
+// 커뮤니티 좌측 바로가기 / 상단 배너 문구 (app_setting COMMUNITY_*)
+type ComLink = { label: string; url: string }
+const comLinks = ref<ComLink[]>([])
+const comLinksTitle = ref('')
+const comBannerTitle = ref('')
+const comBannerSub = ref('')
+const comBannerUrl = ref('')
+const comSettingSaved = ref(false)
+
+function loadCommunitySettings() {
+  comLinksTitle.value = settingValue('COMMUNITY_LINKS_TITLE')
+  comBannerTitle.value = settingValue('COMMUNITY_BANNER_TITLE')
+  comBannerSub.value = settingValue('COMMUNITY_BANNER_SUB')
+  const url = settingValue('COMMUNITY_BANNER_URL')
+  comBannerUrl.value = url === '-' ? '' : url
+  try {
+    const parsed = JSON.parse(settingValue('COMMUNITY_LINKS') || '[]') as ComLink[]
+    comLinks.value = Array.isArray(parsed) ? parsed : []
+  } catch {
+    comLinks.value = []
+  }
+}
+function addComLink() {
+  comLinks.value = [...comLinks.value, { label: '', url: '' }]
+}
+function removeComLink(i: number) {
+  comLinks.value = comLinks.value.filter((_, idx) => idx !== i)
+}
+async function saveCommunitySettings() {
+  const links = comLinks.value
+    .map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
+    .filter((l) => l.label && l.url)
+  const json = JSON.stringify(links)
+  if (json.length > 500) {           // setting_value 512자 — MENU_CUSTOM 과 같은 가드
+    alert('바로가기가 너무 많아요. 개수를 줄여주세요.')
+    return
+  }
+  await adminApi.updateSetting('COMMUNITY_LINKS', json)
+  await adminApi.updateSetting('COMMUNITY_LINKS_TITLE', comLinksTitle.value.trim() || '스눅 소식')
+  await adminApi.updateSetting('COMMUNITY_BANNER_TITLE', comBannerTitle.value.trim() || '-')
+  await adminApi.updateSetting('COMMUNITY_BANNER_SUB', comBannerSub.value.trim() || '-')
+  await adminApi.updateSetting('COMMUNITY_BANNER_URL', comBannerUrl.value.trim() || '-')
+  await loadSettings()
+  loadCommunitySettings()
+  comSettingSaved.value = true
+  setTimeout(() => { comSettingSaved.value = false }, 2500)
+}
+
+async function loadCommunity() {
+  const [b, p, r] = await Promise.all([
+    adminApi.communityBoards().catch(() => []),
+    adminApi.communityPosts().catch(() => []),
+    adminApi.communityReports().catch(() => []),
+  ])
+  comBoards.value = b
+  comPosts.value = p
+  comReports.value = r
+  await loadSettings()
+  loadCommunitySettings()
+}
+const comGroups = computed(() => comBoards.value.filter((b) => b.parentId === null))
+/** 목록 표시용 — 그룹 다음에 그 하위 게시판이 오도록 트리 순서로 재배열 */
+const comBoardsTree = computed(() => {
+  const out: CommunityBoard[] = []
+  for (const g of comGroups.value) {
+    out.push(g)
+    comBoards.value.filter((b) => b.parentId === g.id).forEach((c) => out.push(c))
+  }
+  return out
+})
+function comBoardLabel(b: CommunityBoard) {
+  const parent = b.parentId !== null ? comBoards.value.find((x) => x.id === b.parentId) : null
+  return parent ? `${parent.name} › ${b.name}` : b.name
+}
+function newComBoard() {
+  comEditing.value = null
+  comForm.value = { parentId: null, name: '', sortOrder: (comBoards.value.length + 1), visible: true }
+}
+function editComBoard(b: CommunityBoard) {
+  comEditing.value = b
+  comForm.value = { parentId: b.parentId, name: b.name, sortOrder: b.sortOrder, visible: b.visible }
+}
+async function submitComBoard() {
+  const body = { ...comForm.value, name: comForm.value.name.trim() }
+  if (!body.name) return
+  if (comEditing.value) await adminApi.updateCommunityBoard(comEditing.value.id, body)
+  else await adminApi.createCommunityBoard(body)
+  comEditing.value = null
+  comForm.value = { parentId: null, name: '', sortOrder: 0, visible: true }
+  await loadCommunity()
+}
+async function removeComBoard(b: CommunityBoard) {
+  if (!confirm(`"${b.name}" 게시판을 삭제할까요?`)) return
+  await adminApi.deleteCommunityBoard(b.id)
+  await loadCommunity()
+}
+async function toggleComPostHidden(p: CommunityPostSummary) {
+  await adminApi.setCommunityPostHidden(p.id, !p.hidden)
+  await loadCommunity()
+}
+async function removeComPost(p: CommunityPostSummary) {
+  if (!confirm(`"${p.title}" 글을 삭제할까요? (댓글도 함께 삭제됩니다)`)) return
+  await adminApi.deleteCommunityPost(p.id)
+  await loadCommunity()
+}
+async function dismissComReport(id: number) {
+  await adminApi.dismissCommunityReport(id)
+  await loadCommunity()
+}
+
 function onTab(t: Tab) {
   tab.value = t
+  if (t === 'community') loadCommunity()
   if (t === 'campaigns') { loadCampaigns(); loadTournaments(); loadCollab() }
   if (t === 'games' || t === 'videos' || t === 'clients') loadCollab()
   if (t === 'goods') loadGoods()
@@ -781,6 +905,7 @@ function onTab(t: Tab) {
       <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
       <button :class="{ on: tab === 'warnings' }" @click="onTab('warnings')">후기 경고</button>
       <button :class="{ on: tab === 'reports' }" @click="onTab('reports')">신고함</button>
+      <button :class="{ on: tab === 'community' }" @click="onTab('community')">커뮤니티</button>
       <p class="adm-glabel">발행</p>
       <button :class="{ on: tab === 'notices' }" @click="onTab('notices')">공지/스포트라이트</button>
       <button :class="{ on: tab === 'videos' }" @click="onTab('videos')">영상</button>
@@ -1349,6 +1474,114 @@ function onTab(t: Tab) {
       </table>
     </section>
 
+    <!-- 커뮤니티: 게시판 관리 / 글 관리 / 신고함 -->
+    <section v-else-if="tab === 'community'">
+      <h3>커뮤니티 메뉴 · 배너</h3>
+      <p class="hint">커뮤니티 페이지 <b>왼쪽 메뉴 맨 위 바로가기</b>와 <b>상단 배너 문구</b>예요.
+        (사이드바에 "커뮤니티" 메뉴를 감추거나 이름을 바꾸는 건 <b>설정</b> 탭의 "메뉴 관리"에서 합니다.)</p>
+      <div class="form-card">
+        <h4>상단 배너</h4>
+        <label>윗줄 문구<input v-model="comBannerSub" maxlength="60" placeholder="예: SNUK COMMUNITY" /></label>
+        <label>제목<input v-model="comBannerTitle" maxlength="120" placeholder="예: 스트리머와 시청자가 함께 쓰는 스눅 라운지" /></label>
+        <label>클릭 시 이동 주소 (비우면 클릭 안 됨)
+          <input v-model="comBannerUrl" placeholder="/championship 또는 https://..." />
+        </label>
+
+        <h4 style="margin-top:18px;">왼쪽 바로가기</h4>
+        <label>묶음 제목<input v-model="comLinksTitle" maxlength="30" placeholder="예: 스눅 소식" /></label>
+        <div v-for="(l, i) in comLinks" :key="i" class="row-inline">
+          <input v-model="l.label" placeholder="메뉴 이름 (예: 스눅 뉴스)" style="flex:1;" />
+          <input v-model="l.url" placeholder="주소 (예: /news)" style="flex:1;" />
+          <button class="danger" @click="removeComLink(i)">삭제</button>
+        </div>
+        <p v-if="!comLinks.length" class="hint">바로가기가 없습니다. 추가하지 않으면 이 묶음은 화면에 안 보여요.</p>
+        <div class="form-acts">
+          <button class="btn sm ghost" @click="addComLink">+ 바로가기 추가</button>
+          <button class="btn sm" @click="saveCommunitySettings">저장</button>
+          <span v-if="comSettingSaved" class="hint">저장했습니다.</span>
+        </div>
+      </div>
+
+      <h3 style="margin-top:26px;">커뮤니티 게시판</h3>
+      <p class="hint">사이트 "커뮤니티" 페이지의 게시판 구성이에요. <b>상위 그룹</b>을 만들고 그 아래 <b>하위 게시판</b>을 넣을 수 있어요.
+        하위 게시판이 있는 그룹에는 글을 쓸 수 없고, 하위 게시판에만 글이 올라갑니다.</p>
+      <div class="form-card">
+        <h4>{{ comEditing ? `게시판 수정 — ${comBoardLabel(comEditing)}` : '새 게시판' }}</h4>
+        <label>상위 그룹
+          <select v-model="comForm.parentId" :disabled="!!comEditing">
+            <option :value="null">— 없음 (상위 그룹으로 만들기)</option>
+            <option v-for="g in comGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
+          </select>
+        </label>
+        <label>이름<input v-model="comForm.name" maxlength="60" placeholder="예: 자유 / 방송 / 치지직" /></label>
+        <label>정렬 순서 (작을수록 위)<input v-model.number="comForm.sortOrder" type="number" /></label>
+        <label class="chk"><input v-model="comForm.visible" type="checkbox" /> 사이트에 노출</label>
+        <div class="form-acts">
+          <button class="btn sm" :disabled="!comForm.name.trim()" @click="submitComBoard">
+            {{ comEditing ? '수정 저장' : '추가' }}
+          </button>
+          <button v-if="comEditing" class="btn sm ghost" @click="newComBoard">취소</button>
+        </div>
+      </div>
+      <table class="grid">
+        <thead><tr><th>게시판</th><th>구분</th><th>순서</th><th>노출</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="b in comBoardsTree" :key="b.id">
+            <td>{{ comBoardLabel(b) }}</td>
+            <td>{{ b.parentId === null ? '상위 그룹' : '하위 게시판' }}</td>
+            <td>{{ b.sortOrder }}</td>
+            <td>{{ b.visible ? '노출' : '숨김' }}</td>
+            <td class="acts">
+              <button @click="editComBoard(b)">수정</button>
+              <button class="danger" @click="removeComBoard(b)">삭제</button>
+            </td>
+          </tr>
+          <tr v-if="!comBoards.length"><td colspan="5" class="empty">게시판이 없습니다.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:26px;">신고된 글 {{ comReports.length ? `(${comReports.length})` : '' }}</h3>
+      <table class="grid">
+        <thead><tr><th>글</th><th>신고자</th><th>사유</th><th>상태</th><th>신고일</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="r in comReports" :key="r.id">
+            <td><a :href="`/community/${r.postId}`" target="_blank" rel="noopener">{{ r.postTitle }} ↗</a></td>
+            <td>{{ r.reporterName }}</td>
+            <td style="max-width:280px;"><span style="font-size:11.5px;">{{ r.reason || '—' }}</span></td>
+            <td>{{ r.postHidden ? '숨김 처리됨' : '노출 중' }}</td>
+            <td>{{ r.createdAt?.slice(0, 10) }}</td>
+            <td class="acts"><button @click="dismissComReport(r.id)">신고 기각</button></td>
+          </tr>
+          <tr v-if="!comReports.length"><td colspan="6" class="empty">접수된 신고가 없습니다.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:26px;">최근 글</h3>
+      <p class="hint">문제가 있는 글은 <b>숨김</b> 처리하면 사이트에서 보이지 않아요(작성자·관리자만 열람). 삭제하면 댓글까지 함께 지워집니다.</p>
+      <table class="grid">
+        <thead><tr><th>게시판</th><th>제목</th><th>작성자</th><th>조회</th><th>버프</th><th>댓글</th><th>작성일</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="p in comPosts" :key="p.id">
+            <td>{{ p.boardName }}</td>
+            <td>
+              <a :href="`/community/${p.id}`" target="_blank" rel="noopener">{{ p.title }} ↗</a>
+              <span v-if="p.hidden" style="color:#E9635F;font-size:11px;margin-left:6px;">숨김</span>
+            </td>
+            <td>{{ p.authorName }}</td>
+            <td>{{ p.viewCount }}</td>
+            <td>{{ p.buffCount }}</td>
+            <td>{{ p.commentCount }}</td>
+            <td>{{ p.createdAt?.slice(0, 10) }}</td>
+            <td class="acts">
+              <button @click="toggleComPostHidden(p)">{{ p.hidden ? '숨김 해제' : '숨김' }}</button>
+              <button class="danger" @click="removeComPost(p)">삭제</button>
+            </td>
+          </tr>
+          <tr v-if="!comPosts.length"><td colspan="8" class="empty">등록된 글이 없습니다.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
     <!-- 설정/권한 -->
     <!-- 회원 -->
     <section v-else-if="tab === 'members'">
@@ -1571,6 +1804,8 @@ h4, h5 { color: var(--a-text); }
 .mono { font-family: monospace; font-size: 12px; color: var(--a-text2); }
 .badge { margin-left: 6px; font-size: 11px; font-weight: 800; color: var(--a-text); border: 1px solid var(--a-border2); border-radius: 999px; padding: 1px 7px; }
 .hint { margin-top: 12px; font-size: 13px; color: var(--a-text2); }
+.row-inline { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.row-inline input { flex: 1; min-width: 0; }
 .logo-upload { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 .logo-preview { width: 48px; height: 48px; object-fit: contain; border: 1px solid var(--a-border); border-radius: 6px; background: var(--a-bg3); }
 

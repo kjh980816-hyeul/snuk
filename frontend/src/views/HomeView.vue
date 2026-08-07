@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import SnukSections from '@/components/SnukSections.vue'
-// 메인: 히어로 + 라이브 배너(어드민 on/off) + 컨텐츠·대회 통합(큰 칸=공식 컨텐츠) + 게임체험단 + 굿즈 + 영상 + 뉴스 + 스트리머 스트립
-const show = ['hero', 'live-banner', 'spotlight-section', 'big-contents', 'game-trial', 'goods-best', 'videos', 'news-section', 'streamer-strip']
+// 메인 = 데모 시안 구성 한 섹션(#home-demo): 배너 / 라이브 스테이지 / 스트리머 /
+// 모집 컨텐츠 · 체험단 / 체험단 후기 / 커뮤니티 · 뉴스 / 방송도우미 소스
+const show = ['home-demo']
 </script>
 
 <template>
