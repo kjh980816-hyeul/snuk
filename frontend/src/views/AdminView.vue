@@ -440,6 +440,7 @@ const SITE_IMAGES = [
   { key: 'BANNER_LIVE_URL', label: '생방송 배너' },
   { key: 'BANNER_GOODS_URL', label: '굿즈샵 배너' },
   { key: 'BANNER_PARTNERS_URL', label: '협력사 배너' },
+  { key: 'BANNER_COMMUNITY_URL', label: '커뮤니티 배너' },
 ]
 // 배너 문구(제목/부제) — V12 시드, '-'=기본 문구 사용
 const BANNER_TEXTS = [
@@ -451,6 +452,7 @@ const BANNER_TEXTS = [
   { page: 'LIVE', label: '생방송' },
   { page: 'GOODS', label: '굿즈샵' },
   { page: 'PARTNERS', label: '협력사' },
+  { page: 'COMMUNITY', label: '커뮤니티' },
 ]
 const bannerTextInputs = ref<Record<string, string>>({})
 function loadBannerTextInputs() {
@@ -503,7 +505,6 @@ const MENU_ITEMS = [
   { key: 'GAMES', label: '게임체험단' },
   { key: 'STREAMERS', label: '스트리머' },
   { key: 'COMMUNITY', label: '커뮤니티' },
-  { key: 'NEWS', label: '스눅 뉴스' },
   { key: 'VIDEOS', label: '영상' },
   { key: 'GOODS', label: '굿즈샵' },
   { key: 'RESOURCES', label: '무료소스' },
@@ -754,25 +755,40 @@ const comBoards = ref<CommunityBoard[]>([])
 const comPosts = ref<CommunityPostSummary[]>([])
 const comReports = ref<CommunityReport[]>([])
 const comEditing = ref<CommunityBoard | null>(null)
-const comForm = ref<{ parentId: number | null; name: string; sortOrder: number; visible: boolean }>({
-  parentId: null, name: '', sortOrder: 0, visible: true,
+const comForm = ref<{ parentId: number | null; name: string; sortOrder: number; visible: boolean; writeRole: string; readRole: string }>({
+  parentId: null, name: '', sortOrder: 0, visible: true, writeRole: 'VIEWER', readRole: 'GUEST',
 })
+// 게시판별 권한 선택지 — 값은 회원 등급, 라벨은 운영자가 알아보기 쉬운 말로
+const WRITE_ROLES = [
+  { value: 'VIEWER', label: '로그인한 회원 누구나' },
+  { value: 'STREAMER', label: '스트리머 이상' },
+  { value: 'REPORTER', label: '기자단 이상' },
+  { value: 'ADMIN', label: '관리자만' },
+]
+const READ_ROLES = [
+  { value: 'GUEST', label: '누구나 (비로그인 포함)' },
+  { value: 'VIEWER', label: '로그인한 회원부터' },
+  { value: 'STREAMER', label: '스트리머 이상' },
+  { value: 'REPORTER', label: '기자단 이상' },
+  { value: 'ADMIN', label: '관리자만' },
+]
+function roleLabel(list: Array<{ value: string; label: string }>, value: string) {
+  return list.find((r) => r.value === value)?.label ?? value
+}
+function sourceLabel(src: string | null) {
+  if (src === 'NOTICE') return '공지(사이드바 공지사항과 같은 데이터)'
+  if (src === 'NEWS') return '스눅 뉴스(기사와 같은 데이터)'
+  return ''
+}
 
-// 커뮤니티 좌측 바로가기 / 상단 배너 문구 (app_setting COMMUNITY_*)
+// 커뮤니티 좌측 바로가기 (app_setting COMMUNITY_LINKS*) — 배너는 "설정" 탭의 페이지 배너에서 관리
 type ComLink = { label: string; url: string }
 const comLinks = ref<ComLink[]>([])
 const comLinksTitle = ref('')
-const comBannerTitle = ref('')
-const comBannerSub = ref('')
-const comBannerUrl = ref('')
 const comSettingSaved = ref(false)
 
 function loadCommunitySettings() {
   comLinksTitle.value = settingValue('COMMUNITY_LINKS_TITLE')
-  comBannerTitle.value = settingValue('COMMUNITY_BANNER_TITLE')
-  comBannerSub.value = settingValue('COMMUNITY_BANNER_SUB')
-  const url = settingValue('COMMUNITY_BANNER_URL')
-  comBannerUrl.value = url === '-' ? '' : url
   try {
     const parsed = JSON.parse(settingValue('COMMUNITY_LINKS') || '[]') as ComLink[]
     comLinks.value = Array.isArray(parsed) ? parsed : []
@@ -797,9 +813,6 @@ async function saveCommunitySettings() {
   }
   await adminApi.updateSetting('COMMUNITY_LINKS', json)
   await adminApi.updateSetting('COMMUNITY_LINKS_TITLE', comLinksTitle.value.trim() || '스눅 소식')
-  await adminApi.updateSetting('COMMUNITY_BANNER_TITLE', comBannerTitle.value.trim() || '-')
-  await adminApi.updateSetting('COMMUNITY_BANNER_SUB', comBannerSub.value.trim() || '-')
-  await adminApi.updateSetting('COMMUNITY_BANNER_URL', comBannerUrl.value.trim() || '-')
   await loadSettings()
   loadCommunitySettings()
   comSettingSaved.value = true
@@ -834,11 +847,17 @@ function comBoardLabel(b: CommunityBoard) {
 }
 function newComBoard() {
   comEditing.value = null
-  comForm.value = { parentId: null, name: '', sortOrder: (comBoards.value.length + 1), visible: true }
+  comForm.value = {
+    parentId: null, name: '', sortOrder: (comBoards.value.length + 1), visible: true,
+    writeRole: 'VIEWER', readRole: 'GUEST',
+  }
 }
 function editComBoard(b: CommunityBoard) {
   comEditing.value = b
-  comForm.value = { parentId: b.parentId, name: b.name, sortOrder: b.sortOrder, visible: b.visible }
+  comForm.value = {
+    parentId: b.parentId, name: b.name, sortOrder: b.sortOrder, visible: b.visible,
+    writeRole: b.writeRole, readRole: b.readRole,
+  }
 }
 async function submitComBoard() {
   const body = { ...comForm.value, name: comForm.value.name.trim() }
@@ -846,7 +865,7 @@ async function submitComBoard() {
   if (comEditing.value) await adminApi.updateCommunityBoard(comEditing.value.id, body)
   else await adminApi.createCommunityBoard(body)
   comEditing.value = null
-  comForm.value = { parentId: null, name: '', sortOrder: 0, visible: true }
+  newComBoard()
   await loadCommunity()
 }
 async function removeComBoard(b: CommunityBoard) {
@@ -1476,18 +1495,11 @@ function onTab(t: Tab) {
 
     <!-- 커뮤니티: 게시판 관리 / 글 관리 / 신고함 -->
     <section v-else-if="tab === 'community'">
-      <h3>커뮤니티 메뉴 · 배너</h3>
-      <p class="hint">커뮤니티 페이지 <b>왼쪽 메뉴 맨 위 바로가기</b>와 <b>상단 배너 문구</b>예요.
-        (사이드바에 "커뮤니티" 메뉴를 감추거나 이름을 바꾸는 건 <b>설정</b> 탭의 "메뉴 관리"에서 합니다.)</p>
+      <h3>커뮤니티 왼쪽 바로가기</h3>
+      <p class="hint">커뮤니티 페이지 <b>왼쪽 메뉴 맨 위 바로가기</b>예요.
+        상단 <b>배너 이미지·문구</b>는 <b>설정</b> 탭의 "페이지 배너"에서,
+        사이드바 "커뮤니티" 메뉴 숨김·이름변경은 <b>설정</b> 탭의 "메뉴 관리"에서 합니다.</p>
       <div class="form-card">
-        <h4>상단 배너</h4>
-        <label>윗줄 문구<input v-model="comBannerSub" maxlength="60" placeholder="예: SNUK COMMUNITY" /></label>
-        <label>제목<input v-model="comBannerTitle" maxlength="120" placeholder="예: 스트리머와 시청자가 함께 쓰는 스눅 라운지" /></label>
-        <label>클릭 시 이동 주소 (비우면 클릭 안 됨)
-          <input v-model="comBannerUrl" placeholder="/championship 또는 https://..." />
-        </label>
-
-        <h4 style="margin-top:18px;">왼쪽 바로가기</h4>
         <label>묶음 제목<input v-model="comLinksTitle" maxlength="30" placeholder="예: 스눅 소식" /></label>
         <div v-for="(l, i) in comLinks" :key="i" class="row-inline">
           <input v-model="l.label" placeholder="메뉴 이름 (예: 스눅 뉴스)" style="flex:1;" />
@@ -1515,6 +1527,16 @@ function onTab(t: Tab) {
         </label>
         <label>이름<input v-model="comForm.name" maxlength="60" placeholder="예: 자유 / 방송 / 치지직" /></label>
         <label>정렬 순서 (작을수록 위)<input v-model.number="comForm.sortOrder" type="number" /></label>
+        <label>글 쓸 수 있는 사람
+          <select v-model="comForm.writeRole">
+            <option v-for="r in WRITE_ROLES" :key="r.value" :value="r.value">{{ r.label }}</option>
+          </select>
+        </label>
+        <label>볼 수 있는 사람
+          <select v-model="comForm.readRole">
+            <option v-for="r in READ_ROLES" :key="r.value" :value="r.value">{{ r.label }}</option>
+          </select>
+        </label>
         <label class="chk"><input v-model="comForm.visible" type="checkbox" /> 사이트에 노출</label>
         <div class="form-acts">
           <button class="btn sm" :disabled="!comForm.name.trim()" @click="submitComBoard">
@@ -1524,19 +1546,24 @@ function onTab(t: Tab) {
         </div>
       </div>
       <table class="grid">
-        <thead><tr><th>게시판</th><th>구분</th><th>순서</th><th>노출</th><th></th></tr></thead>
+        <thead><tr><th>게시판</th><th>구분</th><th>글쓰기</th><th>열람</th><th>순서</th><th>노출</th><th></th></tr></thead>
         <tbody>
           <tr v-for="b in comBoardsTree" :key="b.id">
-            <td>{{ comBoardLabel(b) }}</td>
+            <td>
+              {{ comBoardLabel(b) }}
+              <div v-if="b.source" class="hint" style="margin:2px 0 0;font-size:11px;">{{ sourceLabel(b.source) }}</div>
+            </td>
             <td>{{ b.parentId === null ? '상위 그룹' : '하위 게시판' }}</td>
+            <td>{{ roleLabel(WRITE_ROLES, b.writeRole) }}</td>
+            <td>{{ roleLabel(READ_ROLES, b.readRole) }}</td>
             <td>{{ b.sortOrder }}</td>
             <td>{{ b.visible ? '노출' : '숨김' }}</td>
             <td class="acts">
               <button @click="editComBoard(b)">수정</button>
-              <button class="danger" @click="removeComBoard(b)">삭제</button>
+              <button v-if="!b.source" class="danger" @click="removeComBoard(b)">삭제</button>
             </td>
           </tr>
-          <tr v-if="!comBoards.length"><td colspan="5" class="empty">게시판이 없습니다.</td></tr>
+          <tr v-if="!comBoards.length"><td colspan="7" class="empty">게시판이 없습니다.</td></tr>
         </tbody>
       </table>
 

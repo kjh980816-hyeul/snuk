@@ -60,6 +60,7 @@ public class SecurityConfig {
                                 "/api/news", "/api/news/*", "/api/news/*/comments",
                                 "/api/community/boards", "/api/community/posts", "/api/community/posts/*",
                                 "/api/community/posts/*/comments", "/api/community/posts/*/nearby",
+                                "/api/community/notices/*",
                                 "/api/site-settings", "/api/live/status", "/api/live/streamers",
                                 "/api/resources").permitAll()
                         // PG 결제 웹훅(서버-서버, JWT 없음) — 서버가 재조회로 검증

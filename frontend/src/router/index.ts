@@ -12,6 +12,7 @@ const router = createRouter({
     { path: '/live', name: 'live', component: () => import('@/views/LiveView.vue') },
     { path: '/streamers', name: 'streamers', component: () => import('@/views/StreamersView.vue') },
     { path: '/community', name: 'community', component: () => import('@/views/CommunityView.vue') },
+    { path: '/community/notice/:noticeId', name: 'community-notice', component: () => import('@/views/CommunityView.vue') },
     { path: '/community/:id', name: 'community-post', component: () => import('@/views/CommunityView.vue') },
     { path: '/news', name: 'news', component: () => import('@/views/NewsView.vue') },
     { path: '/news/:id', name: 'news-detail', component: () => import('@/views/NewsView.vue') },

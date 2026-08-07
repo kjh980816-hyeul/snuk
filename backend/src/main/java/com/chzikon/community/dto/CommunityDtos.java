@@ -1,9 +1,11 @@
 package com.chzikon.community.dto;
 
+import com.chzikon.community.domain.BoardSource;
 import com.chzikon.community.domain.CommunityBoard;
 import com.chzikon.community.domain.CommunityComment;
 import com.chzikon.community.domain.CommunityPost;
 import com.chzikon.member.domain.Member;
+import com.chzikon.member.domain.Role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -18,15 +20,21 @@ public final class CommunityDtos {
 
     // ----- 게시판 -----
 
+    /** canWrite = 요청한 회원이 이 게시판에 글을 쓸 수 있는지(비로그인이면 false). */
     public record BoardResponse(
             Long id,
             Long parentId,
             String name,
             int sortOrder,
-            boolean visible
+            boolean visible,
+            Role writeRole,
+            Role readRole,
+            BoardSource source,
+            boolean canWrite
     ) {
-        public static BoardResponse of(CommunityBoard b) {
-            return new BoardResponse(b.getId(), b.getParentId(), b.getName(), b.getSortOrder(), b.isVisible());
+        public static BoardResponse of(CommunityBoard b, boolean canWrite) {
+            return new BoardResponse(b.getId(), b.getParentId(), b.getName(), b.getSortOrder(), b.isVisible(),
+                    b.getWriteRole(), b.getReadRole(), b.getSource(), canWrite);
         }
     }
 
@@ -34,7 +42,9 @@ public final class CommunityDtos {
             Long parentId,
             @NotBlank @Size(max = 60) String name,
             Integer sortOrder,
-            Boolean visible
+            Boolean visible,
+            Role writeRole,
+            Role readRole
     ) {
     }
 
@@ -47,12 +57,16 @@ public final class CommunityDtos {
     ) {
     }
 
-    /** 목록 행. boardName = 하위 게시판이면 하위 이름, 아니면 게시판 이름. */
+    /**
+     * 목록 행. boardName = 하위 게시판이면 하위 이름, 아니면 게시판 이름.
+     * source != null 이면 공지/뉴스 등 시스템 게시판 글(상세 열람 경로가 다름).
+     */
     public record PostSummary(
             Long id,
             Long boardId,
             String boardName,
             String groupName,
+            BoardSource source,
             String title,
             Long authorId,
             String authorName,
@@ -67,10 +81,22 @@ public final class CommunityDtos {
             return new PostSummary(p.getId(), p.getBoardId(),
                     board != null ? board.getName() : "삭제된 게시판",
                     group != null ? group.getName() : null,
+                    board != null ? board.getSource() : null,
                     p.getTitle(), p.getMemberId(),
                     author != null ? author.getNickname() : "탈퇴 회원",
                     author != null ? author.getProfileImageUrl() : null,
                     p.getViewCount(), p.getBuffCount(), p.getCommentCount(), p.isHidden(), p.getCreatedAt());
+        }
+
+        /** 공지·뉴스처럼 다른 테이블에서 온 글을 목록 행으로 맞춘다. */
+        public static PostSummary ofSystem(Long id, CommunityBoard board, CommunityBoard group,
+                                           String title, Member author, int commentCount, LocalDateTime createdAt) {
+            return new PostSummary(id, board.getId(), board.getName(),
+                    group != null ? group.getName() : null, board.getSource(), title,
+                    author != null ? author.getId() : null,
+                    author != null ? author.getNickname() : "SNUK",
+                    author != null ? author.getProfileImageUrl() : null,
+                    0, 0, commentCount, false, createdAt);
         }
     }
 
@@ -89,6 +115,7 @@ public final class CommunityDtos {
             Long boardId,
             String boardName,
             String groupName,
+            BoardSource source,
             String title,
             String content,
             Long authorId,
@@ -108,11 +135,23 @@ public final class CommunityDtos {
             return new PostDetail(p.getId(), p.getBoardId(),
                     board != null ? board.getName() : "삭제된 게시판",
                     group != null ? group.getName() : null,
+                    board != null ? board.getSource() : null,
                     p.getTitle(), p.getContent(), p.getMemberId(),
                     author != null ? author.getNickname() : "탈퇴 회원",
                     author != null ? author.getProfileImageUrl() : null,
                     p.getViewCount(), p.getBuffCount(), p.getCommentCount(),
                     buffed, mine, p.isHidden(), p.getCreatedAt(), p.getUpdatedAt());
+        }
+
+        public static PostDetail ofSystem(Long id, CommunityBoard board, CommunityBoard group,
+                                          String title, String content, Member author,
+                                          boolean mine, LocalDateTime createdAt) {
+            return new PostDetail(id, board.getId(), board.getName(),
+                    group != null ? group.getName() : null, board.getSource(), title, content,
+                    author != null ? author.getId() : null,
+                    author != null ? author.getNickname() : "SNUK",
+                    author != null ? author.getProfileImageUrl() : null,
+                    0, 0, 0, false, mine, false, createdAt, createdAt);
         }
     }
 

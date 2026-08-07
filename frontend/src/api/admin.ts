@@ -117,9 +117,9 @@ export const adminApi = {
   // community (게시판 관리 / 글 숨김·삭제 / 신고함)
   communityBoards: () =>
     api.get<CommunityBoard[]>('/api/admin/community/boards').then((r) => r.data),
-  createCommunityBoard: (body: { parentId: number | null; name: string; sortOrder: number; visible: boolean }) =>
+  createCommunityBoard: (body: { parentId: number | null; name: string; sortOrder: number; visible: boolean; writeRole: string; readRole: string }) =>
     api.post<CommunityBoard>('/api/admin/community/boards', body).then((r) => r.data),
-  updateCommunityBoard: (id: number, body: { parentId?: number | null; name: string; sortOrder: number; visible: boolean }) =>
+  updateCommunityBoard: (id: number, body: { parentId?: number | null; name: string; sortOrder: number; visible: boolean; writeRole: string; readRole: string }) =>
     api.put<CommunityBoard>(`/api/admin/community/boards/${id}`, body).then((r) => r.data),
   deleteCommunityBoard: (id: number) => api.delete(`/api/admin/community/boards/${id}`),
   communityPosts: () =>

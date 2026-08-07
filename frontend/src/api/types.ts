@@ -310,12 +310,19 @@ export interface OrderView {
 }
 
 // ----- 커뮤니티 -----
+export type CommunityRole = 'GUEST' | 'VIEWER' | 'STREAMER' | 'REPORTER' | 'ADMIN'
+export type CommunityBoardSource = 'NOTICE' | 'NEWS' | null
+
 export interface CommunityBoard {
   id: number
   parentId: number | null
   name: string
   sortOrder: number
   visible: boolean
+  writeRole: CommunityRole
+  readRole: CommunityRole
+  source: CommunityBoardSource
+  canWrite: boolean
 }
 
 export interface CommunityPostSummary {
@@ -323,6 +330,7 @@ export interface CommunityPostSummary {
   boardId: number
   boardName: string
   groupName: string | null
+  source: CommunityBoardSource
   title: string
   authorId: number
   authorName: string

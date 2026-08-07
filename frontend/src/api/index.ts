@@ -221,4 +221,16 @@ export const communityApi = {
     api.delete(`/api/community/posts/${id}/comments/${commentId}`),
   report: (id: number, reason: string) =>
     api.post(`/api/community/posts/${id}/report`, { reason }),
+  // 공지(사이드바 공지사항과 같은 데이터) — 뉴스는 /news/{id} 기사 페이지로 이동
+  noticeDetail: (id: number) =>
+    api.get<CommunityPostDetail>(`/api/community/notices/${id}`).then((r) => r.data),
+  deleteNotice: (id: number) => api.delete(`/api/community/notices/${id}`),
+  // 글 본문 이미지 업로드 (로그인 회원)
+  uploadImage: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<{ url: string }>('/api/community/upload-image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
 }

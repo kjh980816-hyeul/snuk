@@ -31,9 +31,9 @@ const sideLinks = computed<Array<{ label: string; url: string }>>(() => {
     return []
   }
 })
-const bannerTitle = computed(() => setting('COMMUNITY_BANNER_TITLE', '스트리머와 시청자가 함께 쓰는 스눅 라운지'))
-const bannerSub = computed(() => setting('COMMUNITY_BANNER_SUB', 'SNUK COMMUNITY'))
-const bannerUrl = computed(() => setting('COMMUNITY_BANNER_URL', ''))
+const bannerTitle = computed(() => setting('BANNER_COMMUNITY_TITLE', '스트리머와 시청자가 함께 쓰는 스눅 라운지'))
+const bannerSub = computed(() => setting('BANNER_COMMUNITY_SUB', 'SNUK COMMUNITY'))
+const bannerImage = computed(() => setting('BANNER_COMMUNITY_URL', ''))
 
 function goLink(url: string) {
   if (!url) return
@@ -71,6 +71,56 @@ const editingId = ref<number | null>(null)
 const submitting = ref(false)
 
 const detailId = computed(() => (route.params.id ? Number(route.params.id) : null))
+const noticeId = computed(() => (route.params.noticeId ? Number(route.params.noticeId) : null))
+
+/** 목록 행 클릭 — 뉴스는 기사 페이지로, 공지는 커뮤니티 안에서, 나머지는 커뮤니티 글 상세 */
+function openPost(p: { id: number; source: string | null }) {
+  if (p.source === 'NEWS') router.push(`/news/${p.id}`)
+  else if (p.source === 'NOTICE') router.push(`/community/notice/${p.id}`)
+  else router.push(`/community/${p.id}`)
+}
+
+// 본문 이미지: 이미지 주소만 있는 줄은 <img> 로 렌더(텍스트 보간이라 XSS 없음)
+const IMG_LINE = /^(https?:\/\/\S+\.(png|jpe?g|gif|webp)(\?\S*)?|\/uploads\/\S+)$/i
+const contentBlocks = computed(() => {
+  const raw = detail.value?.content ?? ''
+  return raw.split(/\n/).reduce<Array<{ type: 'img' | 'p'; text: string }>>((acc, line) => {
+    const t = line.trim()
+    if (IMG_LINE.test(t)) acc.push({ type: 'img', text: t })
+    else if (t) {
+      const last = acc[acc.length - 1]
+      if (last && last.type === 'p') last.text += '\n' + line
+      else acc.push({ type: 'p', text: line })
+    } else {
+      const last = acc[acc.length - 1]
+      if (last && last.type === 'p') last.text += '\n'
+    }
+    return acc
+  }, [])
+})
+
+// 글쓰기 폼 이미지 첨부 — 로그인 회원 누구나
+const contentEl = ref<HTMLTextAreaElement | null>(null)
+const imageUploading = ref(false)
+async function onPickImage(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  imageUploading.value = true
+  try {
+    const { url } = await communityApi.uploadImage(file)
+    const el = contentEl.value
+    const pos = el ? el.selectionStart : formContent.value.length
+    const before = formContent.value.slice(0, pos)
+    const after = formContent.value.slice(pos)
+    formContent.value = `${before}${before.endsWith('\n') || !before ? '' : '\n'}${url}\n${after}`
+  } catch (err) {
+    alert(errMsg(err, '이미지 업로드에 실패했어요. (5MB 이하 jpg·png·gif·webp)'))
+  } finally {
+    imageUploading.value = false
+    input.value = ''
+  }
+}
 
 // ── 게시판 트리
 const groups = computed(() => boards.value.filter((b) => b.parentId === null))
@@ -82,11 +132,15 @@ const writableBoards = computed(() => {
   const out: Array<{ id: number; label: string }> = []
   for (const g of groups.value) {
     const kids = childrenOf(g.id)
-    if (!kids.length) out.push({ id: g.id, label: g.name })
-    else kids.forEach((c) => out.push({ id: c.id, label: `${g.name} › ${c.name}` }))
+    if (!kids.length) {
+      if (g.canWrite) out.push({ id: g.id, label: g.name })
+    } else {
+      kids.filter((c) => c.canWrite).forEach((c) => out.push({ id: c.id, label: `${g.name} › ${c.name}` }))
+    }
   }
   return out
 })
+const canWriteAnywhere = computed(() => writableBoards.value.length > 0)
 const currentBoardName = computed(() => {
   if (boardId.value === null) return '전체 게시글'
   const b = boards.value.find((x) => x.id === boardId.value)
@@ -124,6 +178,17 @@ async function loadMine() {
 }
 
 async function loadDetail() {
+  if (noticeId.value != null) {
+    try {
+      detail.value = await communityApi.noticeDetail(noticeId.value)
+      comments.value = []
+      nearby.value = []
+    } catch {
+      detail.value = null
+      router.replace('/community')
+    }
+    return
+  }
   if (detailId.value == null) { detail.value = null; return }
   try {
     detail.value = await communityApi.detail(detailId.value)
@@ -214,10 +279,11 @@ async function submitPost() {
   }
 }
 
-async function removePost(p: { id: number; title: string }) {
+async function removePost(p: { id: number; title: string; source?: string | null }) {
   if (!confirm(`"${p.title}" 글을 삭제할까요?`)) return
   try {
-    await communityApi.remove(p.id)
+    if (p.source === 'NOTICE') await communityApi.deleteNotice(p.id)
+    else await communityApi.remove(p.id)
     if (detailId.value === p.id) router.push('/community')
     await Promise.all([loadList(), loadPopular(), mode.value === 'mine' ? loadMine() : Promise.resolve()])
   } catch (e) {
@@ -328,7 +394,7 @@ watch(q, () => {
   searchTimer = setTimeout(() => { page.value = 0; loadList() }, 350)
 })
 watch(size, () => { page.value = 0; loadList() })
-watch(detailId, loadDetail)
+watch([detailId, noticeId], loadDetail)
 
 onMounted(async () => {
   try {
@@ -345,8 +411,9 @@ onMounted(async () => {
   <section class="com">
   <div class="inner com-inner">
     <!-- 커뮤니티 배너 (문구·링크는 어드민 설정) -->
-    <div class="combanner" :class="{ clickable: !!bannerUrl }" @click="goLink(bannerUrl)">
-      <div>
+    <div class="combanner">
+      <img v-if="bannerImage" :src="bannerImage" class="cbbg" alt="" />
+      <div class="cbtext">
         <span class="cb1">{{ bannerSub }}</span>
         <span class="cb2">{{ bannerTitle }}</span>
       </div>
@@ -370,7 +437,7 @@ onMounted(async () => {
       <aside class="comside">
         <div class="stickyin">
           <div class="card pad">
-            <button class="btn pri wide" @click="openWrite()">글쓰기</button>
+            <button v-if="canWriteAnywhere || !auth.isLoggedIn" class="btn pri wide" @click="openWrite()">글쓰기</button>
             <button class="btn wide" :class="{ on: mode === 'mine' }" @click="openMine()">✎ 내가 쓴 글</button>
             <button class="comnav" :class="{ on: mode === 'list' && boardId === null }" @click="selectBoard(null)">
               ☰ 전체 게시글
@@ -417,23 +484,28 @@ onMounted(async () => {
                 <p class="byname">{{ detail.authorName }}</p>
                 <p class="bysub">{{ dt(detail.createdAt) }} · 조회 {{ detail.viewCount.toLocaleString() }} · 댓글 {{ detail.commentCount }}</p>
               </div>
-              <button class="btn sm" :class="{ buffed: detail.buffed }" @click="toggleBuff()">
+              <button v-if="!detail.source" class="btn sm" :class="{ buffed: detail.buffed }" @click="toggleBuff()">
                 ♥ 버프 {{ detail.buffCount }}
               </button>
               <button class="btn sm" @click="copyLink()">🔗</button>
             </div>
-            <p class="postbody">{{ detail.content }}</p>
+            <div class="postbody">
+              <template v-for="(b, i) in contentBlocks" :key="i">
+                <img v-if="b.type === 'img'" :src="b.text" class="body-img" alt="" loading="lazy" />
+                <p v-else class="body-p">{{ b.text }}</p>
+              </template>
+            </div>
             <div class="postact">
               <template v-if="canManage(detail)">
-                <button class="btn sm" @click="openEdit(detail)">수정</button>
+                <button v-if="!detail.source" class="btn sm" @click="openEdit(detail)">수정</button>
                 <button class="btn sm danger" @click="removePost(detail)">삭제</button>
               </template>
-              <button class="btn sm ghost" @click="reportPost()">신고</button>
+              <button v-if="!detail.source" class="btn sm ghost" @click="reportPost()">신고</button>
             </div>
           </article>
 
-          <!-- 댓글 -->
-          <div class="cmtwrap">
+          <!-- 댓글 (공지·뉴스 등 시스템 글은 제외) -->
+          <div v-if="!detail.source" class="cmtwrap">
             <p class="sec-head">댓글 {{ comments.length }}개</p>
             <div class="card pad">
               <div class="cmt-write">
@@ -486,8 +558,12 @@ onMounted(async () => {
               </select>
             </div>
             <input v-model="formTitle" class="inp wr-title" maxlength="200" placeholder="제목을 입력해주세요" />
-            <textarea v-model="formContent" class="inp wr-body" maxlength="20000"
-              placeholder="함께 나누고 싶은 얘기를 남겨주세요."></textarea>
+            <textarea ref="contentEl" v-model="formContent" class="inp wr-body" maxlength="20000"
+              placeholder="함께 나누고 싶은 얘기를 남겨주세요. 사진은 아래 '사진 넣기'로 넣으면 그 자리에 들어갑니다."></textarea>
+            <label class="pic-btn">
+              {{ imageUploading ? '올리는 중…' : '🖼 사진 넣기' }}
+              <input type="file" accept="image/*" style="display:none" @change="onPickImage" />
+            </label>
             <div class="wr-foot">
               <span class="hint">서로를 존중하는 글만 남겨주세요. 신고가 접수되면 운영자가 확인합니다.</span>
               <button class="btn pri" :disabled="submitting || !formTitle.trim() || !formBoardId" @click="submitPost()">
@@ -557,7 +633,7 @@ onMounted(async () => {
                 <span class="si">🔍</span>
                 <input v-model="q" class="inp" placeholder="게시글 검색" />
               </div>
-              <button class="btn pri sm wbtn" @click="openWrite()">✎ 글쓰기</button>
+              <button v-if="canWriteAnywhere || !auth.isLoggedIn" class="btn pri sm wbtn" @click="openWrite()">✎ 글쓰기</button>
             </div>
           </div>
 
@@ -566,8 +642,7 @@ onMounted(async () => {
               <span class="pcat">게시판</span><span class="ptt">제목</span><span class="pby">작성자</span>
               <span class="pd">작성일</span><span class="pv">조회</span><span class="pb">버프</span>
             </div>
-            <button v-for="p in pageData?.items ?? []" :key="p.id" class="ptrow"
-              @click="router.push(`/community/${p.id}`)">
+            <button v-for="p in pageData?.items ?? []" :key="p.id" class="ptrow" @click="openPost(p)">
               <span class="pcat">{{ p.boardName }}</span>
               <span class="ptt">
                 <span class="tx">{{ p.title }}</span>
@@ -599,7 +674,7 @@ onMounted(async () => {
         <div class="stickyin">
           <div class="card pad">
             <p class="side-title">이 라운지 인기글</p>
-            <button v-for="p in popular" :key="p.id" class="hotpost" @click="router.push(`/community/${p.id}`)">
+            <button v-for="p in popular" :key="p.id" class="hotpost" @click="openPost(p)">
               <span class="hp">[{{ p.boardName }}]</span>
               <span class="hpt">{{ p.title }}</span>
               <span v-if="p.commentCount" class="cmtc">({{ p.commentCount }})</span>
@@ -622,7 +697,13 @@ onMounted(async () => {
 .combanner { display: flex; align-items: center; gap: 16px; width: 100%; text-align: left;
   background: linear-gradient(100deg, #2E1065, #5B21B6 55%, #7C3AED); color: #fff;
   border-radius: 18px; padding: 18px 24px; margin-bottom: 16px; }
-.combanner.clickable { cursor: pointer; }
+.combanner { position: relative; overflow: hidden; }
+.cbbg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .45; }
+.cbtext { position: relative; z-index: 1; }
+.pic-btn { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 999px;
+  border: 1px dashed var(--border2, #444); font-size: 12.5px; color: var(--text2, #ADA89E); cursor: pointer; }
+.body-p { white-space: pre-wrap; margin: 0 0 16px; }
+.body-img { display: block; max-width: 100%; margin: 18px auto; border-radius: 12px; }
 .cb1 { display: block; font-size: 13px; font-weight: 700; opacity: .85; }
 .cb2 { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.03em; margin-top: 2px; }
 .cb2 b { color: #C4B5FD; }
