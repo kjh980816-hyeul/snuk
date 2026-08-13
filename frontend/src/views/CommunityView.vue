@@ -611,6 +611,7 @@ onMounted(async () => {
 
         <!-- 목록 -->
         <template v-else>
+          <div class="midhead">
           <div class="card pad headcard">
             <p class="headtitle">{{ currentBoardName }}</p>
           </div>
@@ -635,6 +636,7 @@ onMounted(async () => {
               </div>
               <button v-if="canWriteAnywhere || !auth.isLoggedIn" class="btn pri sm wbtn" @click="openWrite()">✎ 글쓰기</button>
             </div>
+          </div>
           </div>
 
           <div class="card ov">
@@ -750,7 +752,9 @@ onMounted(async () => {
 .btn:disabled { opacity: .45; cursor: default; }
 .back { margin-bottom: 14px; }
 
-/* ── 중앙: 헤더·정렬·검색 */
+/* ── 중앙: 헤더·정렬·검색 — 스크롤해도 상단에 고정, 게시글만 밑으로 흐른다 */
+.midhead { position: sticky; top: 0; z-index: 30; background: var(--bg, #131211);
+  padding-top: 14px; margin-top: -14px; }
 .headcard { margin-bottom: 14px; }
 .headtitle { font-size: 17px; font-weight: 700; letter-spacing: -.02em; color: var(--text, #EDEAE3); }
 .pinrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -886,10 +890,18 @@ onMounted(async () => {
   .comwrap { grid-template-columns: 190px minmax(0, 1fr); gap: 16px; }
   .comright { display: none; }
 }
+/* ≤1024: 모바일 상단바(고정 54px) 아래로 sticky 기준선 내림 */
+@media (max-width: 1024px) {
+  .stickyin { top: 70px; max-height: calc(100vh - 86px); }
+  .midhead { top: 54px; }
+}
 @media (max-width: 960px) {
   .comwrap { grid-template-columns: 1fr; }
   .comside { display: none; }
-  .mobbar { display: flex; }
+  /* 모바일: 게시판 칩바만 상단바 아래 고정 — 목록 헤더까지 고정하면 화면을 너무 먹는다 */
+  .mobbar { display: flex; position: sticky; top: 54px; z-index: 40;
+    background: var(--bg, #131211); padding: 6px 0 8px; margin: -6px 0 12px; }
+  .midhead { position: static; padding-top: 0; margin-top: 0; }
   .wbtn { display: inline-flex; }
   .pthead, .ptrow { grid-template-columns: 78px minmax(0, 1fr) 56px; }
   .pthead .pby, .ptrow .pby, .pthead .pv, .ptrow .pv, .pthead .pd, .ptrow .pd { display: none; }

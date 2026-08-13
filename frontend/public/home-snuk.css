@@ -35,7 +35,8 @@
 .snuk-page[data-theme="light"] .tab{color:#505058;border-color:rgba(0,0,0,.15);}
 .snuk-page[data-theme="light"] .section-title{color:#18181c;}
 .snuk-page *{margin:0;padding:0;box-sizing:border-box;}
-.snuk-page{background:var(--bg);color:var(--text);font-family:'Pretendard','Noto Sans KR',sans-serif;overflow-x:hidden;padding-right:var(--sidebar);}
+/* overflow-x는 clip — hidden이면 .snuk-page가 스크롤 컨테이너가 되어 내부 position:sticky(커뮤니티 좌우 컬럼 등)가 전부 죽는다 */
+.snuk-page{background:var(--bg);color:var(--text);font-family:'Pretendard','Noto Sans KR',sans-serif;overflow-x:hidden;overflow-x:clip;padding-right:var(--sidebar);}
 .snuk-page a{color:inherit;text-decoration:none;}
 .snuk-page ::-webkit-scrollbar{width:6px;height:6px;}
 .snuk-page ::-webkit-scrollbar-track{background:var(--bg2);}
@@ -683,8 +684,8 @@
 }
 
 /* ── 768px ── */
+/* body padding-top 제거 — .snuk-page(≤1024)에 이미 54px가 있어 이중 여백이었음 */
 @media(max-width:768px){
-  body{padding-top:54px;}
 .snuk-page section{padding:24px 0;}
   .inner{padding:0 14px;}
   .slider-wrap{padding:0 28px;}
