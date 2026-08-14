@@ -1725,7 +1725,14 @@ function dhStage() {
   if (!stage || !wrap) return;
   const list = dhLiveList();
   if (!list.length) {
-    wrap.style.display = 'none';
+    // 데모(메인 화면)와 동일하게 방송이 없어도 무대 자리는 유지 — 대기 화면 노출.
+    // (숨기면 스트리머 줄이 상단으로 올라와 데모 구성과 달라 보임 — 뮤마랭 08-14 피드백)
+    wrap.style.display = '';
+    stage.innerHTML = `<span class="lvposter"><span class="em">📺</span>지금은 방송 준비 중입니다
+      <span style="display:block;margin-top:8px;font-size:12.5px;color:var(--text3);font-weight:400;">스트리머가 방송을 켜면 이 자리에서 바로 재생됩니다</span></span>
+      <span class="lvbadge" style="background:var(--bg4);color:var(--text3);">대기 중</span>`;
+    const nlEmpty = document.getElementById('dh-nowlist');
+    if (nlEmpty) nlEmpty.innerHTML = '<div style="padding:26px 16px;font-size:13px;color:var(--text3);text-align:center;">방송 중인 스트리머가 없습니다</div>';
     const ls = document.querySelector('#home-demo .livesec');
     if (ls) ls.style.display = 'none';
     // 홍보/스트리머 방송이 없어도 스눅 공식 채널이 켜져 있으면 그걸 무대에 건다
