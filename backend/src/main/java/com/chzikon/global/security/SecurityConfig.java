@@ -56,6 +56,8 @@ public class SecurityConfig {
                                 "/api/notices", "/api/notices/*",
                                 "/api/spotlights/active",
                                 "/api/streamers", "/api/streamers/*", "/api/streamers/*/posts",
+                                "/api/streamers/*/notices", "/api/streamers/*/schedules", "/api/streamers/*/wiki",
+                                "/api/streamers/*/commands", "/api/streamers/*/roulette", "/api/streamers/*/songs",
                                 "/api/goods", "/api/goods/*",
                                 "/api/news", "/api/news/*", "/api/news/*/comments",
                                 "/api/community/boards", "/api/community/posts", "/api/community/posts/*",

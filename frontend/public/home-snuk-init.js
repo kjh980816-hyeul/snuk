@@ -1345,6 +1345,90 @@ function mpTab(panel, btn) {
 }
 
 // ════════════════════════════════════════════
+// 알림함 (V23 — 실 API)
+// ════════════════════════════════════════════
+const NOTIF_ICON = {
+  APPLICATION_APPROVED: '✅', APPLICATION_REJECTED: '❌',
+  TOURNAMENT_APPROVED: '🏆', TOURNAMENT_REJECTED: '❌',
+  ROLE_APPROVED: '🎉', ROLE_REJECTED: '📮', SONG_REQUESTED: '🎵',
+};
+async function openNotifications() {
+  if (!window.__snukLoggedIn) { openLogin(); return; }
+  let data;
+  try {
+    data = await A().notifications();
+  } catch (e) {
+    showToast(A().errorMessage ? A().errorMessage(e) : '알림을 불러오지 못했습니다');
+    return;
+  }
+  const rows = (data.items || []).map((n) => `
+    <button style="display:flex;gap:10px;width:100%;text-align:left;background:${n.read ? 'transparent' : 'var(--bg3)'};border:none;border-bottom:1px solid var(--border);padding:11px 6px;cursor:${n.linkPath ? 'pointer' : 'default'};color:var(--text);"
+      ${n.linkPath ? `onclick="document.getElementById('snuk-dyn-modal').classList.remove('open');window.__snukNav('${esc(n.linkPath)}')"` : ''}>
+      <span style="font-size:16px;flex-shrink:0;">${NOTIF_ICON[n.type] || '🔔'}</span>
+      <span style="flex:1;min-width:0;">
+        <span style="display:block;font-size:13px;font-weight:${n.read ? '500' : '700'};">${esc(n.title)}</span>
+        ${n.body ? `<span style="display:block;font-size:12px;color:var(--text3);margin-top:2px;">${esc(n.body)}</span>` : ''}
+        <span style="display:block;font-size:11px;color:var(--text3);margin-top:3px;">${esc((n.createdAt || '').slice(0, 16).replace('T', ' '))}</span>
+      </span>
+      ${n.read ? '' : '<span style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px;"></span>'}
+    </button>`).join('');
+  openDynamicModal(`
+    <div class="modal-title">🔔 알림</div>
+    <div class="modal-sub">안 읽은 알림 ${data.unreadCount || 0}개</div>
+    <div style="max-height:52vh;overflow-y:auto;margin:0 -6px;">${rows || '<div style="padding:26px 6px;font-size:13px;color:var(--text3);text-align:center;">알림이 없습니다.</div>'}</div>
+    ${(data.items || []).length ? `<button class="btn btn-outline" style="width:100%;margin-top:14px;padding:10px;" onclick="markAllNotifsRead(this)">모두 읽음 처리</button>` : ''}`);
+}
+async function markAllNotifsRead(btn) {
+  try {
+    await A().readAllNotifications();
+    if (btn) btn.textContent = '✓ 모두 읽음 처리했습니다';
+  } catch (e) {
+    showToast('처리에 실패했습니다');
+  }
+}
+
+// ════════════════════════════════════════════
+// 스트리머 권한 신청 (V23 — VIEWER 전용, 실 API)
+// ════════════════════════════════════════════
+const ROLE_REQ_LABEL = { PENDING: '⏳ 운영자 확인 중', APPROVED: '✅ 승인됨', REJECTED: '반려됨' };
+async function openRoleRequest() {
+  if (!window.__snukLoggedIn) { openLogin(); return; }
+  let mine = null;
+  try {
+    mine = await A().myRoleRequest();
+  } catch (e) { /* 조회 실패 시 신규 신청 폼으로 */ }
+  const statusHtml = mine
+    ? `<div style="background:var(--bg3);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;line-height:1.7;">
+        최근 신청: <b>${ROLE_REQ_LABEL[mine.status] || mine.status}</b> · ${esc((mine.createdAt || '').slice(0, 10))}
+        ${mine.status === 'PENDING' ? '<br>운영자 확인 후 알림으로 결과를 보내드려요.' : ''}
+        ${mine.status === 'REJECTED' ? '<br>아래에서 다시 신청할 수 있어요.' : ''}
+      </div>` : '';
+  const canApply = !mine || mine.status === 'REJECTED';
+  openDynamicModal(`
+    <div class="modal-title">🛡️ 스트리머 권한 신청</div>
+    <div class="modal-sub">승인되면 컨텐츠·체험단·대회에 신청할 수 있어요</div>
+    ${statusHtml}
+    ${canApply ? `
+      <textarea id="role-req-msg" rows="4" placeholder="활동 중인 채널, 방송 분야 등 운영자가 참고할 내용을 적어주세요 (선택)"
+        style="width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;margin-bottom:14px;"></textarea>
+      <button id="role-req-btn" class="btn-apply" style="width:100%;padding:11px;font-size:13px;border-radius:8px;" onclick="submitRoleRequest()">신청하기</button>`
+    : ''}`);
+}
+async function submitRoleRequest() {
+  const btn = document.getElementById('role-req-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '신청 중...'; }
+  try {
+    const msg = (document.getElementById('role-req-msg') || {}).value || '';
+    await A().applyRoleRequest(msg.trim());
+    document.getElementById('snuk-dyn-modal').classList.remove('open');
+    showToast('✅ 권한 신청이 접수됐습니다! 운영자 확인 후 알림으로 알려드려요.');
+  } catch (e) {
+    showToast(A().errorMessage ? A().errorMessage(e) : '신청에 실패했습니다');
+    if (btn) { btn.disabled = false; btn.textContent = '신청하기'; }
+  }
+}
+
+// ════════════════════════════════════════════
 // 공지사항 (실데이터)
 // ════════════════════════════════════════════
 function renderNotices() {

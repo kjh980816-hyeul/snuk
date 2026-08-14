@@ -3,8 +3,9 @@ import type {
   ApplyAnswer, Campaign, ClientLogo, CollabGame, CommunityBoard, CommunityComment, CommunityPostDetail,
   CommunityPostPage, CommunityPostSummary, ContentVideo, FreeResource, Goods, Me, MyApplication,
   MyParticipation, MypageSummary, News, NewsComment, Notice, OrderCreateRequest, OrderResponse, OrderView,
-  ParticipantPublic, Review, Spotlight, SpotlightPlatform, StreamerLive, StreamerPost,
-  StreamerProfile, StreamerPublic, Tournament,
+  NotificationItem, ParticipantPublic, Review, RoleRequestMine, RouletteItem, SongRequestItem, Spotlight,
+  SpotlightPlatform, StreamerCommandItem, StreamerLive, StreamerNotice, StreamerPost,
+  StreamerProfile, StreamerPublic, StreamerScheduleItem, Tournament, WikiSection,
 } from './types'
 
 // ----- auth -----
@@ -152,6 +153,62 @@ export const streamerApi = {
   /** 글 신고(로그인 회원, 1인 1신고) — 어드민 신고함으로 접수 */
   reportPost: (postId: number, reason?: string) =>
     api.post(`/api/streamer-posts/${postId}/report`, { reason: reason ?? '' }),
+}
+
+// ----- 스트리머 페이지 심화 + 방송도우미 도구 (V23, 조회=공개 / 관리=본인·ADMIN) -----
+export const streamerPageApi = {
+  // 공지
+  notices: (id: number) => api.get<StreamerNotice[]>(`/api/streamers/${id}/notices`).then((r) => r.data),
+  createNotice: (id: number, body: { title: string; body: string; important: boolean }) =>
+    api.post(`/api/streamers/${id}/notices`, body).then((r) => r.data),
+  updateNotice: (noticeId: number, body: { title: string; body: string; important: boolean }) =>
+    api.put(`/api/streamer-notices/${noticeId}`, body),
+  deleteNotice: (noticeId: number) => api.delete(`/api/streamer-notices/${noticeId}`),
+  // 방송 일정
+  schedules: (id: number) => api.get<StreamerScheduleItem[]>(`/api/streamers/${id}/schedules`).then((r) => r.data),
+  createSchedule: (id: number, body: { startAt: string; title: string; game: string | null; mates: string | null }) =>
+    api.post(`/api/streamers/${id}/schedules`, body).then((r) => r.data),
+  updateSchedule: (scheduleId: number, body: { startAt: string; title: string; game: string | null; mates: string | null }) =>
+    api.put(`/api/streamer-schedules/${scheduleId}`, body),
+  deleteSchedule: (scheduleId: number) => api.delete(`/api/streamer-schedules/${scheduleId}`),
+  // 위키
+  wiki: (id: number) => api.get<WikiSection[]>(`/api/streamers/${id}/wiki`).then((r) => r.data),
+  saveWiki: (id: number, sections: WikiSection[]) =>
+    api.put<WikiSection[]>(`/api/streamers/${id}/wiki`, { sections }).then((r) => r.data),
+  // 명령어
+  commands: (id: number) => api.get<StreamerCommandItem[]>(`/api/streamers/${id}/commands`).then((r) => r.data),
+  createCommand: (id: number, body: { name: string; response: string; enabled: boolean }) =>
+    api.post(`/api/streamers/${id}/commands`, body).then((r) => r.data),
+  updateCommand: (commandId: number, body: Partial<{ name: string; response: string; enabled: boolean; sortOrder: number }>) =>
+    api.put(`/api/streamer-commands/${commandId}`, body),
+  deleteCommand: (commandId: number) => api.delete(`/api/streamer-commands/${commandId}`),
+  // 룰렛
+  roulette: (id: number) => api.get<RouletteItem[]>(`/api/streamers/${id}/roulette`).then((r) => r.data),
+  createRouletteItem: (id: number, body: { label: string; weight: number }) =>
+    api.post(`/api/streamers/${id}/roulette`, body).then((r) => r.data),
+  deleteRouletteItem: (itemId: number) => api.delete(`/api/streamer-roulette/${itemId}`),
+  // 노래 신청
+  songs: (id: number) => api.get<{ queued: SongRequestItem[]; recent: SongRequestItem[] }>(`/api/streamers/${id}/songs`).then((r) => r.data),
+  requestSong: (id: number, title: string) =>
+    api.post(`/api/streamers/${id}/songs`, { title }).then((r) => r.data),
+  decideSong: (songId: number, status: 'PLAYED' | 'SKIPPED') =>
+    api.patch(`/api/streamer-songs/${songId}`, { status }),
+  cancelSong: (songId: number) => api.delete(`/api/streamer-songs/${songId}`),
+}
+
+// ----- 알림함 (V23, 본인) -----
+export const notificationApi = {
+  list: () => api.get<{ unreadCount: number; items: NotificationItem[] }>('/api/notifications').then((r) => r.data),
+  unreadCount: () => api.get<{ unreadCount: number }>('/api/notifications/unread-count').then((r) => r.data),
+  read: (id: number) => api.post(`/api/notifications/${id}/read`),
+  readAll: () => api.post('/api/notifications/read-all'),
+}
+
+// ----- 권한 신청 (V23, VIEWER→STREAMER) -----
+export const roleRequestApi = {
+  apply: (message: string) =>
+    api.post<{ requestId: number; status: string }>('/api/role-requests', { message }).then((r) => r.data),
+  mine: () => api.get<RoleRequestMine | ''>('/api/role-requests/me').then((r) => (r.status === 204 ? null : (r.data as RoleRequestMine))),
 }
 
 // ----- 무료소스 자료실 (public, 항목 19) -----

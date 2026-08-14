@@ -378,3 +378,65 @@ export interface CommunityReport {
   postHidden: boolean
   createdAt: string
 }
+
+// ----- V23: 스트리머 페이지 심화 + 방송도우미 도구 + 알림 + 권한 신청 -----
+export interface StreamerNotice {
+  id: number
+  title: string
+  body: string | null
+  important: boolean
+  createdAt: string
+}
+
+export interface StreamerScheduleItem {
+  id: number
+  startAt: string
+  title: string
+  game: string | null
+  mates: string | null
+}
+
+/** 위키 섹션 — t=제목, b=본문 */
+export interface WikiSection { t: string; b: string }
+
+export interface StreamerCommandItem {
+  id: number
+  name: string
+  response: string
+  enabled: boolean
+  sortOrder: number
+}
+
+export interface RouletteItem {
+  id: number
+  label: string
+  weight: number
+  sortOrder: number
+}
+
+export interface SongRequestItem {
+  id: number
+  title: string
+  status: 'QUEUED' | 'PLAYED' | 'SKIPPED'
+  requesterName: string
+  mine: boolean
+  createdAt: string
+}
+
+export interface NotificationItem {
+  id: number
+  type: string
+  title: string
+  body: string | null
+  linkPath: string | null
+  read: boolean
+  createdAt: string
+}
+
+export interface RoleRequestMine {
+  requestId: number
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  message: string | null
+  createdAt: string
+  decidedAt: string | null
+}

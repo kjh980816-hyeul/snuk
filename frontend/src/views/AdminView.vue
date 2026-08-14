@@ -33,8 +33,22 @@ const alertInterceptor = api.interceptors.response.use(
 onBeforeUnmount(() => api.interceptors.response.eject(alertInterceptor))
 
 // 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (컨텐츠·대회 통합 탭 + 게임체험단·영상·굿즈샵·협력사)
-type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'community' | 'members' | 'settings' | 'logs'
+type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'community' | 'members' | 'grants' | 'settings' | 'logs'
 const tab = ref<Tab>('campaigns')
+
+// ----- 권한 신청 (V23) -----
+const roleRequests = ref<Array<{
+  requestId: number; memberId: number; nickname: string; profileImageUrl: string | null
+  provider: string | null; followerCount: number | null; currentRole: string | null
+  message: string | null; status: string; createdAt: string; decidedAt: string | null
+}>>([])
+async function loadRoleRequests() {
+  roleRequests.value = await api.get('/api/admin/role-requests').then((r) => r.data)
+}
+async function decideRoleRequest(id: number, approve: boolean) {
+  await api.post(`/api/admin/role-requests/${id}/${approve ? 'approve' : 'reject'}`)
+  await loadRoleRequests()
+}
 
 // 테마 — 메인 사이트와 동일 키(snuk-theme) 공유
 const theme = ref<'light' | 'dark'>(
@@ -914,6 +928,7 @@ function onTab(t: Tab) {
   if (t === 'reports') loadReports()
   if (t === 'resources') loadResources()
   if (t === 'members') loadMembers()
+  if (t === 'grants') loadRoleRequests()
   if (t === 'settings') loadSettings()
   if (t === 'logs') loadLogs()
 }
@@ -938,6 +953,7 @@ function onTab(t: Tab) {
       <button :class="{ on: tab === 'campaigns' }" @click="onTab('campaigns')">컨텐츠·대회</button>
       <button :class="{ on: tab === 'games' }" @click="onTab('games')">게임체험단</button>
       <button :class="{ on: tab === 'members' }" @click="onTab('members')">회원</button>
+      <button :class="{ on: tab === 'grants' }" @click="onTab('grants')">권한 신청</button>
       <button :class="{ on: tab === 'warnings' }" @click="onTab('warnings')">후기 경고</button>
       <button :class="{ on: tab === 'reports' }" @click="onTab('reports')">신고함</button>
       <button :class="{ on: tab === 'community' }" @click="onTab('community')">커뮤니티</button>
@@ -1676,6 +1692,36 @@ function onTab(t: Tab) {
       </table>
       <p class="hint">등급을 바꾸면 수동 고정(자동 재산정 제외)됩니다. "자동 복귀"를 누르면 다음 로그인부터 팔로워 기준으로 다시 계산돼요.
         <br />홈/스트리머 페이지의 "파트너 스트리머"에는 <b>파트너로 지정한 회원만</b> 노출됩니다(등급과 별개).</p>
+    </section>
+
+    <!-- 권한 신청 (V23) — 시청자의 스트리머 권한 신청 승인/거절 -->
+    <section v-else-if="tab === 'grants'">
+      <h4>스트리머 권한 신청</h4>
+      <p class="hint">승인하면 해당 회원이 <b>스트리머 등급으로 수동 고정</b>되고(회원 탭에서 자동 복귀 가능), 회원에게 알림이 갑니다.</p>
+      <table class="grid">
+        <thead><tr><th>회원</th><th>플랫폼</th><th>팔로워</th><th>현재 등급</th><th>신청 내용</th><th>신청일</th><th>상태</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="r in roleRequests" :key="r.requestId">
+            <td>
+              <img v-if="r.profileImageUrl" :src="r.profileImageUrl" class="avatar" alt="" />
+              {{ r.nickname }} <span class="hint" style="margin:0">#{{ r.memberId }}</span>
+            </td>
+            <td>{{ { CHZZK: '치지직', CIME: '씨미', SOOP: '숲' }[r.provider ?? ''] ?? r.provider ?? '-' }}</td>
+            <td>{{ r.followerCount ?? '-' }}</td>
+            <td>{{ r.currentRole ?? '-' }}</td>
+            <td style="max-width:320px;font-size:12px;line-height:1.5;white-space:pre-wrap;">{{ r.message || '-' }}</td>
+            <td>{{ r.createdAt?.slice(0, 10) }}</td>
+            <td>{{ lbl(r.status) }}</td>
+            <td class="acts">
+              <template v-if="r.status === 'PENDING'">
+                <button @click="decideRoleRequest(r.requestId, true)">승인</button>
+                <button class="danger" @click="decideRoleRequest(r.requestId, false)">거절</button>
+              </template>
+            </td>
+          </tr>
+          <tr v-if="!roleRequests.length"><td colspan="8" class="empty">권한 신청이 없습니다.</td></tr>
+        </tbody>
+      </table>
     </section>
 
     <section v-else-if="tab === 'settings'">

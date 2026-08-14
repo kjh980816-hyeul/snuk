@@ -33,6 +33,7 @@ public class TournamentParticipantService {
     private final MemberService memberService;
     private final MemberRepository memberRepository;
     private final AdminLogService adminLogService;
+    private final com.chzikon.notification.service.NotificationService notificationService;
 
     /**
      * 대회 참가 신청 — 승인제(캠페인 APPROVAL 패턴).
@@ -95,6 +96,9 @@ public class TournamentParticipantService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         tournament.fillOneSlot();
         participant.approve();
+        notificationService.notify(participant.getMemberId(), "TOURNAMENT_APPROVED",
+                "'" + tournament.getTitle() + "' 참가가 확정됐습니다",
+                null, "/championship/" + tournament.getId());
         adminLogService.record(actorId, "PARTICIPANT_APPROVE", "tournament_participant", participantId,
                 "tournament=" + tournament.getId() + " member=" + participant.getMemberId());
     }
@@ -104,6 +108,10 @@ public class TournamentParticipantService {
         TournamentParticipant participant = participantRepository.findById(participantId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         participant.reject();
+        Tournament tournament = tournamentRepository.findById(participant.getTournamentId()).orElse(null);
+        notificationService.notify(participant.getMemberId(), "TOURNAMENT_REJECTED",
+                "'" + (tournament != null ? tournament.getTitle() : "대회") + "' 참가 신청이 거절됐습니다",
+                null, "/championship");
         adminLogService.record(actorId, "PARTICIPANT_REJECT", "tournament_participant", participantId,
                 "member=" + participant.getMemberId());
     }

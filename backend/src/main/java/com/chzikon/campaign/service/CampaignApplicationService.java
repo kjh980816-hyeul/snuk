@@ -32,6 +32,7 @@ public class CampaignApplicationService {
     private final com.chzikon.member.repository.MemberRepository memberRepository;
     private final KeyCipher keyCipher;
     private final AdminLogService adminLogService;
+    private final com.chzikon.notification.service.NotificationService notificationService;
 
     /**
      * 캠페인 신청 (CMP-05/06/08).
@@ -126,6 +127,10 @@ public class CampaignApplicationService {
             assignedKeyId = assignAvailableKey(campaign.getId(), application.getMemberId());
         }
         application.approve(assignedKeyId);
+        notificationService.notify(application.getMemberId(), "APPLICATION_APPROVED",
+                "'" + campaign.getTitle() + "' 신청이 승인됐습니다",
+                assignedKeyId != null ? "게임 코드가 배정됐어요. 마이페이지에서 확인하세요." : null,
+                "/mypage");
         adminLogService.record(actorId, "APPLICATION_APPROVE", "campaign_application", applicationId,
                 "campaign=" + campaign.getId() + " member=" + application.getMemberId());
     }
@@ -135,6 +140,10 @@ public class CampaignApplicationService {
         CampaignApplication application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         application.reject();
+        Campaign campaign = campaignRepository.findById(application.getCampaignId()).orElse(null);
+        notificationService.notify(application.getMemberId(), "APPLICATION_REJECTED",
+                "'" + (campaign != null ? campaign.getTitle() : "컨텐츠") + "' 신청이 거절됐습니다",
+                null, "/mypage");
         adminLogService.record(actorId, "APPLICATION_REJECT", "campaign_application", applicationId,
                 "member=" + application.getMemberId());
     }

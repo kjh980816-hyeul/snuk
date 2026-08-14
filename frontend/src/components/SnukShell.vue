@@ -2,7 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { campaignApi, spotlightApi, tournamentApi, uploadApi } from '@/api'
+import { campaignApi, notificationApi, roleRequestApi, spotlightApi, tournamentApi, uploadApi } from '@/api'
 import { loadSnukData } from '@/snuk/snukData'
 import type { SpotlightPlatform } from '@/api/types'
 
@@ -26,6 +26,18 @@ function syncAuthGlobals(): void {
   w.__snukLoggedIn = auth.isLoggedIn
   w.__snukUser = auth.me ? { nickname: auth.me.nickname, role: auth.me.role } : null
   w.__snukMe = auth.me ? { id: auth.me.id, role: auth.me.role } : null
+}
+
+async function refreshNotifBadge(): Promise<void> {
+  try {
+    const { unreadCount } = await notificationApi.unreadCount()
+    document.querySelectorAll<HTMLElement>('.rs-notif-badge').forEach((el) => {
+      el.style.display = unreadCount > 0 ? 'inline-block' : 'none'
+      el.textContent = String(unreadCount > 99 ? '99+' : unreadCount)
+    })
+  } catch {
+    // 알림 조회 실패는 무시(메뉴는 유지)
+  }
 }
 
 function reflectLoginState(): void {
@@ -60,6 +72,15 @@ function reflectLoginState(): void {
   document.querySelectorAll<HTMLElement>('.rs-admin-item').forEach((el) => {
     el.style.display = auth.isAdmin ? '' : 'none'
   })
+  // 권한 신청 — 로그인한 VIEWER 에게만 (데모 grant:viewer 규칙, 실제 인가는 백엔드 강제)
+  document.querySelectorAll<HTMLElement>('.rs-grant-item').forEach((el) => {
+    el.style.display = auth.isLoggedIn && auth.me?.role === 'VIEWER' ? '' : 'none'
+  })
+  // 알림 — 로그인 시 노출 + 안읽음 뱃지
+  document.querySelectorAll<HTMLElement>('.rs-notif-item').forEach((el) => {
+    el.style.display = auth.isLoggedIn ? '' : 'none'
+  })
+  if (auth.isLoggedIn) void refreshNotifBadge()
   // 스트리머 등록 버튼 노출 갱신 (렌더러 로드 후에만 존재)
   ;(w.__snukInitStreamerPost as (() => void) | undefined)?.()
 }
@@ -144,6 +165,15 @@ onMounted(async () => {
       campaignApi.writeReview(campaignId, { title, content }),
     createSpotlight: (body: { title: string; platform: SpotlightPlatform; streamUrl: string; scheduledAt?: string | null }) =>
       spotlightApi.create(body),
+    // 알림함 (V23)
+    notifications: () => notificationApi.list(),
+    readAllNotifications: async () => {
+      await notificationApi.readAll()
+      void refreshNotifBadge()
+    },
+    // 권한 신청 (V23)
+    myRoleRequest: () => roleRequestApi.mine(),
+    applyRoleRequest: (message: string) => roleRequestApi.apply(message),
     buyGoods: (id: number) => {
       router.push({ path: '/goods', query: { buy: String(id) } })
     },
