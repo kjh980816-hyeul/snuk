@@ -20,6 +20,8 @@ export interface Campaign {
   gameName: string | null
   promoImageUrl: string | null
   eventDate: string | null
+  /** 신청 질문(V22, 대회 applyQuestions 패턴 미러) */
+  applyQuestions: ApplyQuestion[]
   applyStart: string | null
   applyEnd: string | null
   status: CampaignStatus

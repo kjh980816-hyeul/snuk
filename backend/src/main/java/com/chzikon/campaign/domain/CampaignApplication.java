@@ -61,6 +61,10 @@ public class CampaignApplication {
     @Column(name = "warned_at")
     private LocalDateTime warnedAt;
 
+    /** 신청 질문 답변 JSON(V22, 대회 answers 패턴 미러). */
+    @Column(name = "answers", columnDefinition = "TEXT")
+    private String answers;
+
     public CampaignApplication(Long campaignId, Long memberId, int followerSnapshot, Status status) {
         this.campaignId = campaignId;
         this.memberId = memberId;
@@ -70,6 +74,11 @@ public class CampaignApplication {
         if (status != Status.PENDING) {
             this.decidedAt = this.appliedAt;
         }
+    }
+
+    /** 신청 시점 답변 기록(신청 이후 수정 불가). */
+    public void recordAnswers(String answersJson) {
+        this.answers = answersJson;
     }
 
     public void approve(Long assignedKeyId) {

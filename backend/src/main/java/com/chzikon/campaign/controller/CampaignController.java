@@ -63,11 +63,17 @@ public class CampaignController {
         return ResponseEntity.noContent().build();
     }
 
-    /** 신청 — STREAMER+ (서비스에서 권한·슬롯·중복 백엔드 재검증). */
+    /** 신청 바디 — 질문 답변(질문 없으면 생략 가능, 대회 패턴). */
+    public record ApplyRequest(List<com.chzikon.tournament.dto.ApplyFormJson.ApplyAnswer> answers) {
+    }
+
+    /** 신청 — STREAMER+ (서비스에서 권한·슬롯·중복·답변 백엔드 재검증). */
     @PostMapping("/{id}/apply")
     public ResponseEntity<Map<String, Object>> apply(@PathVariable Long id,
+                                                     @RequestBody(required = false) ApplyRequest req,
                                                      @AuthenticationPrincipal MemberPrincipal principal) {
-        var application = applicationService.apply(id, principal.memberId());
+        var application = applicationService.apply(id, principal.memberId(),
+                req != null ? req.answers() : null);
         return ResponseEntity.ok(Map.of(
                 "applicationId", application.getId(),
                 "status", application.getStatus().name()));

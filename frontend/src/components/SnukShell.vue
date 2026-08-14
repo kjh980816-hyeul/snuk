@@ -124,8 +124,8 @@ onMounted(async () => {
   }
   w.__snukActions = {
     // 신청 후 선착순 키 발급 여부 확인 → 발급 키 즉시 노출 (완료 후 전 화면 데이터 동기화)
-    applyCampaign: async (id: number) => {
-      const applied = await campaignApi.apply(id)
+    applyCampaign: async (id: number, answers?: Array<{ text: string | null; imageUrl: string | null }>) => {
+      const applied = await campaignApi.apply(id, answers)
       try {
         const mine = await campaignApi.myApplication(id, true)
         return { ...applied, assignedKey: mine.hasAssignedKey ? mine.assignedKey : null }
@@ -135,8 +135,8 @@ onMounted(async () => {
         void reloadData()
       }
     },
-    applyTournament: async (id: number) => {
-      const res = await tournamentApi.apply(id)
+    applyTournament: async (id: number, answers?: Array<{ text: string | null; imageUrl: string | null }>) => {
+      const res = await tournamentApi.apply(id, answers)
       void reloadData()
       return res
     },

@@ -20,7 +20,8 @@ public record CampaignCreateRequest(
         KeyMode keyMode,
         @PositiveOrZero int totalSlots,
         boolean featured,
-        int sortOrder
+        int sortOrder,
+        java.util.List<com.chzikon.tournament.dto.ApplyFormJson.ApplyQuestion> applyQuestions
 ) {
     public Campaign toEntity() {
         return Campaign.builder()
@@ -37,6 +38,7 @@ public record CampaignCreateRequest(
                 .totalSlots(totalSlots)
                 .featured(featured)
                 .sortOrder(sortOrder)
+                .applyQuestions(com.chzikon.tournament.dto.ApplyFormJson.questionsToJson(applyQuestions))
                 .build();
     }
 }

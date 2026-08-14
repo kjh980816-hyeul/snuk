@@ -19,6 +19,7 @@ public record CampaignUpdateRequest(
         KeyMode keyMode,
         Integer totalSlots,
         Boolean featured,
-        Integer sortOrder
+        Integer sortOrder,
+        java.util.List<com.chzikon.tournament.dto.ApplyFormJson.ApplyQuestion> applyQuestions
 ) {
 }

@@ -48,7 +48,8 @@ public class CampaignService {
         Campaign campaign = getById(id);
         campaign.update(req.title(), req.description(), req.gameName(), req.promoImageUrl(),
                 req.eventDate(), req.applyStart(), req.applyEnd(), req.status(),
-                req.distributionType(), req.keyMode(), req.totalSlots(), req.featured(), req.sortOrder());
+                req.distributionType(), req.keyMode(), req.totalSlots(), req.featured(), req.sortOrder(),
+                com.chzikon.tournament.dto.ApplyFormJson.questionsToJson(req.applyQuestions()));
         adminLogService.record(actorId, "CAMPAIGN_UPDATE", "campaign", id,
                 "status=" + campaign.getStatus());
         return campaign;
@@ -81,7 +82,8 @@ public class CampaignService {
         Campaign campaign = requireOwnedOrAdmin(id, memberId);
         campaign.update(req.title(), req.description(), req.gameName(), req.promoImageUrl(),
                 req.eventDate(), req.applyStart(), req.applyEnd(), req.status(),
-                req.distributionType(), req.keyMode(), req.totalSlots(), req.featured(), req.sortOrder());
+                req.distributionType(), req.keyMode(), req.totalSlots(), req.featured(), req.sortOrder(),
+                com.chzikon.tournament.dto.ApplyFormJson.questionsToJson(req.applyQuestions()));
         return campaign;
     }
 

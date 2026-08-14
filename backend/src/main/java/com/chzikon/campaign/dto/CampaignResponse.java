@@ -21,13 +21,15 @@ public record CampaignResponse(
         int totalSlots,
         int filledSlots,
         boolean featured,
-        Long ownerMemberId
+        Long ownerMemberId,
+        java.util.List<com.chzikon.tournament.dto.ApplyFormJson.ApplyQuestion> applyQuestions
 ) {
     public static CampaignResponse from(Campaign c) {
         return new CampaignResponse(
                 c.getId(), c.getTitle(), c.getDescription(), c.getGameName(), c.getPromoImageUrl(),
                 c.getEventDate(), c.getApplyStart(), c.getApplyEnd(),
                 c.getStatus().name(), c.getDistributionType().name(), c.getKeyMode().name(),
-                c.getTotalSlots(), c.getFilledSlots(), c.isFeatured(), c.getOwnerMemberId());
+                c.getTotalSlots(), c.getFilledSlots(), c.isFeatured(), c.getOwnerMemberId(),
+                com.chzikon.tournament.dto.ApplyFormJson.questionsFromJson(c.getApplyQuestions()));
     }
 }

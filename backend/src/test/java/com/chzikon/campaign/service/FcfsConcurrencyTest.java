@@ -76,7 +76,7 @@ class FcfsConcurrencyTest {
         try {
             ready.countDown();
             go.await();
-            applicationService.apply(campaignId, memberId);
+            applicationService.apply(campaignId, memberId, null);
             success.incrementAndGet();
         } catch (BusinessException e) {
             full.incrementAndGet();

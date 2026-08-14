@@ -63,7 +63,7 @@ const selected = ref<Campaign | null>(null)
 const keys = ref<Array<{ id: number; maskedKey: string; status: string; assignedMemberId: number | null }>>([])
 const rawKeys = ref('')
 const keyResult = ref<string | null>(null)
-const applications = ref<Array<{ applicationId: number; memberId: number; nickname: string; profileImageUrl: string | null; status: string; followerSnapshot: number }>>([])
+const applications = ref<Array<{ applicationId: number; memberId: number; nickname: string; profileImageUrl: string | null; status: string; followerSnapshot: number; answers?: Array<{ text: string | null; imageUrl: string | null }> }>>([])
 
 async function loadCampaigns() {
   campaigns.value = await campaignApi.list()
@@ -128,6 +128,22 @@ async function rejectApp(id: number, campaignId: number) {
   await adminApi.reject(id)
   applications.value = await adminApi.applications(campaignId)
 }
+
+// 컨텐츠 신청 질문(V22, 대회 패턴 미러) — 줄바꿈 구분, 줄 앞에 [선택] 붙이면 선택 항목(기본 필수)
+const campQuestionsText = computed({
+  get: () => (editing.value?.applyQuestions ?? [])
+    .map((q) => (q.required ? q.q : `[선택] ${q.q}`)).join('\n'),
+  set: (v: string) => {
+    if (editing.value) {
+      editing.value.applyQuestions = v.split('\n')
+        .map((s) => s.trim()).filter(Boolean)
+        .map((s) => s.startsWith('[선택]')
+          ? { q: s.slice(4).trim(), required: false }
+          : { q: s, required: true })
+        .filter((q) => q.q)
+    }
+  },
+})
 
 // ----- tournaments -----
 const tournaments = ref<Tournament[]>([])
@@ -967,11 +983,17 @@ function onTab(t: Tab) {
       <div v-if="selected" class="manage">
         <h4>‘{{ selected.title }}’ 참가자</h4>
         <table class="grid">
-          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
+          <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th>답변</th><th></th></tr></thead>
           <tbody>
             <tr v-for="a in applications" :key="a.applicationId">
               <td>{{ a.nickname }} <span class="hint" style="margin:0">#{{ a.memberId }}</span></td>
               <td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
+              <td style="max-width:340px;">
+                <div v-for="(ans, i) in a.answers" :key="i" style="font-size:11.5px;line-height:1.5;">
+                  <b>Q{{ i + 1 }}.</b> {{ ans.text || '' }}
+                </div>
+                <span v-if="!a.answers?.length" class="hint" style="margin:0">-</span>
+              </td>
               <td class="acts">
                 <template v-if="a.status === 'PENDING'">
                   <button @click="approveApp(a.applicationId, selected!.id)">승인</button>
@@ -979,7 +1001,7 @@ function onTab(t: Tab) {
                 </template>
               </td>
             </tr>
-            <tr v-if="!applications.length"><td colspan="4" class="empty">신청자가 없습니다.</td></tr>
+            <tr v-if="!applications.length"><td colspan="5" class="empty">신청자가 없습니다.</td></tr>
           </tbody>
         </table>
       </div>
@@ -1053,6 +1075,9 @@ function onTab(t: Tab) {
         <div class="row3">
           <label>모집 인원<input type="number" v-model.number="editing.totalSlots" /></label>
           <label class="chk"><input type="checkbox" v-model="editing.featured" /> 메인 큰 카드 고정 (미체크 시 자동 슬라이드)</label>
+          <label>신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 을 붙이면 선택 항목. 신청자가 신청 시 답변합니다)
+            <textarea v-model="campQuestionsText" placeholder="예) 신청 이유를 알려주세요&#10;[선택] 하고 싶은 말"></textarea>
+          </label>
         </div>
         <div class="form-acts">
           <button class="btn sm" @click="saveCampaign">{{ editing.id ? '수정 완료' : '등록' }}</button>
@@ -1176,11 +1201,17 @@ function onTab(t: Tab) {
           <div class="apps" style="margin-top:18px">
             <h5>신청자 (승인하면 키 자동 배정)</h5>
             <table class="grid">
-              <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th></th></tr></thead>
+              <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th>답변</th><th></th></tr></thead>
               <tbody>
                 <tr v-for="a in applications" :key="a.applicationId">
                   <td>{{ a.nickname }} <span class="hint" style="margin:0">#{{ a.memberId }}</span></td>
                   <td>{{ a.followerSnapshot }}</td><td>{{ lbl(a.status) }}</td>
+                  <td style="max-width:340px;">
+                    <div v-for="(ans, i) in a.answers" :key="i" style="font-size:11.5px;line-height:1.5;">
+                      <b>Q{{ i + 1 }}.</b> {{ ans.text || '' }}
+                    </div>
+                    <span v-if="!a.answers?.length" class="hint" style="margin:0">-</span>
+                  </td>
                   <td class="acts">
                     <template v-if="a.status === 'PENDING'">
                       <button @click="approveApp(a.applicationId, gmCampaign!.id)">승인</button>
@@ -1188,7 +1219,7 @@ function onTab(t: Tab) {
                     </template>
                   </td>
                 </tr>
-                <tr v-if="!applications.length"><td colspan="4" class="empty">신청자가 없습니다.</td></tr>
+                <tr v-if="!applications.length"><td colspan="5" class="empty">신청자가 없습니다.</td></tr>
               </tbody>
             </table>
           </div>

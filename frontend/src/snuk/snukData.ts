@@ -5,7 +5,7 @@
  */
 import { campaignApi, collabApi, communityApi, goodsApi, liveApi, newsApi, noticeApi, resourceApi, siteSettingsApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
 import type {
-  Campaign, CollabGame, CommunityPostSummary, ContentVideo, FreeResource, Goods, News, Notice,
+  ApplyQuestion, Campaign, CollabGame, CommunityPostSummary, ContentVideo, FreeResource, Goods, News, Notice,
   ParticipantPublic, Review, Spotlight, StreamerLive, StreamerPublic, Tournament,
 } from '@/api/types'
 import { GOODS_READY, OFFICIAL_CHZZK_CHANNEL_ID } from '@/config'
@@ -31,6 +31,8 @@ export interface SnukCard {
   adminMade?: boolean
   /** 등록 스트리머 id (본인 수정/삭제 버튼 노출용) */
   ownerId?: number | null
+  /** 신청 질문(주최자 작성) — 있으면 신청 모달에 답변 입력 노출 */
+  applyQuestions?: ApplyQuestion[]
 }
 
 export interface SnukGame {
@@ -50,6 +52,8 @@ export interface SnukGame {
   pick: '선착순' | '선정'
   reviewsCount: number
   reviews: Array<{ name: string; title: string; text: string }>
+  /** 연결 캠페인의 신청 질문 — 있으면 신청 시 답변 입력 */
+  applyQuestions: ApplyQuestion[]
 }
 
 export interface SnukData {
@@ -116,6 +120,7 @@ function campaignCard(c: Campaign): SnukCard {
     applyEnd: c.applyEnd ? c.applyEnd.slice(0, 10) : null,
     adminMade: c.ownerMemberId == null, // 스눅 공식(관리자 등록) — 스트리머 등록은 작게만
     ownerId: c.ownerMemberId,
+    applyQuestions: c.applyQuestions ?? [],
   }
 }
 
@@ -132,6 +137,7 @@ function tournamentCard(t: Tournament): SnukCard {
     resultText: t.resultText,
     adminMade: t.ownerMemberId == null, // 스눅 공식(관리자 등록) — 스트리머 등록은 작게만
     ownerId: t.ownerMemberId,
+    applyQuestions: t.applyQuestions ?? [],
   }
 }
 
@@ -191,6 +197,7 @@ export async function loadSnukData(): Promise<SnukData> {
       reviews: reviews.slice(0, 3).map((r) => ({
         name: `참가자 #${r.memberId}`, title: r.title, text: r.content ?? r.title,
       })),
+      applyQuestions: linked?.applyQuestions ?? [],
     }
   }))
 

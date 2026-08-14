@@ -400,8 +400,8 @@ function openStreamerPost(kind) {
     <input id="spc-title" style="${SP_INP}" placeholder="제목 *">
     <input id="spc-game" style="${SP_INP}" placeholder="게임명">
     <textarea id="spc-desc" style="${SP_INP}resize:vertical;" rows="6" placeholder="설명"></textarea>
-    ${isT ? `<textarea id="spc-questions" style="${SP_INP}resize:vertical;" rows="3"
-      placeholder="참가 신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 붙이면 선택 항목)"></textarea>` : ''}
+    <textarea id="spc-questions" style="${SP_INP}resize:vertical;" rows="3"
+      placeholder="${isT ? '참가' : ''} 신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 붙이면 선택 항목)"></textarea>
     <div style="display:flex;gap:8px;">
       <input id="spc-date" type="date" style="${SP_INP}flex:1;" title="진행일">
       <input id="spc-cap" type="number" min="0" style="${SP_INP}flex:1;" placeholder="${isT ? '정원(명)' : '모집 인원'}">
@@ -536,7 +536,7 @@ async function spSubmit(kind) {
       : { title, gameName: game, description: desc, promoImageUrl: img,
           eventDate: date, applyStart: _spRaw ? _spRaw.applyStart : null, applyEnd: _spRaw ? _spRaw.applyEnd : null,
           status, distributionType: _spRaw ? _spRaw.distributionType : 'APPROVAL',
-          keyMode: _spRaw ? _spRaw.keyMode : 'QUANTITY', totalSlots: cap,
+          keyMode: _spRaw ? _spRaw.keyMode : 'QUANTITY', totalSlots: cap, applyQuestions: questions,
           featured: _spRaw ? _spRaw.featured : false, sortOrder: _spRaw ? _spRaw.sortOrder : 0 };
     if (_spEditId) await A().updateContent(kind, _spEditId, body);
     else await A().createContent(kind, body);
@@ -557,26 +557,59 @@ let pendingApply = null;
 
 function openApply(kind, id) {
   const list = kind === 'tournament' ? (D().mugContents || []) : (D().snukContents || []);
-  const item = list.find((x) => x.id === id);
+  let item = list.find((x) => x.id === id);
+  // 게임체험단 연계 캠페인은 snukContents 에서 제외되어 있음 → games 에서 찾음
+  // (홈 "모집 중인 체험단" 카드 신청 무반응 픽스)
+  if (!item && kind === 'campaign') {
+    const g = (D().games || []).find((x) => x.campaignId === id);
+    if (g) item = { id, title: g.name, applyQuestions: g.applyQuestions || [] };
+  }
   if (!item) return;
   if (!window.__snukLoggedIn) { showToast('로그인 후 신청할 수 있습니다'); openLogin(); return; }
-  pendingApply = { kind, id, title: item.title };
+  const questions = item.applyQuestions || [];
+  pendingApply = { kind, id, title: item.title, questions };
   const sub = document.getElementById('apply-modal-sub');
   if (sub) sub.textContent = `"${item.title}" ${kind === 'tournament' ? '대회 참가' : '컨텐츠'} 신청`;
+  const qs = document.getElementById('apply-modal-qs');
+  if (qs) {
+    qs.style.display = questions.length ? '' : 'none';
+    qs.innerHTML = questions.map((q, i) => `
+      <label style="display:block;margin-bottom:10px;font-size:12.5px;font-weight:700;">
+        Q${i + 1}. ${esc(q.q)} <span style="font-weight:400;color:var(--text3);">${q.required ? '(필수)' : '(선택)'}</span>
+        <textarea id="apply-q-${i}" rows="2" placeholder="답변을 입력하세요"
+          style="display:block;width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+      </label>`).join('');
+  }
   document.getElementById('apply-modal').classList.add('open');
 }
 
 async function confirmApply() {
   if (!pendingApply) return;
-  const { kind, id } = pendingApply;
+  const { kind, id, questions } = pendingApply;
+  // 질문 답변 수집 — 필수 미입력이면 신청 차단(백엔드도 재검증)
+  let answers = null;
+  if (questions && questions.length) {
+    answers = questions.map((q, i) => {
+      const el = document.getElementById(`apply-q-${i}`);
+      const text = el ? el.value.trim() : '';
+      return { text: text || null, imageUrl: null };
+    });
+    const missing = questions.findIndex((q, i) => q.required && !answers[i].text);
+    if (missing >= 0) {
+      showToast(`필수 질문에 답변해주세요: Q${missing + 1}`);
+      const el = document.getElementById(`apply-q-${missing}`);
+      if (el) el.focus();
+      return;
+    }
+  }
   const btn = document.getElementById('apply-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = '신청 중...'; }
   try {
     if (kind === 'tournament') {
-      await A().applyTournament(id);
+      await A().applyTournament(id, answers || undefined);
       showToast('✅ 참가 신청이 접수됐습니다! (운영자 승인 후 확정)');
     } else {
-      const res = await A().applyCampaign(id);
+      const res = await A().applyCampaign(id, answers || undefined);
       if (res && res.assignedKey) { closeModal('apply-modal'); showAssignedKey(res.assignedKey); }
       else showToast('✅ 신청이 접수됐습니다!');
     }
@@ -676,6 +709,12 @@ async function applyGame() {
   const g = (D().games || [])[currentGameIdx];
   if (!g || g.campaignId == null) return;
   if (!window.__snukLoggedIn) { showToast('로그인 후 신청할 수 있습니다'); openLogin(); return; }
+  // 신청 질문이 있으면 공용 신청 모달(질문 입력)로 넘김
+  if (g.applyQuestions && g.applyQuestions.length) {
+    closeModal('game-modal');
+    openApply('campaign', g.campaignId);
+    return;
+  }
   try {
     const res = await A().applyCampaign(g.campaignId);
     closeModal('game-modal');
@@ -1660,7 +1699,7 @@ function dhRenderOfficial(info, ch) {
   wrap.style.display = '';
   stage.innerHTML = `<iframe id="dh-stage-frame" title="스눅 공식 라이브" src="https://chzzk.naver.com/live/${esc(ch)}"
       scrolling="no" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
-      style="width:1620px;height:900px;"></iframe>
+      style="width:1620px;height:900px;pointer-events:none;"></iframe>
     <span class="lvbadge">LIVE</span>
     <div class="lvover">${dhAva('SNUK')}
       <div class="lvmeta2"><p class="lvtitle">${esc(info.title)}</p>
@@ -1698,9 +1737,11 @@ function dhStage() {
   const cur = list[_dhLiveOn];
   const player = cur.chzzk
     // 치지직은 플레이어 전용 임베드가 없어 전체 페이지를 확대 로드 후 영상 영역만 크롭
+    // pointer-events:none — 마우스 휠이 임베드 내부 페이지를 스크롤해 크롭이 어긋나는 것 방지(화면 고정).
+    // 소리/조작은 "방송 보러가기" 버튼으로.
     ? `<iframe id="dh-stage-frame" title="${esc(cur.name)} 라이브" src="https://chzzk.naver.com/live/${esc(cur.chzzk)}"
         scrolling="no" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
-        style="width:1620px;height:900px;"></iframe>`
+        style="width:1620px;height:900px;pointer-events:none;"></iframe>`
     : `<span class="lvposter"><span class="em">📺</span>${esc(cur.name)} 님이 방송 중입니다</span>`;
   stage.innerHTML = `${player}
     <span class="lvbadge">LIVE</span>

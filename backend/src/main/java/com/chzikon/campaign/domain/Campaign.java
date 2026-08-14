@@ -70,6 +70,10 @@ public class Campaign {
     @Column(name = "owner_member_id")
     private Long ownerMemberId;
 
+    /** 신청 질문 JSON(V22, 대회 apply_questions 패턴 미러). 없으면 질문 없이 신청. */
+    @Column(name = "apply_questions", columnDefinition = "TEXT")
+    private String applyQuestions;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -80,7 +84,7 @@ public class Campaign {
     private Campaign(String title, String description, String gameName, String promoImageUrl,
                      LocalDate eventDate, LocalDateTime applyStart, LocalDateTime applyEnd,
                      CampaignStatus status, DistributionType distributionType, KeyMode keyMode,
-                     int totalSlots, boolean featured, int sortOrder) {
+                     int totalSlots, boolean featured, int sortOrder, String applyQuestions) {
         this.title = title;
         this.description = description;
         this.gameName = gameName;
@@ -95,6 +99,7 @@ public class Campaign {
         this.filledSlots = 0;
         this.featured = featured;
         this.sortOrder = sortOrder;
+        this.applyQuestions = applyQuestions;
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
@@ -103,7 +108,7 @@ public class Campaign {
     public void update(String title, String description, String gameName, String promoImageUrl,
                        LocalDate eventDate, LocalDateTime applyStart, LocalDateTime applyEnd,
                        CampaignStatus status, DistributionType distributionType, KeyMode keyMode,
-                       Integer totalSlots, Boolean featured, Integer sortOrder) {
+                       Integer totalSlots, Boolean featured, Integer sortOrder, String applyQuestions) {
         if (title != null) this.title = title;
         this.description = description;
         this.gameName = gameName;
@@ -117,6 +122,7 @@ public class Campaign {
         if (totalSlots != null) this.totalSlots = totalSlots;
         if (featured != null) this.featured = featured;
         if (sortOrder != null) this.sortOrder = sortOrder;
+        this.applyQuestions = applyQuestions;
         this.updatedAt = LocalDateTime.now();
     }
 

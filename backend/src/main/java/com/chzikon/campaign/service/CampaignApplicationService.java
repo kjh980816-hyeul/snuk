@@ -39,7 +39,8 @@ public class CampaignApplicationService {
      * - 1인 1신청(unique). FCFS 는 비관적 락으로 슬롯/키 원자 배정, APPROVAL 은 PENDING.
      */
     @Transactional
-    public CampaignApplication apply(Long campaignId, Long memberId) {
+    public CampaignApplication apply(Long campaignId, Long memberId,
+                                     List<com.chzikon.tournament.dto.ApplyFormJson.ApplyAnswer> answers) {
         Member member = memberService.getById(memberId);
         if (!member.getRole().isStreamerOrAbove()) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_ROLE);
@@ -53,6 +54,20 @@ public class CampaignApplicationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (!campaign.isOpenForApply()) {
             throw new BusinessException(ErrorCode.CAMPAIGN_NOT_OPEN);
+        }
+        // 신청 질문 검증(V22, 대회 패턴) — 필수 질문은 텍스트/이미지 중 하나는 있어야 함.
+        var questions = com.chzikon.tournament.dto.ApplyFormJson.questionsFromJson(campaign.getApplyQuestions());
+        if (!questions.isEmpty()) {
+            if (answers == null || answers.size() != questions.size()) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT, "신청 질문 답변이 누락됐습니다.");
+            }
+            for (int i = 0; i < questions.size(); i++) {
+                var a = answers.get(i);
+                if (questions.get(i).required() && (a == null || a.isBlank())) {
+                    throw new BusinessException(ErrorCode.INVALID_INPUT,
+                            "필수 질문에 모두 답변해주세요: " + questions.get(i).q());
+                }
+            }
         }
 
         int followerSnapshot = member.getFollowerCount() != null ? member.getFollowerCount() : 0;
@@ -73,6 +88,7 @@ public class CampaignApplicationService {
                     CampaignApplication.Status.PENDING);
         }
 
+        application.recordAnswers(com.chzikon.tournament.dto.ApplyFormJson.answersToJson(answers));
         try {
             return applicationRepository.save(application);
         } catch (DataIntegrityViolationException e) {

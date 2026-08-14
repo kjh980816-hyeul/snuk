@@ -35,8 +35,9 @@ export const siteSettingsApi = {
 export const campaignApi = {
   list: () => api.get<Campaign[]>('/api/campaigns').then((r) => r.data),
   detail: (id: number) => api.get<Campaign>(`/api/campaigns/${id}`).then((r) => r.data),
-  apply: (id: number) =>
-    api.post<{ applicationId: number; status: string }>(`/api/campaigns/${id}/apply`).then((r) => r.data),
+  apply: (id: number, answers?: ApplyAnswer[]) =>
+    api.post<{ applicationId: number; status: string }>(`/api/campaigns/${id}/apply`,
+      answers && answers.length ? { answers } : {}).then((r) => r.data),
   myApplication: (id: number, reveal = false) =>
     api.get<MyApplication>(`/api/campaigns/${id}/my-application`, { params: { reveal } }).then((r) => r.data),
   reviews: (id: number) => api.get<Review[]>(`/api/campaigns/${id}/reviews`).then((r) => r.data),

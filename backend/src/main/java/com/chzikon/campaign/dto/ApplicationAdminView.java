@@ -15,13 +15,15 @@ public record ApplicationAdminView(
         int followerSnapshot,
         Long assignedKeyId,
         LocalDateTime appliedAt,
-        LocalDateTime decidedAt
+        LocalDateTime decidedAt,
+        java.util.List<com.chzikon.tournament.dto.ApplyFormJson.ApplyAnswer> answers
 ) {
     public static ApplicationAdminView from(CampaignApplication a, Member m) {
         return new ApplicationAdminView(a.getId(), a.getMemberId(),
                 m != null ? m.getNickname() : ("회원#" + a.getMemberId()),
                 m != null ? m.getProfileImageUrl() : null,
                 a.getStatus().name(),
-                a.getFollowerSnapshot(), a.getAssignedKeyId(), a.getAppliedAt(), a.getDecidedAt());
+                a.getFollowerSnapshot(), a.getAssignedKeyId(), a.getAppliedAt(), a.getDecidedAt(),
+                com.chzikon.tournament.dto.ApplyFormJson.answersFromJson(a.getAnswers()));
     }
 }
