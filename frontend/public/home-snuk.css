@@ -1314,3 +1314,35 @@ footer{border-top:1px solid var(--border);}
   border-top:1px solid var(--border);font-size:13px;color:var(--text);}
 #home-demo .byline .micro{display:block;color:var(--text3);font-weight:500;margin-top:2px;}
 @media(max-width:520px){#home-demo .contcard{min-height:0;}}
+
+/* ── 치지직 인페이지 HLS 플레이어 (src/snuk/chzzkPlayer.ts · 홈 무대 + /live 공용) — 데모 .lvframe/.lvctl/.lvbtn 이식 ── */
+.lvplayer{position:absolute;inset:0;}
+.snuk-player{background:#0b0a09;overflow:hidden;} /* 호스트가 위치/크기를 정함(.lvplayer=absolute inset:0, /live .live-crop=relative 16:9) */
+.snuk-player .sp-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(2px) brightness(.55);}
+.snuk-player .sp-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;cursor:pointer;
+  opacity:0;transition:opacity .35s;}
+.snuk-player.playing .sp-video{opacity:1;}
+.snuk-player.playing .sp-poster{display:none;}
+.snuk-player .sp-load{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;
+  font-size:13px;font-weight:600;color:#D8D3CA;background:rgba(0,0,0,.45);padding:8px 14px;border-radius:999px;white-space:nowrap;}
+.snuk-player .sp-ctl{position:absolute;left:14px;bottom:14px;z-index:6;display:flex;gap:6px;
+  opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s;}
+.snuk-player:hover .sp-ctl,.snuk-player:not(.playing) .sp-ctl,.snuk-player:focus-within .sp-ctl{opacity:1;transform:none;}
+@media(hover:none){.snuk-player .sp-ctl{opacity:1;transform:none;}}
+.snuk-player .sp-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:none;
+  background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;backdrop-filter:blur(6px);}
+.snuk-player .sp-btn:hover{background:var(--accent,#7B4BD8);}
+.snuk-player .sp-btn.on{background:var(--accent,#7B4BD8);}
+.snuk-player .sp-full{padding:0 9px;}
+.snuk-player:fullscreen{background:#000;} .snuk-player:fullscreen .sp-video{object-fit:contain;}
+/* 재생 중엔 설명 오버레이를 숨기고 마우스를 올리면 다시 (데모 bindStageOver) */
+#home-demo .lvstage .lvover{transition:opacity .25s,transform .25s,visibility .25s;}
+#home-demo .lvstage.playing .lvover{opacity:0;visibility:hidden;transform:translateY(6px);}
+#home-demo .lvstage.playing:hover .lvover,#home-demo .lvstage.playing:focus-within .lvover{opacity:1;visibility:visible;transform:none;}
+#home-demo .lvstage.playing .lvopen{opacity:0;transition:opacity .25s;}
+#home-demo .lvstage.playing:hover .lvopen,#home-demo .lvstage.playing:focus-within .lvopen{opacity:1;}
+@media(hover:none){#home-demo .lvstage.playing .lvover,#home-demo .lvstage.playing .lvopen{opacity:1;visibility:visible;transform:none;}}
+/* 플레이어 컨트롤(좌하단 소리/전체화면)과 설명 오버레이가 겹치지 않게 — 플레이어가 있을 때만 오버레이를 버튼 높이만큼 위로 */
+#home-demo .lvstage .lvplayer ~ .lvover{padding-bottom:60px;}
+#home-demo .lvstage .lvplayer ~ .lvopen{bottom:14px;}
+@media(max-width:640px){#home-demo .lvstage .lvplayer ~ .lvover{padding-bottom:56px;padding-left:12px;} .snuk-player .sp-btn span{display:none;} .snuk-player .sp-btn{padding:0 9px;}}

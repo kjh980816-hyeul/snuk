@@ -33,7 +33,7 @@ const alertInterceptor = api.interceptors.response.use(
 onBeforeUnmount(() => api.interceptors.response.eject(alertInterceptor))
 
 // 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (컨텐츠·대회 통합 탭 + 게임체험단·영상·굿즈샵·협력사)
-type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'community' | 'members' | 'grants' | 'settings' | 'logs'
+type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'community' | 'members' | 'grants' | 'settings' | 'crew' | 'logs'
 const tab = ref<Tab>('campaigns')
 
 // ----- 권한 신청 (V23) -----
@@ -589,6 +589,54 @@ async function saveHeroText() {
   alert('저장되었습니다.')
 }
 
+// 크루 페이지 — nginx /crew/<name>/ 정적 서빙(SPA 밖). 목록만 CREW_PAGES(JSON [{name,path}]) 로 관리(08-18 뜨개동).
+type CrewPage = { name: string; path: string }
+const crewPages = ref<CrewPage[]>([])
+const crewLoaded = ref(false)
+async function loadCrewPages() {
+  if (!settings.value.length) settings.value = await adminApi.settings()
+  try {
+    const parsed = JSON.parse(settingValue('CREW_PAGES') || '[]') as CrewPage[]
+    crewPages.value = Array.isArray(parsed) ? parsed : []
+  } catch {
+    crewPages.value = []
+  }
+  crewLoaded.value = true
+}
+function addCrewPage() { crewPages.value.push({ name: '', path: '/crew/' }) }
+function removeCrewPage(i: number) { crewPages.value.splice(i, 1) }
+function crewUrl(c: CrewPage) {
+  const p = (c.path || '').trim()
+  if (/^https?:\/\//i.test(p)) return p
+  return `${location.origin}${p.startsWith('/') ? p : `/crew/${p}`}`
+}
+async function saveCrewPages() {
+  const clean = crewPages.value
+    .filter((c) => c.name.trim() && c.path.trim())
+    .map((c) => ({ name: c.name.trim(), path: c.path.trim() }))
+  const json = JSON.stringify(clean)
+  if (json.length > 500) { // setting_value 512자
+    alert('크루가 너무 많아요 — 이름·주소를 짧게 하거나 개수를 줄여주세요.')
+    return
+  }
+  await adminApi.updateSetting('CREW_PAGES', json)
+  await loadSettings()
+  await loadCrewPages()
+  alert('저장되었습니다.')
+}
+// 크루를 사이드바 커스텀 메뉴에 추가 (MENU_CUSTOM — 사이트 메뉴 관리와 같은 값)
+async function addCrewToMenu(c: CrewPage) {
+  await loadSettings()
+  const url = (c.path || '').trim()
+  if (customMenus.value.some((m) => m.url === url)) { alert('이미 사이드바 메뉴에 있어요.'); return }
+  customMenus.value.push({ label: c.name.trim(), url })
+  const json = JSON.stringify(customMenus.value.map((m) => ({ label: m.label.trim(), url: m.url.trim() || '/' })))
+  if (json.length > 500) { alert('커스텀 메뉴가 너무 많아요 — 메뉴 관리에서 정리 후 다시 시도해주세요.'); return }
+  await adminApi.updateSetting('MENU_CUSTOM', json)
+  await loadSettings()
+  alert(`사이드바 메뉴에 "${c.name}" 을(를) 추가했어요. 사이트 새로고침 시 반영돼요.`)
+}
+
 // 포인트 관리 — 출석 적립·스포트라이트 차감
 const pointDailyInput = ref('')
 const spotlightCostInput = ref('')
@@ -930,6 +978,7 @@ function onTab(t: Tab) {
   if (t === 'members') loadMembers()
   if (t === 'grants') loadRoleRequests()
   if (t === 'settings') loadSettings()
+  if (t === 'crew') loadCrewPages()
   if (t === 'logs') loadLogs()
 }
 </script>
@@ -965,6 +1014,7 @@ function onTab(t: Tab) {
       <button :class="{ on: tab === 'clients' }" @click="onTab('clients')">협력사</button>
       <p class="adm-glabel">사이트</p>
       <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정</button>
+      <button :class="{ on: tab === 'crew' }" @click="onTab('crew')">크루 페이지</button>
       <button :class="{ on: tab === 'logs' }" @click="onTab('logs')">감사로그</button>
     </nav>
     <div class="adm-content">
@@ -1838,6 +1888,36 @@ function onTab(t: Tab) {
         <input type="number" v-model.number="overrideMemberId" placeholder="회원 ID" />
         <select v-model="overrideRole"><option>VIEWER</option><option>STREAMER</option><option>REPORTER</option><option>ADMIN</option></select>
         <button class="btn sm" @click="doOverride">적용</button>
+      </div>
+    </section>
+
+    <!-- 크루 페이지 — 정적 HTML(/crew/<이름>/) 목록 · 열기 · 사이드바 메뉴 추가 -->
+    <section v-else-if="tab === 'crew'">
+      <h4>크루 페이지</h4>
+      <div class="form-card site-card">
+        <p class="hint" style="margin:0 0 12px;">
+          크루 홈페이지는 <code>snuk.kr/crew/이름</code> 주소로 서버에 직접 올려둔 페이지예요. 여기서는 목록을 관리하고 바로 열어볼 수 있어요.<br>
+          새 크루 페이지 파일(index.html)은 개발자에게 전달하면 같은 방식으로 올려드려요.
+        </p>
+        <table class="grid">
+          <thead><tr><th style="width:160px;">크루 이름</th><th>주소</th><th style="width:250px;"></th></tr></thead>
+          <tbody>
+            <tr v-for="(c, i) in crewPages" :key="i">
+              <td><input v-model="c.name" placeholder="예) 뜨개동" /></td>
+              <td><input v-model="c.path" placeholder="/crew/tteugae" /></td>
+              <td style="white-space:nowrap;">
+                <a :href="crewUrl(c)" target="_blank" rel="noopener"><button class="btn xs">페이지 열기 ↗</button></a>
+                <button class="btn ghost xs" style="margin-left:6px;" @click="addCrewToMenu(c)">사이드바 메뉴에 추가</button>
+                <button class="btn ghost xs danger" style="margin-left:6px;" @click="removeCrewPage(i)">삭제</button>
+              </td>
+            </tr>
+            <tr v-if="crewLoaded && !crewPages.length"><td colspan="3" class="empty">등록된 크루 페이지가 없습니다.</td></tr>
+          </tbody>
+        </table>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn ghost xs" @click="addCrewPage">+ 크루 추가</button>
+          <button class="btn sm" @click="saveCrewPages">목록 저장</button>
+        </div>
       </div>
     </section>
 

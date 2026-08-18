@@ -1781,25 +1781,20 @@ function dhRenderOfficial(info, ch) {
   const nl = document.getElementById('dh-nowlist');
   if (!wrap || !stage) return;
   wrap.style.display = '';
-  stage.innerHTML = `<iframe id="dh-stage-frame" title="스눅 공식 라이브" src="https://chzzk.naver.com/live/${esc(ch)}"
-      scrolling="no" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
-      style="width:1620px;height:900px;pointer-events:none;"></iframe>
+  stage.innerHTML = `<div class="lvplayer" id="dh-player"></div>
     <span class="lvbadge">LIVE</span>
+    <span class="lvcnt" id="dh-lvcnt" style="display:none"></span>
     <div class="lvover">${dhAva('SNUK')}
       <div class="lvmeta2"><p class="lvtitle">${esc(info.title)}</p>
       <p class="dh-row"><span class="micro">SNUK 공식</span></p></div>
     </div>
     <button class="lvopen" onclick="event.stopPropagation();window.open('https://chzzk.naver.com/live/${esc(ch)}','_blank')">방송 보러가기 →</button>`;
+  dhMountPlayer(stage, ch, 'SNUK 공식');
   if (nl) {
     nl.innerHTML = `<button class="nowrow on">
       <span class="nowth"><span class="nl">LIVE</span></span>
       <span class="nowmeta"><span class="nowt">${esc(info.title)}</span><span class="nown">SNUK 공식</span></span>
     </button>`;
-  }
-  dhFitStage();
-  if (!window.__dhCropBound) {
-    window.__dhCropBound = true;
-    window.addEventListener('resize', dhFitStage);
   }
 }
 
@@ -1807,6 +1802,8 @@ function dhStage() {
   const stage = document.getElementById('dh-stage');
   const wrap = document.getElementById('dh-livewrap');
   if (!stage || !wrap) return;
+  dhDestroyPlayer(); // 무대 재렌더 — 이전 스트림 정리
+  stage.classList.remove('playing');
   const list = dhLiveList();
   if (!list.length) {
     // 데모(메인 화면)와 동일하게 방송이 없어도 무대 자리는 유지 — 대기 화면 노출.
@@ -1826,16 +1823,15 @@ function dhStage() {
   wrap.style.display = '';
   if (_dhLiveOn >= list.length) _dhLiveOn = 0;
   const cur = list[_dhLiveOn];
+  // 치지직 = 인페이지 HLS 플레이어(window.__snukPlayer, src/snuk/chzzkPlayer.ts). 클릭=소리, 더블클릭=전체화면.
+  // (예전 전체 페이지 크롭 임베드는 휠 드리프트 때문에 pointer-events:none → 클릭이 아예 안 됨(08-18 피드백) → 교체.
+  //  재생주소를 못 받는 19금/비공개만 크롭 임베드로 폴백 — dhMountPlayer 참고)
   const player = cur.chzzk
-    // 치지직은 플레이어 전용 임베드가 없어 전체 페이지를 확대 로드 후 영상 영역만 크롭
-    // pointer-events:none — 마우스 휠이 임베드 내부 페이지를 스크롤해 크롭이 어긋나는 것 방지(화면 고정).
-    // 소리/조작은 "방송 보러가기" 버튼으로.
-    ? `<iframe id="dh-stage-frame" title="${esc(cur.name)} 라이브" src="https://chzzk.naver.com/live/${esc(cur.chzzk)}"
-        scrolling="no" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
-        style="width:1620px;height:900px;pointer-events:none;"></iframe>`
+    ? `<div class="lvplayer" id="dh-player"></div>`
     : `<span class="lvposter"><span class="em">📺</span>${esc(cur.name)} 님이 방송 중입니다</span>`;
   stage.innerHTML = `${player}
     <span class="lvbadge">LIVE</span>
+    <span class="lvcnt" id="dh-lvcnt" style="display:none"></span>
     <div class="lvover">
       ${dhAva(cur.name, cur.img)}
       <div class="lvmeta2">
@@ -1845,11 +1841,7 @@ function dhStage() {
       </div>
     </div>
     ${cur.url ? `<button class="lvopen" onclick="event.stopPropagation();window.open('${esc(cur.url)}','_blank')">방송 보러가기 →</button>` : ''}`;
-  dhFitStage();
-  if (!window.__dhCropBound) {
-    window.__dhCropBound = true;
-    window.addEventListener('resize', dhFitStage);
-  }
+  if (cur.chzzk) dhMountPlayer(stage, cur.chzzk, cur.name);
 
   const rows = list.map((x, i) => `<button class="nowrow${i === _dhLiveOn ? ' on' : ''}" onclick="dhPickLive(${i})">
       <span class="nowth">${x.img ? `<img src="${esc(x.img)}" alt="" onerror="this.remove()">` : ''}<span class="nl">LIVE</span></span>
@@ -1869,7 +1861,49 @@ function dhStage() {
     </button>`).join('');
   }
 }
-// 크롭 스케일: 컨테이너 폭에 맞춰 치지직 페이지(1620 로드)의 영상 영역(x240,y60,1026 폭)만 보이게
+// 무대에 치지직 HLS 플레이어 장착. 이전 플레이어는 파괴(무대 재렌더/채널 전환 시 스트림 누수 방지).
+let _dhPlayer = null;
+let _dhPlayerWatch = 0;
+function dhDestroyPlayer() {
+  if (_dhPlayer) { try { _dhPlayer.destroy(); } catch (e) { /* noop */ } _dhPlayer = null; }
+  if (_dhPlayerWatch) { clearInterval(_dhPlayerWatch); _dhPlayerWatch = 0; }
+}
+function dhMountPlayer(stage, channelId, name) {
+  const host = document.getElementById('dh-player');
+  if (!host) return;
+  dhDestroyPlayer();
+  if (!window.__snukPlayer) { dhFallbackCrop(stage, channelId, name); return; }
+  // 홈을 떠나면(SPA 라우팅으로 무대 DOM 제거) 스트림도 끊는다 — 안 그러면 백그라운드에서 세그먼트를 계속 받음
+  _dhPlayerWatch = setInterval(() => { if (!document.body.contains(host)) dhDestroyPlayer(); }, 2000);
+  const cnt = document.getElementById('dh-lvcnt');
+  _dhPlayer = window.__snukPlayer(host, channelId, {
+    onState: (st, info) => {
+      // 재생 중엔 설명 오버레이를 숨기고(hover 시 표시) — 데모 bindStageOver 와 동일
+      stage.classList.toggle('playing', st === 'playing');
+      if (info && typeof info.viewers === 'number' && cnt) {
+        cnt.textContent = `${info.viewers.toLocaleString()}명 시청`;
+        cnt.style.display = info.live ? '' : 'none';
+      }
+    },
+    onFallback: () => dhFallbackCrop(stage, channelId, name),
+  });
+}
+// 재생주소가 없는 방송(19금/비공개) — 예전 방식: 치지직 페이지(1620 로드)의 영상 영역(x240,y60,1026 폭)만 크롭.
+// 이 폴백만 pointer-events:none(휠 드리프트 방지) — 조작은 "방송 보러가기".
+function dhFallbackCrop(stage, channelId, name) {
+  const host = document.getElementById('dh-player');
+  if (!host) return;
+  stage.classList.remove('playing');
+  host.className = 'lvplayer';
+  host.innerHTML = `<iframe id="dh-stage-frame" title="${esc(name)} 라이브" src="https://chzzk.naver.com/live/${esc(channelId)}"
+      scrolling="no" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
+      style="width:1620px;height:900px;pointer-events:none;"></iframe>`;
+  dhFitStage();
+  if (!window.__dhCropBound) {
+    window.__dhCropBound = true;
+    window.addEventListener('resize', dhFitStage);
+  }
+}
 function dhFitStage() {
   const stage = document.getElementById('dh-stage');
   const fr = document.getElementById('dh-stage-frame');
@@ -2161,6 +2195,7 @@ function applyMenuVisibility(ss) {
       b.onclick = () => {
         const url = String(m.url || '/');
         if (/^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener');
+        else if (/^\/crew\//.test(url)) window.location.assign(url); // 크루 페이지 = SPA 밖 정적 HTML → 전체 이동
         else if (window.__snukNav) window.__snukNav(url);
       };
       adminBtn.parentElement.insertBefore(b, adminBtn);

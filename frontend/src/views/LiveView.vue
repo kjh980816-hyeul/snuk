@@ -2,8 +2,9 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { OFFICIAL_CHZZK_CHANNEL_ID } from '@/config'
 import { siteSettingsApi } from '@/api'
+import { mountChzzkPlayer, type PlayerHandle } from '@/snuk/chzzkPlayer'
 
-// 생방송: SNUK 공식 치지직 채널 라이브 임베드 (chzzk.naver.com/live/{채널ID})
+// 생방송: SNUK 공식 치지직 채널 — 인페이지 HLS 플레이어(chzzkPlayer.ts, 홈 무대와 동일). 재생주소 없으면 크롭 임베드 폴백.
 // 채널 ID·배너 이미지·문구는 어드민 "설정" 탭(LIVE_CHANNEL_ID / BANNER_LIVE_*)에서 관리
 const channelId = ref(OFFICIAL_CHZZK_CHANNEL_ID)
 const loaded = ref(false)
@@ -38,7 +39,26 @@ function liveUrl() {
   return channelId.value ? `https://chzzk.naver.com/live/${channelId.value}` : 'https://chzzk.naver.com'
 }
 
-// 크롭 스케일: 컨테이너 폭에 맞춰 치지직 페이지(1620 로드)의 영상 영역(x240,y60,1026 폭)만 보이게
+// 인페이지 플레이어 — 클릭=소리, 더블클릭=전체화면. 19금/비공개(재생주소 없음)면 예전 크롭 임베드로 폴백.
+const playerEl = ref<HTMLElement | null>(null)
+const useCrop = ref(false)
+let player: PlayerHandle | null = null
+watch(loaded, async (v) => {
+  if (!v) return
+  await nextTick()
+  if (!playerEl.value) return
+  player?.destroy()
+  player = mountChzzkPlayer(playerEl.value, channelId.value, {
+    onState: (st, info) => {
+      if (info) { isLive.value = !!info.live; if (info.title) liveTitle.value = info.title }
+      if (st === 'offline') useCrop.value = false
+    },
+    onFallback: () => { useCrop.value = true; nextTick(fitCrop) },
+  })
+})
+onBeforeUnmount(() => { player?.destroy(); player = null; window.removeEventListener('resize', fitCrop) })
+
+// 폴백 크롭 스케일: 컨테이너 폭에 맞춰 치지직 페이지(1620 로드)의 영상 영역(x240,y60,1026 폭)만 보이게
 const cropEl = ref<HTMLElement | null>(null)
 const frameEl = ref<HTMLIFrameElement | null>(null)
 function fitCrop() {
@@ -46,9 +66,7 @@ function fitCrop() {
   const s = cropEl.value.clientWidth / 1026
   frameEl.value.style.transform = `scale(${s}) translate(-240px, -60px)`
 }
-watch(loaded, async (v) => { if (v) { await nextTick(); fitCrop() } })
 window.addEventListener('resize', fitCrop)
-onBeforeUnmount(() => window.removeEventListener('resize', fitCrop))
 </script>
 
 <template>
@@ -95,11 +113,14 @@ onBeforeUnmount(() => window.removeEventListener('resize', fitCrop))
           <div style="font-size: 48px; margin-bottom: 10px;">▶</div>
           <div style="font-size: 14px; font-weight: 700;">라이브 보기 버튼을 눌러주세요</div>
         </div>
-        <!-- 치지직 전체 페이지를 확대 로드 후 영상 영역만 크롭 (채팅 없이 영상만) -->
-        <div v-else ref="cropEl" class="live-crop">
-          <iframe ref="frameEl" :src="liveUrl()" class="live-video-frame" allowfullscreen scrolling="no"
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
-        </div>
+        <!-- 인페이지 HLS 플레이어 (재생주소 없는 19금/비공개만 아래 크롭 임베드로 폴백) -->
+        <template v-else>
+          <div v-show="!useCrop" ref="playerEl" class="live-crop"></div>
+          <div v-if="useCrop" ref="cropEl" class="live-crop">
+            <iframe ref="frameEl" :src="liveUrl()" class="live-video-frame" allowfullscreen scrolling="no"
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
+          </div>
+        </template>
       </div>
     </div>
   </section>
