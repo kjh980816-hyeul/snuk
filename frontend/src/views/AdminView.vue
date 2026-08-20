@@ -1896,8 +1896,9 @@ function onTab(t: Tab) {
       <h4>크루 페이지</h4>
       <div class="form-card site-card">
         <p class="hint" style="margin:0 0 12px;">
-          크루 홈페이지는 <code>snuk.kr/crew/이름</code> 주소로 서버에 직접 올려둔 페이지예요. 여기서는 목록을 관리하고 바로 열어볼 수 있어요.<br>
-          새 크루 페이지 파일(index.html)은 개발자에게 전달하면 같은 방식으로 올려드려요.
+          크루 홈페이지는 <code>snuk.kr/crew/이름</code> 주소의 별도 페이지예요. 여기서는 목록을 관리하고 바로 열어볼 수 있어요.<br>
+          내용 수정은 <b>크루 페이지에 관리자 계정으로 접속</b>하면 하단에 ⚙️ 관리자 버튼이 보여요 — 거기서 고치고 저장하면 서버에 바로 반영됩니다.<br>
+          새 크루 페이지(index.html) 신설은 개발자에게 전달해 주세요.
         </p>
         <table class="grid">
           <thead><tr><th style="width:160px;">크루 이름</th><th>주소</th><th style="width:250px;"></th></tr></thead>
