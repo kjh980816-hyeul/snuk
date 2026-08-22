@@ -48,7 +48,7 @@ function ddayOf(eventDate) {
 function makeContentCard(d, w, i) {
   const canApply = d.status === 'open';
   const stTag = `<span class="tag ${d.status === 'open' ? 't-go' : d.status === 'ongoing' ? 't-warn' : 't-neu'}">${esc(d.statusLabel)}</span>`;
-  const kindTag = `<span class="tag t-neu">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>`;
+  const kindTag = `<span class="tag t-neu">${d.kind === 'tournament' ? '대회' : d.trial ? '체험단' : '컨텐츠'}</span>`;
   const dd = canApply ? ddayOf(d.eventDate) : null;
   const click = d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')`
     : canApply ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
@@ -99,6 +99,48 @@ function renderContentSliders() {
   initSlider('str-slider', emptyCard('스트리머 컨텐츠는 준비 중입니다.'));
   initSlider('event-slider', emptyCard('진행 중인 이벤트가 없습니다.'));
   initSlider('job-slider', emptyCard('등록된 공고가 없습니다.'));
+}
+
+// ════════════════════════════════════════════
+// 컨텐츠 페이지(/campaigns) — 상태 탭(모집중/진행중/종료) + 종류·정렬 + 그리드 (데모 "컨텐츠" 페이지 구성)
+// ════════════════════════════════════════════
+const CP_TABS = [
+  ['open', '모집 중', (d) => d.status === 'open' || d.status === 'upcoming'],
+  ['ongoing', '진행 중', (d) => d.status === 'ongoing'],
+  ['closed', '종료', (d) => d.status === 'closed'],
+];
+const CP_KINDS = [['all', '전체'], ['campaign', '컨텐츠'], ['trial', '체험단'], ['tournament', '대회']];
+const CP_SORTS = [['reg', '등록순'], ['end', '마감순'], ['hot', '인기순']];
+const cpState = { tab: 'open', kind: 'all', sort: 'reg' };
+window.__cpSet = (k, v) => { cpState[k] = v; renderContentsPage(); };
+
+function renderContentsPage() {
+  const grid = document.getElementById('cp-grid');
+  if (!grid) return;
+  const all = [...(D().snukContents || []), ...(D().trialContents || []), ...(D().mugContents || [])];
+  const pill = (cls, on, onclick, label) =>
+    `<button class="${cls}${on ? ' on' : ''}" onclick="${onclick}">${label}</button>`;
+  document.getElementById('cp-tabs').innerHTML = CP_TABS.map(([k, label, f]) =>
+    pill('cp-tab', cpState.tab === k, `__cpSet('tab','${k}')`, `${label} <b>${all.filter(f).length}</b>`)).join('');
+  document.getElementById('cp-kinds').innerHTML = CP_KINDS.map(([k, label]) =>
+    pill('cp-pill', cpState.kind === k, `__cpSet('kind','${k}')`, label)).join('');
+  document.getElementById('cp-sorts').innerHTML = CP_SORTS.map(([k, label]) =>
+    pill('cp-pill sm', cpState.sort === k, `__cpSet('sort','${k}')`, label)).join('');
+
+  const tab = CP_TABS.find(([k]) => k === cpState.tab) || CP_TABS[0];
+  let items = all.filter(tab[2]);
+  if (cpState.kind === 'trial') items = items.filter((d) => d.trial);
+  else if (cpState.kind === 'campaign') items = items.filter((d) => d.kind === 'campaign' && !d.trial);
+  else if (cpState.kind !== 'all') items = items.filter((d) => d.kind === cpState.kind);
+  if (cpState.sort === 'end') {
+    items = [...items].sort((a, b) => (a.applyEnd || a.eventDate || '9999').localeCompare(b.applyEnd || b.eventDate || '9999'));
+  } else if (cpState.sort === 'hot') {
+    items = [...items].sort((a, b) => (b.filled || 0) - (a.filled || 0));
+  }
+  const emptyMsg = { open: '모집 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!', ongoing: '진행 중인 컨텐츠가 없습니다.', closed: '종료된 컨텐츠가 없습니다.' };
+  grid.innerHTML = items.length
+    ? items.map((d, i) => makeContentCard(d, '', i)).join('')
+    : emptyCard(emptyMsg[cpState.tab]);
 }
 
 // ════════════════════════════════════════════
@@ -406,7 +448,7 @@ function openStreamerPost(kind) {
       <input id="spc-date" type="date" style="${SP_INP}flex:1;" title="진행일">
       <input id="spc-cap" type="number" min="0" style="${SP_INP}flex:1;" placeholder="${isT ? '정원(명)' : '모집 인원'}">
       <select id="spc-status" style="${SP_INP}flex:1;">
-        <option value="OPEN">모집중</option><option value="SCHEDULED">오픈예정</option><option value="CLOSED">마감</option>
+        <option value="OPEN">모집중</option><option value="SCHEDULED">오픈예정</option><option value="ONGOING">진행중 (모집 마감)</option><option value="CLOSED">종료</option>
       </select>
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
@@ -429,7 +471,9 @@ async function spEdit(kind, id) {
     const qEl = document.getElementById('spc-questions');
     if (qEl) qEl.value = (d.applyQuestions || []).map((q) => (q.required ? q.q : `[선택] ${q.q}`)).join('\n');
     const sel = document.getElementById('spc-status');
-    sel.value = ['OPEN', 'SCHEDULED', 'CLOSED'].includes(d.status) ? d.status : 'CLOSED';
+    // 대회 enum(CLOSED=모집 마감·진행, DONE=종료)을 공용 셀렉트(ONGOING/CLOSED) 표기로 변환
+    const shown = kind === 'tournament' ? ({ CLOSED: 'ONGOING', DONE: 'CLOSED' }[d.status] || d.status) : d.status;
+    sel.value = ['OPEN', 'SCHEDULED', 'ONGOING', 'CLOSED'].includes(shown) ? shown : 'CLOSED';
     const img = d.promoImageUrl || d.bannerImageUrl;
     const prev = document.getElementById('spc-img-prev');
     if (img) { prev.src = img; prev.style.display = ''; }
@@ -520,7 +564,8 @@ async function spSubmit(kind) {
     const game = v('spc-game').trim() || null;
     const date = v('spc-date') || null;
     const cap = parseInt(v('spc-cap') || '0', 10) || 0;
-    const status = v('spc-status');
+    const picked = v('spc-status');
+    const status = kind === 'tournament' ? ({ ONGOING: 'CLOSED', CLOSED: 'DONE' }[picked] || picked) : picked;
     const qEl = document.getElementById('spc-questions');
     const questions = qEl ? qEl.value.split('\n').map((s) => s.trim()).filter(Boolean)
       .map((s) => s.startsWith('[선택]')
@@ -2148,6 +2193,7 @@ function __snukInit() {
   bindOverlayClose();
   initDemoHome();
   renderContentSliders();
+  renderContentsPage();
   initBigContents();
   initLiveBanner();
   initNews();

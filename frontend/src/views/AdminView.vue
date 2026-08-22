@@ -61,7 +61,7 @@ function toggleTheme() {
 
 // 화면 표기용 한글 라벨 (저장값은 영문 enum 그대로)
 const ko: Record<string, string> = {
-  SCHEDULED: '예정', OPEN: '모집중', CLOSED: '마감', DONE: '종료',
+  SCHEDULED: '예정', OPEN: '모집중', ONGOING: '진행중', CLOSED: '종료', DONE: '종료',
   FCFS: '선착순', APPROVAL: '승인제',
   QUANTITY: '수량만(키 없음)', UNIQUE_KEY: '고유 키 배포',
   AVAILABLE: '미배정', ASSIGNED: '배정됨', REVOKED: '무효',
@@ -1127,7 +1127,7 @@ function onTab(t: Tab) {
         <div class="row3">
           <label>상태
             <select v-model="editing.status">
-              <option value="SCHEDULED">예정</option><option value="OPEN">모집중</option><option value="CLOSED">마감</option>
+              <option value="SCHEDULED">예정</option><option value="OPEN">모집중</option><option value="ONGOING">진행중 (모집 마감·컨텐츠 진행)</option><option value="CLOSED">종료</option>
             </select>
           </label>
           <label>배포방식
@@ -1231,7 +1231,7 @@ function onTab(t: Tab) {
           <div class="row3">
             <label>모집 상태
               <select v-model="gmCampaign.status">
-                <option value="SCHEDULED">예정</option><option value="OPEN">모집중</option><option value="CLOSED">마감</option>
+                <option value="SCHEDULED">예정</option><option value="OPEN">모집중</option><option value="ONGOING">진행중</option><option value="CLOSED">종료</option>
               </select>
             </label>
             <label>배포방식

@@ -162,11 +162,13 @@
   </div>
   <!-- FEATURED 캠페인 — JS 가 실데이터로 채움(없으면 숨김) -->
   <div id="snuk-featured" class="featured-card" style="margin-bottom:22px;cursor:pointer;display:none;"></div>
-  <div class="slider-wrap">
-    <div class="slider-nav prev" onclick="slide('snuk-slider',-1)">‹</div>
-    <div class="slider-clip"><div class="slider-track" id="snuk-slider"></div></div>
-    <div class="slider-nav next" onclick="slide('snuk-slider',1)">›</div>
+  <!-- 컨텐츠 페이지(데모 "컨텐츠" 구성): 상태 탭(모집중/진행중/종료) + 종류·정렬 + 카드 그리드. 렌더=renderContentsPage() -->
+  <div class="cp-tabs" id="cp-tabs"></div>
+  <div class="cp-bar">
+    <div class="cp-kinds" id="cp-kinds"></div>
+    <div class="cp-sorts" id="cp-sorts"></div>
   </div>
+  <div class="cp-grid" id="cp-grid"></div>
   </div>
 </section>
 

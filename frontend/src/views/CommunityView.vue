@@ -669,11 +669,12 @@ onMounted(async () => {
             <button class="pg" :disabled="page >= (pageData?.totalPages ?? 1) - 1" @click="goPage(page + 1)">›</button>
           </div>
         </template>
+        <p class="comfoot">© 2026 SNUK. All rights reserved. · 문의: contact@snuk.kr</p>
       </div>
 
       <!-- ── 우: 인기글 -->
       <aside class="comright">
-        <div class="stickyin">
+        <div class="stickyin"><!-- (데스크톱은 컬럼 자체가 고정, ≤960 은 기존 흐름) -->
           <div class="card pad">
             <p class="side-title">이 라운지 인기글</p>
             <button v-for="p in popular" :key="p.id" class="hotpost" @click="openPost(p)">
@@ -909,5 +910,29 @@ onMounted(async () => {
   .pthead.ck .pcat, .ptrow.ck .pcat, .pthead.ck .pb, .ptrow.ck .pb { display: none; }
   .searchbox .inp { width: 110px; }
   .cb2 { font-size: 16px; }
+}
+
+/* ── 데스크톱(>960): 고정 프레임 — 페이지 자체는 스크롤하지 않고, 좌 게시판 트리·우 인기글·중앙 헤더는
+   제자리, 게시글 목록(.commid)만 자체 스크롤. (sticky 방식은 글이 적어 중앙이 트리보다 짧으면 고정될 여지가
+   없어 트리가 같이 움직였음 — 2026-08-22 뮤마랭 실측 지적) */
+@media (min-width: 961px) {
+  .com { height: 100vh; height: 100dvh; padding: 16px 0 0; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+  .com-inner { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; }
+  .combanner { flex-shrink: 0; }
+  .comwrap { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .comside, .comright, .commid { min-height: 0; overflow-y: auto; scrollbar-width: none; }
+  .comside::-webkit-scrollbar, .comright::-webkit-scrollbar, .commid::-webkit-scrollbar { display: none; }
+  .stickyin { position: static; max-height: none; overflow: visible; }
+  .commid { padding-bottom: 24px; }
+  .midhead { top: 0; }
+  .comfoot { display: block; }
+}
+.comfoot { display: none; margin-top: 28px; padding: 14px 0 6px; border-top: 1px solid var(--border, #2E2C29);
+  font-size: 11.5px; color: var(--text3, #8A857C); text-align: center; }
+</style>
+<style>
+/* 커뮤니티(데스크톱)는 고정 프레임이라 전역 푸터를 감추고 중앙 컬럼 끝에 축약 푸터(.comfoot)를 둔다 */
+@media (min-width: 961px) {
+  .snuk-page:has(.com-inner) .snuk-bottom { display: none; }
 }
 </style>

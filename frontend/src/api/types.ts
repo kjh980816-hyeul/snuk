@@ -1,5 +1,5 @@
 export type Role = 'GUEST' | 'VIEWER' | 'STREAMER' | 'REPORTER' | 'ADMIN'
-export type CampaignStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED'
+export type CampaignStatus = 'SCHEDULED' | 'OPEN' | 'ONGOING' | 'CLOSED'
 export type DistributionType = 'FCFS' | 'APPROVAL'
 export type KeyMode = 'QUANTITY' | 'UNIQUE_KEY'
 

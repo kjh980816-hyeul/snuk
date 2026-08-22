@@ -19,7 +19,8 @@ export interface SnukCard {
   desc: string
   max: number
   filled: number
-  status: 'open' | 'ongoing' | 'closed'
+  /** open=모집중 / upcoming=오픈예정 / ongoing=모집 마감·진행중 / closed=종료 */
+  status: 'open' | 'upcoming' | 'ongoing' | 'closed'
   statusLabel: string
   img: string | null
   eventDate: string | null
@@ -33,6 +34,8 @@ export interface SnukCard {
   ownerId?: number | null
   /** 신청 질문(주최자 작성) — 있으면 신청 모달에 답변 입력 노출 */
   applyQuestions?: ApplyQuestion[]
+  /** 게임체험단 연계 캠페인(컨텐츠 페이지 "체험단" 종류) */
+  trial?: boolean
 }
 
 export interface SnukGame {
@@ -58,6 +61,8 @@ export interface SnukGame {
 
 export interface SnukData {
   snukContents: SnukCard[]
+  /** 게임 연계 캠페인(체험단) — 컨텐츠 페이지 상태 탭에서만 사용 */
+  trialContents: SnukCard[]
   snukFeatured: SnukCard | null
   mugContents: SnukCard[]
   mugFeatured: SnukCard | null
@@ -110,11 +115,13 @@ function dateOf(iso: string | null): string {
 }
 
 function campaignCard(c: Campaign): SnukCard {
-  const status = c.status === 'OPEN' ? 'open' : c.status === 'SCHEDULED' ? 'ongoing' : 'closed'
+  const status = c.status === 'OPEN' ? 'open' : c.status === 'SCHEDULED' ? 'upcoming'
+    : c.status === 'ONGOING' ? 'ongoing' : 'closed'
   return {
     id: c.id, kind: 'campaign', title: c.title, desc: c.description ?? c.gameName ?? '',
     max: c.totalSlots, filled: c.filledSlots, status,
-    statusLabel: c.status === 'OPEN' ? '모집중' : c.status === 'SCHEDULED' ? '오픈예정' : '마감',
+    statusLabel: c.status === 'OPEN' ? '모집중' : c.status === 'SCHEDULED' ? '오픈예정'
+      : c.status === 'ONGOING' ? '진행중' : '종료',
     img: c.promoImageUrl, eventDate: c.eventDate,
     applyStart: c.applyStart ? c.applyStart.slice(0, 10) : null,
     applyEnd: c.applyEnd ? c.applyEnd.slice(0, 10) : null,
@@ -125,12 +132,14 @@ function campaignCard(c: Campaign): SnukCard {
 }
 
 function tournamentCard(t: Tournament): SnukCard {
-  const status = t.status === 'OPEN' ? 'open' : t.status === 'SCHEDULED' ? 'ongoing' : 'closed'
+  // 대회: CLOSED=모집 마감(대회 진행 전·중) → 진행중, DONE=종료
+  const status = t.status === 'OPEN' ? 'open' : t.status === 'SCHEDULED' ? 'upcoming'
+    : t.status === 'CLOSED' ? 'ongoing' : 'closed'
   return {
     id: t.id, kind: 'tournament', title: t.title, desc: t.description ?? t.gameName ?? '',
     max: t.capacity, filled: t.filledSlots, status,
     statusLabel: t.status === 'OPEN' ? '모집중' : t.status === 'SCHEDULED' ? '오픈예정'
-      : t.status === 'DONE' ? '종료' : '마감',
+      : t.status === 'DONE' ? '종료' : '진행중',
     img: t.bannerImageUrl, eventDate: t.eventDate,
     applyStart: t.applyStart ? t.applyStart.slice(0, 10) : null,
     applyEnd: t.applyEnd ? t.applyEnd.slice(0, 10) : null,
@@ -222,8 +231,16 @@ export async function loadSnukData(): Promise<SnukData> {
   const featuredCampaign = pureCampaigns.find((c) => c.featured && c.ownerMemberId == null) ?? null
   const featuredTournament = tournaments.find((t) => t.featured && t.ownerMemberId == null) ?? null
 
+  // 컨텐츠 페이지(/campaigns) "체험단" 종류 — 게임 연계 캠페인을 카드로(썸네일은 게임 이미지 폴백)
+  const trialContents: SnukCard[] = campaigns.filter((c) => gameLinkedIds.has(c.id)).map((c) => {
+    const g = gameByCampaign.get(c.id)
+    const card = campaignCard(c)
+    return { ...card, trial: true, img: card.img ?? g?.thumbnailUrl ?? null, title: card.title || g?.name || '' }
+  })
+
   return {
     snukContents: pureCampaigns.map(campaignCard),
+    trialContents,
     snukFeatured: featuredCampaign ? campaignCard(featuredCampaign) : null,
     mugContents: tournaments.map(tournamentCard),
     mugFeatured: featuredTournament ? tournamentCard(featuredTournament) : null,
