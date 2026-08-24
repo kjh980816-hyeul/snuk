@@ -1346,6 +1346,7 @@ function crewTok(){
 function crewLogout(){
   try{ localStorage.removeItem('crew_admin_'+CREW_SLUG) }catch(e){}
   closeModal(); toast('로그아웃했어요 👋');
+  if(!isSnukAdmin()){ $('#admOpen').style.display='none'; }
 }
 function openCrewLogin(){
   openModal('<h2 class="mod-title">🔑 관리자 로그인</h2>'
@@ -1374,7 +1375,16 @@ function openCrewLogin(){
   $('#cl_pw').onkeydown = function(e){ if(e.key==='Enter') go() };
   $('#cl_id').focus();
 }
-$('#admOpen').style.display='';
+/* ⚙️ 버튼은 관리자에게만 — 크루 로그인됨 or 스눅 ADMIN. 최초 진입은 비밀 주소(#admin)로:
+   /crew/<slug>/#admin 으로 열면 버튼이 나타나고 로그인 창이 뜬다. */
+if(crewTok() || isSnukAdmin()){ $('#admOpen').style.display=''; }
+function crewAdminEntry(){
+  if(location.hash !== '#admin') return;
+  $('#admOpen').style.display='';
+  if(crewTok() || isSnukAdmin()){ openAdmin('members') } else { openCrewLogin() }
+}
+crewAdminEntry();
+window.addEventListener('hashchange', crewAdminEntry);
 fetch('/api/crew/'+CREW_SLUG)
   .then(function(r){ if(!r.ok) throw 0; return r.json() })
   .then(function(j){
