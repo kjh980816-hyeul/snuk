@@ -82,8 +82,10 @@ export interface MyApplication {
 // ----- 대회 -----
 export type TournamentStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED' | 'DONE'
 
-/** 참가 신청 질문(주최자 작성) — required=false 면 선택 항목. */
-export interface ApplyQuestion { q: string; required: boolean }
+/** 질문 유형 — 단답/장문/객관식(하나 선택)/체크박스(복수 선택). 미지정(구버전)은 SHORT 취급. */
+export type ApplyQuestionType = 'SHORT' | 'LONG' | 'SELECT' | 'MULTI'
+/** 참가 신청 질문(주최자 작성) — required=false 면 선택 항목. options 는 SELECT·MULTI 선택지. */
+export interface ApplyQuestion { q: string; required: boolean; type?: ApplyQuestionType; options?: string[] | null }
 /** 참가 신청 답변 — 텍스트/사진 중 하나 이상. */
 export interface ApplyAnswer { text: string | null; imageUrl: string | null }
 

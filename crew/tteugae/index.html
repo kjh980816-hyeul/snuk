@@ -1035,12 +1035,15 @@ function fileToDataURL(input, cb, maxDim){
 function openAdmin(tab){
   admTab = tab || admTab;
   var tabs = [['club','기본정보'],['banners','배너'],['members','멤버'],['notices','소식'],['events','캘린더'],['works','작품'],['save','저장']];
-  var html = '<h2 class="mod-title">⚙️ 뜨개동 관리자</h2>'
+  var html = '<h2 class="mod-title" style="display:flex;align-items:center;gap:10px">⚙️ 뜨개동 관리자'
+    + (typeof crewTok==='function' && crewTok() ? '<button class="mini" id="crewLogoutBtn" style="margin-left:auto;margin-right:34px">로그아웃</button>' : '')
+    + '</h2>'
     + '<p class="mod-meta">각 탭에서 <b>저장</b>을 누르면 서버에 바로 저장돼 모두에게 반영돼요. (파일 백업은 <b>저장</b> 탭)</p>'
     + '<div class="tabs">'+tabs.map(function(t){return '<button data-t="'+t[0]+'" class="'+(admTab===t[0]?'on':'')+'">'+t[1]+'</button>'}).join('')+'</div>'
     + '<div id="admBody"></div>';
   openModal(html,'wide');
   $$('#mod .tabs button').forEach(function(b){ b.onclick=function(){ openAdmin(b.dataset.t) } });
+  var lo = $('#crewLogoutBtn'); if(lo) lo.onclick = crewLogout;
   renderAdmBody();
 }
 function renderAdmBody(){
@@ -1312,7 +1315,7 @@ $('#calNext').onclick = function(){ calM++; if(calM>11){calM=0;calY++} selDay=nu
 $('#calToday').onclick = function(){ var d=new Date(); calY=d.getFullYear(); calM=d.getMonth(); selDay=null; renderCal(); renderCalDetail() };
 $('#ntMore').onclick = function(){ openAllNotices() };
 $('#pfMore').onclick = function(){ openAllWorks('ALL') };
-$('#admOpen').onclick = function(){ openAdmin('members') };
+$('#admOpen').onclick = function(){ (crewTok() || isSnukAdmin()) ? openAdmin('members') : openCrewLogin() };
 
 (function init(){
   var d = new Date();
@@ -1324,21 +1327,65 @@ $('#admOpen').onclick = function(){ openAdmin('members') };
   window.addEventListener('load', function(){ SLIDERS.forEach(function(s){ s.layout() }); revealAll() });
 })();
 
-/* ── 서버 연동(2026-08-20) ───────────────────────────────
+/* ── 서버 연동(2026-08-20 · 로그인 2026-08-24) ───────────────
    데이터는 서버(DB)가 원본: 로드 시 GET /api/crew/<slug>, HTML 내장 DATA는 폴백.
-   관리자(스눅 ADMIN 로그인, localStorage 토큰 공유)는 수정 즉시 PUT으로 저장. */
+   저장 권한 = ① 크루 자체 관리자 로그인(아이디/비밀번호 → X-Crew-Token)
+             ② 스눅(snuk.kr) ADMIN 로그인(localStorage 토큰 공유) */
 var CREW_SLUG = (location.pathname.match(/\/crew\/([a-z0-9-]+)/)||[])[1] || 'tteugae';
 function snukTok(k){ try{ return localStorage.getItem(k) }catch(e){ return null } }
 function snukJwtRole(t){ try{ return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).role }catch(e){ return null } }
-if(snukJwtRole(snukTok('snuk_access')||'')==='ADMIN' || snukJwtRole(snukTok('snuk_refresh')||'')==='ADMIN'){
-  $('#admOpen').style.display='';
+function isSnukAdmin(){ return snukJwtRole(snukTok('snuk_access')||'')==='ADMIN' || snukJwtRole(snukTok('snuk_refresh')||'')==='ADMIN' }
+/* 크루 토큰 — "slug.만료초.서명" 형식, 만료 지났으면 없는 것으로 취급 */
+function crewTok(){
+  try{
+    var t = localStorage.getItem('crew_admin_'+CREW_SLUG); if(!t) return null;
+    var p = t.split('.'); if(p.length!==3 || (+p[1])*1000 < Date.now()) return null;
+    return t;
+  }catch(e){ return null }
 }
+function crewLogout(){
+  try{ localStorage.removeItem('crew_admin_'+CREW_SLUG) }catch(e){}
+  closeModal(); toast('로그아웃했어요 👋');
+}
+function openCrewLogin(){
+  openModal('<h2 class="mod-title">🔑 관리자 로그인</h2>'
+    + '<p class="mod-meta">크루 관리자 아이디와 비밀번호를 입력해 주세요.</p>'
+    + fld('아이디','cl_id','')
+    + fld('비밀번호','cl_pw','','password')
+    + '<div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-p" id="cl_go" style="padding:12px 26px;font-size:14px">로그인</button></div>');
+  function go(){
+    var id=$('#cl_id').value.trim(), pw=$('#cl_pw').value;
+    if(!id || !pw) return toast('아이디와 비밀번호를 입력해 주세요');
+    $('#cl_go').disabled = true;
+    fetch('/api/crew/'+CREW_SLUG+'/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:id,pw:pw})})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j} }) })
+      .then(function(res){
+        if(res.ok && res.j.token){
+          try{ localStorage.setItem('crew_admin_'+CREW_SLUG, res.j.token) }catch(e){}
+          toast('환영해요, 관리자님 🧶'); openAdmin('members');
+        }else{
+          $('#cl_go').disabled = false;
+          toast(res.j && res.j.message ? res.j.message : '아이디 또는 비밀번호가 올바르지 않습니다.');
+        }
+      })
+      .catch(function(){ $('#cl_go').disabled = false; toast('로그인 실패 — 네트워크를 확인해 주세요') });
+  }
+  $('#cl_go').onclick = go;
+  $('#cl_pw').onkeydown = function(e){ if(e.key==='Enter') go() };
+  $('#cl_id').focus();
+}
+$('#admOpen').style.display='';
 fetch('/api/crew/'+CREW_SLUG)
   .then(function(r){ if(!r.ok) throw 0; return r.json() })
   .then(function(j){
     var d = JSON.parse(j.data);
     if(!d || !d.club) return;
-    DATA = d;
+    /* 부분 데이터 방어 — 서버 데이터에 없는 키는 빈 배열로(내장 데모로 되돌리지 않음), club 은 내장 기본값 위에 병합 */
+    DATA = {
+      club: Object.assign({}, DATA.club, d.club),
+      members: d.members || [], notices: d.notices || [],
+      events: d.events || [], works: d.works || []
+    };
     var dd=new Date(), up=(d.events||[]).filter(function(e){return (e.endDate||e.date) >= iso(dd)}).sort(function(a,b){return a.date.localeCompare(b.date)})[0];
     if(up){ var bb=new Date(up.date+'T00:00:00'); calY=bb.getFullYear(); calM=bb.getMonth(); selDay=null; }
     reRender();
@@ -1348,10 +1395,26 @@ fetch('/api/crew/'+CREW_SLUG)
 var snukSvTimer = null, snukSaving = 0;
 function scheduleServerSave(){ clearTimeout(snukSvTimer); snukSaving++; snukSvTimer = setTimeout(function(){ snukSvTimer=null; serverSave(true) }, 700) }
 function serverSave(quiet){
+  var ct = crewTok();
   var t = snukTok('snuk_access');
-  if(!t){ snukSaving=0; toast('서버 저장은 스눅(snuk.kr) 관리자 로그인 후 가능해요'); return }
+  if(!ct && !t){ snukSaving=0; toast('저장은 관리자 로그인 후 가능해요 — ⚙️ 관리자 버튼으로 로그인해 주세요'); return }
   snukSaving = 1;
   var body = JSON.stringify({ data: JSON.stringify(DATA) });
+  if(ct){
+    fetch('/api/crew/'+CREW_SLUG, {method:'PUT', headers:{'Content-Type':'application/json','X-Crew-Token':ct}, body:body})
+      .then(function(r){
+        snukSaving = 0;
+        if(r.ok){ toast(quiet ? '서버 반영 완료 🌐' : '서버에 저장했어요 — 모두에게 바로 반영돼요 🌐') }
+        else if(r.status===413){ toast('서버 저장 실패 — 이미지 용량이 너무 커요. 해당 사진을 다시 올려 주세요 🙏') }
+        else if(r.status===401){
+          try{ localStorage.removeItem('crew_admin_'+CREW_SLUG) }catch(e){}
+          toast('로그인이 만료됐어요 — ⚙️ 관리자 버튼으로 다시 로그인해 주세요');
+        }
+        else{ toast('서버 저장 실패 — 잠시 후 다시 시도해 주세요') }
+      })
+      .catch(function(){ snukSaving=0; toast('서버 저장 실패 — 네트워크를 확인해 주세요') });
+    return;
+  }
   function put(a){ return fetch('/api/admin/crew/'+CREW_SLUG, {method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+a}, body:body}) }
   function verdict(r){ return r.ok ? 'ok' : (r.status===413 ? 'big' : 'auth') }
   put(t).then(function(r){

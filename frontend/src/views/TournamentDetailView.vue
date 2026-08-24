@@ -38,17 +38,21 @@ async function load() {
   }
 }
 
-// 주최자 커스텀 질문(항목 17) — 필수/선택 구분 + 답변에 사진 첨부 가능
+// 주최자 커스텀 질문(항목 17) — 필수/선택 + 유형(단답/장문/객관식/체크박스) + 사진 첨부(단답·장문)
 const applyFormOpen = ref(false)
 const answerTexts = ref<string[]>([])
+const answerMulti = ref<string[][]>([])
 const answerImages = ref<Array<string | null>>([])
 const answerUploading = ref<number | null>(null)
+
+function qType(q: { type?: string }) { return q.type ?? 'SHORT' }
 
 function startApply() {
   if (!tour.value) return
   if (!auth.isLoggedIn) { applyMsg.value = '로그인 후 신청할 수 있습니다.'; return }
   if (tour.value.applyQuestions?.length && !applyFormOpen.value) {
     answerTexts.value = tour.value.applyQuestions.map(() => '')
+    answerMulti.value = tour.value.applyQuestions.map(() => [])
     answerImages.value = tour.value.applyQuestions.map(() => null)
     applyFormOpen.value = true
     return
@@ -76,7 +80,11 @@ async function apply() {
   if (!auth.isLoggedIn) { applyMsg.value = '로그인 후 신청할 수 있습니다.'; return }
   const qs = tour.value.applyQuestions ?? []
   if (qs.length) {
-    const missing = qs.findIndex((q, i) => q.required && !answerTexts.value[i]?.trim() && !answerImages.value[i])
+    const missing = qs.findIndex((q, i) => {
+      if (!q.required) return false
+      if (qType(q) === 'MULTI') return answerMulti.value[i].length === 0
+      return !answerTexts.value[i]?.trim() && !answerImages.value[i]
+    })
     if (missing >= 0) {
       applyMsg.value = `필수 질문에 답변해주세요: ${qs[missing].q}`
       return
@@ -85,7 +93,10 @@ async function apply() {
   applying.value = true
   try {
     const answers = qs.length
-      ? qs.map((_, i) => ({ text: answerTexts.value[i]?.trim() || null, imageUrl: answerImages.value[i] }))
+      ? qs.map((q, i) => ({
+          text: (qType(q) === 'MULTI' ? answerMulti.value[i].join(', ') : answerTexts.value[i]?.trim()) || null,
+          imageUrl: qType(q) === 'SELECT' || qType(q) === 'MULTI' ? null : answerImages.value[i],
+        }))
       : undefined
     await tournamentApi.apply(tour.value.id, answers)
     applyMsg.value = '참가 신청 완료! 관리자 승인 후 확정됩니다.'
@@ -140,8 +151,21 @@ watch(() => route.params.id, load)
                 <label>{{ i + 1 }}. {{ q.q }}
                   <span :class="q.required ? 'q-req' : 'q-opt'">{{ q.required ? '필수' : '선택' }}</span>
                 </label>
-                <textarea v-model="answerTexts[i]" rows="2" placeholder="답변을 입력해주세요"></textarea>
-                <div class="q-img-row">
+                <!-- 유형별 답변 입력: 객관식(라디오)/체크박스/단답/장문 -->
+                <div v-if="qType(q) === 'SELECT'" class="q-choices">
+                  <label v-for="(o, oi) in q.options ?? []" :key="oi" class="q-choice">
+                    <input type="radio" :name="'tq-' + i" :value="o" v-model="answerTexts[i]" /><span>{{ o }}</span>
+                  </label>
+                </div>
+                <div v-else-if="qType(q) === 'MULTI'" class="q-choices">
+                  <label v-for="(o, oi) in q.options ?? []" :key="oi" class="q-choice">
+                    <input type="checkbox" :value="o" v-model="answerMulti[i]" /><span>{{ o }}</span>
+                  </label>
+                </div>
+                <input v-else-if="qType(q) === 'SHORT'" type="text" v-model="answerTexts[i]" class="q-short"
+                  placeholder="답변을 입력해주세요" />
+                <textarea v-else v-model="answerTexts[i]" rows="3" placeholder="답변을 입력해주세요"></textarea>
+                <div v-if="qType(q) !== 'SELECT' && qType(q) !== 'MULTI'" class="q-img-row">
                   <label class="q-img-btn">
                     {{ answerUploading === i ? '업로드 중…' : '📷 사진 첨부' }}
                     <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none"
@@ -221,6 +245,15 @@ watch(() => route.params.id, load)
 .apply-q textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 9px;
   padding: 9px 11px; color: var(--text); font-size: 13px; outline: none; resize: vertical;
   font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
+.apply-q .q-short { background: var(--bg3); border: 1px solid var(--border); border-radius: 9px;
+  padding: 9px 11px; color: var(--text); font-size: 13px; outline: none;
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
+.q-choices { display: flex; flex-direction: column; gap: 4px; }
+.apply-q .q-choice { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500;
+  color: var(--text2); background: var(--bg3); border: 1px solid var(--border); border-radius: 9px;
+  padding: 8px 11px; cursor: pointer; }
+.apply-q .q-choice:hover { border-color: var(--accent); }
+.q-choice input { accent-color: var(--accent); }
 .q-req { font-size: 10px; font-weight: 800; color: var(--live); margin-left: 6px; }
 .q-opt { font-size: 10px; font-weight: 700; color: var(--text3); margin-left: 6px; }
 .q-img-row { display: flex; align-items: center; gap: 8px; }

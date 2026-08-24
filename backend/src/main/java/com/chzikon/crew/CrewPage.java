@@ -27,6 +27,14 @@ public class CrewPage {
     @Column(name = "updated_by")
     private Long updatedBy;
 
+    /** 크루 자체 관리자 로그인(V26) — null 이면 스눅 ADMIN 계정으로만 저장 가능. */
+    @Column(name = "login_id", length = 50)
+    private String loginId;
+
+    /** SHA-256(slug + ':' + 비밀번호) hex */
+    @Column(name = "login_pw_hash", length = 100)
+    private String loginPwHash;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 

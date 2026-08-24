@@ -4,9 +4,10 @@ import { adminApi } from '@/api/admin'
 import { campaignApi, collabApi, noticeApi, resourceApi, tournamentApi } from '@/api'
 import api from '@/api/client'
 import type {
-  Campaign, CollabGame, CommunityBoard, CommunityPostSummary, CommunityReport, ContentVideo, ClientLogo,
+  ApplyQuestion, Campaign, CollabGame, CommunityBoard, CommunityPostSummary, CommunityReport, ContentVideo, ClientLogo,
   Goods, Notice, OrderView, Spotlight, Tournament,
 } from '@/api/types'
+import ApplyFormBuilder from '@/components/ApplyFormBuilder.vue'
 
 // 어드민 변경 요청(POST/PUT/DELETE/PATCH) 실패를 전부 알림으로 표출 — 침묵 실패 금지
 // (2026-07-28 뮤마랭: 저장·업로드가 전부 403인데 화면엔 아무 표시가 없어 "안된다"로만 보임)
@@ -98,6 +99,7 @@ function editCampaign(c: Campaign) {
 async function saveCampaign() {
   if (!editing.value) return
   const body = editing.value
+  body.applyQuestions = cleanQuestions(body.applyQuestions)
   if (body.id) await adminApi.updateCampaign(body.id, body)
   else await adminApi.createCampaign(body)
   editing.value = null
@@ -143,43 +145,24 @@ async function rejectApp(id: number, campaignId: number) {
   applications.value = await adminApi.applications(campaignId)
 }
 
-// 컨텐츠 신청 질문(V22, 대회 패턴 미러) — 줄바꿈 구분, 줄 앞에 [선택] 붙이면 선택 항목(기본 필수)
-const campQuestionsText = computed({
-  get: () => (editing.value?.applyQuestions ?? [])
-    .map((q) => (q.required ? q.q : `[선택] ${q.q}`)).join('\n'),
-  set: (v: string) => {
-    if (editing.value) {
-      editing.value.applyQuestions = v.split('\n')
-        .map((s) => s.trim()).filter(Boolean)
-        .map((s) => s.startsWith('[선택]')
-          ? { q: s.slice(4).trim(), required: false }
-          : { q: s, required: true })
-        .filter((q) => q.q)
-    }
-  },
-})
+// 컨텐츠/대회 신청 질문(V22) — 네이버 폼 스타일 빌더(ApplyFormBuilder)로 편집.
+// 저장 시 빈 질문 제거 + 객관식·체크박스 빈 선택지 정리.
+function cleanQuestions(list: ApplyQuestion[] | undefined | null): ApplyQuestion[] {
+  return (list ?? [])
+    .map((q) => ({
+      q: q.q.trim(), required: q.required, type: q.type ?? 'SHORT',
+      options: (q.type === 'SELECT' || q.type === 'MULTI')
+        ? (q.options ?? []).map((o) => o.trim()).filter(Boolean)
+        : undefined,
+    }))
+    .filter((q) => q.q && (q.type !== 'SELECT' && q.type !== 'MULTI' || (q.options?.length ?? 0) > 0))
+}
 
 // ----- tournaments -----
 const tournaments = ref<Tournament[]>([])
 const tourEditing = ref<Partial<Tournament> | null>(null)
 const tourSelected = ref<Tournament | null>(null)
 const participants = ref<Array<{ participantId: number; memberId: number; nickname: string; profileImageUrl: string | null; status: string; followerSnapshot: number; answers: Array<{ text: string | null; imageUrl: string | null }> }>>([])
-
-// 대회 참가 질문(항목 17) — 줄바꿈 구분, 줄 앞에 [선택] 붙이면 선택 항목(기본 필수)
-const tourQuestionsText = computed({
-  get: () => (tourEditing.value?.applyQuestions ?? [])
-    .map((q) => (q.required ? q.q : `[선택] ${q.q}`)).join('\n'),
-  set: (v: string) => {
-    if (tourEditing.value) {
-      tourEditing.value.applyQuestions = v.split('\n')
-        .map((s) => s.trim()).filter(Boolean)
-        .map((s) => s.startsWith('[선택]')
-          ? { q: s.slice(4).trim(), required: false }
-          : { q: s, required: true })
-        .filter((q) => q.q)
-    }
-  },
-})
 
 // 참가 신청 CSV 다운로드(항목 18)
 function exportParticipantsCsv(tournamentId: number) {
@@ -205,6 +188,7 @@ function editTournament(t: Tournament) {
 async function saveTournament() {
   if (!tourEditing.value) return
   const b = tourEditing.value
+  b.applyQuestions = cleanQuestions(b.applyQuestions)
   if (b.id) await adminApi.updateTournament(b.id, b)
   else await adminApi.createTournament(b)
   tourEditing.value = null
@@ -1141,10 +1125,9 @@ function onTab(t: Tab) {
         <div class="row3">
           <label>모집 인원<input type="number" v-model.number="editing.totalSlots" /></label>
           <label class="chk"><input type="checkbox" v-model="editing.featured" /> 메인 큰 카드 고정 (미체크 시 자동 슬라이드)</label>
-          <label>신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 을 붙이면 선택 항목. 신청자가 신청 시 답변합니다)
-            <textarea v-model="campQuestionsText" placeholder="예) 신청 이유를 알려주세요&#10;[선택] 하고 싶은 말"></textarea>
-          </label>
         </div>
+        <label>신청 질문 (신청자가 신청 시 답변합니다)</label>
+        <ApplyFormBuilder v-model="editing.applyQuestions" />
         <div class="form-acts">
           <button class="btn sm" @click="saveCampaign">{{ editing.id ? '수정 완료' : '등록' }}</button>
           <button class="btn ghost sm" @click="editing = null">취소</button>
@@ -1184,9 +1167,8 @@ function onTab(t: Tab) {
         <label>대회 결과 (DONE 상태에서 페이지에 노출)
           <textarea v-model="tourEditing.resultText" placeholder="예) 우승: 팀 알파 / MVP: 스트리머A"></textarea>
         </label>
-        <label>참가 신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 을 붙이면 선택 항목, 답변엔 사진 첨부도 가능)
-          <textarea v-model="tourQuestionsText" placeholder="예) 티어를 알려주세요&#10;[선택] 하고 싶은 말"></textarea>
-        </label>
+        <label>참가 신청 질문 (단답·장문 답변엔 사진 첨부도 가능)</label>
+        <ApplyFormBuilder v-model="tourEditing.applyQuestions" />
         <label>정렬순서<input type="number" v-model.number="tourEditing.sortOrder" /></label>
         <div class="form-acts">
           <button class="btn sm" @click="saveTournament">{{ tourEditing.id ? '수정 완료' : '등록' }}</button>

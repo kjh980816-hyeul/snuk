@@ -18,8 +18,28 @@ public final class ApplyFormJson {
     private ApplyFormJson() {
     }
 
-    /** 참가 질문 — required=false 면 선택 항목. */
-    public record ApplyQuestion(String q, boolean required) {
+    /** 질문 유형 — 단답/장문/객관식(하나)/체크박스(복수). 알 수 없는 값은 SHORT 취급. */
+    public static final List<String> QUESTION_TYPES = List.of("SHORT", "LONG", "SELECT", "MULTI");
+
+    /**
+     * 참가 질문 — required=false 면 선택 항목.
+     * type: SHORT(단답)/LONG(장문)/SELECT(객관식)/MULTI(체크박스), options: SELECT·MULTI 선택지.
+     * 구버전 데이터/클라이언트({q,required}만)는 type=null 로 들어와 SHORT 로 정규화된다.
+     */
+    public record ApplyQuestion(String q, boolean required, String type, List<String> options) {
+        public ApplyQuestion {
+            type = (type != null && QUESTION_TYPES.contains(type)) ? type : "SHORT";
+            if ("SELECT".equals(type) || "MULTI".equals(type)) {
+                options = options == null ? List.of()
+                        : options.stream().filter(o -> o != null && !o.isBlank()).map(String::trim).toList();
+            } else {
+                options = null;
+            }
+        }
+
+        public ApplyQuestion(String q, boolean required) {
+            this(q, required, null, null);
+        }
     }
 
     /** 참가 답변 — 텍스트/이미지 중 하나 이상. */
@@ -48,7 +68,15 @@ public final class ApplyFormJson {
             } else if (n.isObject()) {
                 String q = n.path("q").asText("");
                 if (!q.isBlank()) {
-                    out.add(new ApplyQuestion(q, n.path("required").asBoolean(true)));
+                    List<String> options = null;
+                    if (n.path("options").isArray()) {
+                        options = new ArrayList<>();
+                        for (JsonNode o : n.path("options")) {
+                            options.add(o.asText(""));
+                        }
+                    }
+                    out.add(new ApplyQuestion(q, n.path("required").asBoolean(true),
+                            n.path("type").asText(null), options));
                 }
             }
         }

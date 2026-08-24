@@ -401,6 +401,71 @@ const SP_INP = 'width:100%;margin-bottom:10px;padding:12px 14px;background:var(-
 let _spEditId = null;
 let _spRaw = null; // 수정 시 원본(미노출 필드 보존용 — update 는 전필드 전송이라 유실 방지)
 
+// ── 신청 질문 빌더(네이버 폼 스타일) — 스트리머 등록/수정 모달용.
+// 상태는 _spQs 배열, 텍스트 입력은 oninput 으로 상태만 갱신(재렌더 없음 — 포커스 유지),
+// 구조 변경(유형/추가/삭제/순서)만 spQbRender 로 다시 그림.
+let _spQs = [];
+const SPQ_TYPES = [['SHORT', '단답형'], ['LONG', '장문형'], ['SELECT', '객관식 (하나)'], ['MULTI', '체크박스 (복수)']];
+const SPQ_BTN = 'border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;';
+
+function spQbRender() {
+  const box = document.getElementById('spc-qbuilder');
+  if (!box) return;
+  box.innerHTML = _spQs.map((q, i) => {
+    const isChoice = q.type === 'SELECT' || q.type === 'MULTI';
+    return `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--bg2);">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <b style="font-size:11px;color:var(--accent);flex-shrink:0;">Q${i + 1}</b>
+        <input value="${esc(q.q)}" placeholder="질문을 입력하세요" oninput="_spQs[${i}].q=this.value"
+          style="flex:1;min-width:0;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text);font-size:12.5px;font-family:inherit;">
+        <select onchange="spQbType(${i},this.value)"
+          style="flex-shrink:0;padding:7px 4px;border:1px solid var(--border);border-radius:7px;background:var(--bg3);color:var(--text2);font-size:11.5px;font-family:inherit;">
+          ${SPQ_TYPES.map(([v, l]) => `<option value="${v}"${(q.type || 'SHORT') === v ? ' selected' : ''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      ${isChoice ? `<div style="margin-top:7px;padding-left:2px;">
+        ${(q.options || []).map((o, oi) => `
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;">
+            <span style="color:var(--text3);font-size:12px;flex-shrink:0;">${q.type === 'SELECT' ? '◯' : '☐'}</span>
+            <input value="${esc(o)}" placeholder="선택지" oninput="_spQs[${i}].options[${oi}]=this.value"
+              style="flex:1;min-width:0;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);font-size:12px;font-family:inherit;">
+            <button type="button" onclick="spQbDelOpt(${i},${oi})" ${(q.options || []).length <= 1 ? 'disabled' : ''}
+              style="border:none;background:none;color:var(--text3);cursor:pointer;font-size:11px;padding:3px 5px;">✕</button>
+          </div>`).join('')}
+        <button type="button" onclick="spQbAddOpt(${i})"
+          style="border:none;background:none;color:var(--accent);cursor:pointer;font-size:11.5px;font-weight:700;padding:2px 4px;">＋ 선택지 추가</button>
+      </div>` : `<div style="margin-top:6px;font-size:11px;color:var(--text3);">${q.type === 'LONG' ? '여러 줄 답변' : '한 줄 답변'} · 사진 첨부 가능</div>`}
+      <div style="display:flex;align-items:center;gap:5px;margin-top:8px;border-top:1px solid var(--border);padding-top:7px;">
+        <label style="display:flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" ${q.required ? 'checked' : ''} onchange="_spQs[${i}].required=this.checked"> 필수</label>
+        <span style="flex:1;"></span>
+        <button type="button" onclick="spQbMove(${i},-1)" ${i === 0 ? 'disabled' : ''} style="${SPQ_BTN}">↑</button>
+        <button type="button" onclick="spQbMove(${i},1)" ${i === _spQs.length - 1 ? 'disabled' : ''} style="${SPQ_BTN}">↓</button>
+        <button type="button" onclick="spQbDel(${i})" style="${SPQ_BTN}color:#e5484d;">삭제</button>
+      </div>
+    </div>`;
+  }).join('')
+  + `<button type="button" onclick="spQbAdd()"
+      style="width:100%;border:1.5px dashed var(--border);background:none;color:var(--accent);cursor:pointer;padding:9px;border-radius:9px;font-size:12.5px;font-weight:700;margin-bottom:12px;">＋ 신청 질문 추가</button>`;
+}
+function spQbAdd() { _spQs.push({ q: '', required: true, type: 'SHORT', options: [] }); spQbRender(); }
+function spQbDel(i) { _spQs.splice(i, 1); spQbRender(); }
+function spQbMove(i, d) { const j = i + d; if (j < 0 || j >= _spQs.length) return; [_spQs[i], _spQs[j]] = [_spQs[j], _spQs[i]]; spQbRender(); }
+function spQbType(i, t) { _spQs[i].type = t; if ((t === 'SELECT' || t === 'MULTI') && !(_spQs[i].options || []).length) _spQs[i].options = ['옵션 1']; spQbRender(); }
+function spQbAddOpt(i) { (_spQs[i].options = _spQs[i].options || []).push('옵션 ' + (_spQs[i].options.length + 1)); spQbRender(); }
+function spQbDelOpt(i, oi) { _spQs[i].options.splice(oi, 1); spQbRender(); }
+/** 저장용 정리 — 빈 질문 제거, 객관식·체크박스는 빈 선택지 정리(선택지 0개면 질문 제외). */
+function spQbCollect() {
+  return _spQs
+    .map((q) => {
+      const choice = q.type === 'SELECT' || q.type === 'MULTI';
+      return { q: (q.q || '').trim(), required: !!q.required, type: q.type || 'SHORT',
+        options: choice ? (q.options || []).map((s) => s.trim()).filter(Boolean) : undefined };
+    })
+    .filter((q) => q.q && (!(q.type === 'SELECT' || q.type === 'MULTI') || q.options.length));
+}
+
 function initStreamerPost() {
   const me = window.__snukMe;
   const can = !!(me && (me.role === 'STREAMER' || me.role === 'REPORTER' || me.role === 'ADMIN'));
@@ -442,8 +507,9 @@ function openStreamerPost(kind) {
     <input id="spc-title" style="${SP_INP}" placeholder="제목 *">
     <input id="spc-game" style="${SP_INP}" placeholder="게임명">
     <textarea id="spc-desc" style="${SP_INP}resize:vertical;" rows="6" placeholder="설명"></textarea>
-    <textarea id="spc-questions" style="${SP_INP}resize:vertical;" rows="3"
-      placeholder="${isT ? '참가' : ''} 신청 질문 (한 줄에 하나 · 기본 필수 — 줄 앞에 [선택] 붙이면 선택 항목)"></textarea>
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin:2px 0 7px;">${isT ? '참가 ' : ''}신청 질문
+      <span style="font-weight:400;color:var(--text3);">— 신청자가 신청할 때 답변합니다</span></div>
+    <div id="spc-qbuilder"></div>
     <div style="display:flex;gap:8px;">
       <input id="spc-date" type="date" style="${SP_INP}flex:1;" title="진행일">
       <input id="spc-cap" type="number" min="0" style="${SP_INP}flex:1;" placeholder="${isT ? '정원(명)' : '모집 인원'}">
@@ -456,6 +522,8 @@ function openStreamerPost(kind) {
       <img id="spc-img-prev" alt="" style="display:none;width:56px;height:36px;object-fit:cover;border-radius:6px;">
     </div>
     <button id="spc-submit" class="btn-apply" style="width:100%;padding:13px;font-size:15px;" onclick="spSubmit('${kind}')">등록하기</button>`, null, true);
+  _spQs = [];
+  spQbRender();
 }
 
 async function spEdit(kind, id) {
@@ -468,8 +536,10 @@ async function spEdit(kind, id) {
     document.getElementById('spc-desc').value = d.description || '';
     document.getElementById('spc-date').value = d.eventDate || '';
     document.getElementById('spc-cap').value = kind === 'tournament' ? d.capacity : d.totalSlots;
-    const qEl = document.getElementById('spc-questions');
-    if (qEl) qEl.value = (d.applyQuestions || []).map((q) => (q.required ? q.q : `[선택] ${q.q}`)).join('\n');
+    _spQs = (d.applyQuestions || []).map((q) => ({
+      q: q.q, required: q.required, type: q.type || 'SHORT', options: (q.options || []).slice(),
+    }));
+    spQbRender();
     const sel = document.getElementById('spc-status');
     // 대회 enum(CLOSED=모집 마감·진행, DONE=종료)을 공용 셀렉트(ONGOING/CLOSED) 표기로 변환
     const shown = kind === 'tournament' ? ({ CLOSED: 'ONGOING', DONE: 'CLOSED' }[d.status] || d.status) : d.status;
@@ -566,12 +636,7 @@ async function spSubmit(kind) {
     const cap = parseInt(v('spc-cap') || '0', 10) || 0;
     const picked = v('spc-status');
     const status = kind === 'tournament' ? ({ ONGOING: 'CLOSED', CLOSED: 'DONE' }[picked] || picked) : picked;
-    const qEl = document.getElementById('spc-questions');
-    const questions = qEl ? qEl.value.split('\n').map((s) => s.trim()).filter(Boolean)
-      .map((s) => s.startsWith('[선택]')
-        ? { q: s.slice(4).trim(), required: false }
-        : { q: s, required: true })
-      .filter((q) => q.q) : [];
+    const questions = spQbCollect();
     const body = kind === 'tournament'
       ? { title, gameName: game, description: desc, bannerImageUrl: img,
           detailImageUrl: _spRaw ? _spRaw.detailImageUrl : null,
@@ -618,12 +683,24 @@ function openApply(kind, id) {
   const qs = document.getElementById('apply-modal-qs');
   if (qs) {
     qs.style.display = questions.length ? '' : 'none';
-    qs.innerHTML = questions.map((q, i) => `
-      <label style="display:block;margin-bottom:10px;font-size:12.5px;font-weight:700;">
-        Q${i + 1}. ${esc(q.q)} <span style="font-weight:400;color:var(--text3);">${q.required ? '(필수)' : '(선택)'}</span>
-        <textarea id="apply-q-${i}" rows="2" placeholder="답변을 입력하세요"
-          style="display:block;width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;"></textarea>
-      </label>`).join('');
+    // 유형별 답변 입력(네이버 폼 스타일): 단답/장문/객관식(라디오)/체크박스
+    const AQ_INP = 'display:block;width:100%;margin-top:6px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box;';
+    qs.innerHTML = questions.map((q, i) => {
+      const t = q.type || 'SHORT';
+      let field;
+      if (t === 'SELECT' || t === 'MULTI') {
+        field = (q.options || []).map((o) => `
+          <label style="display:flex;align-items:center;gap:8px;margin-top:6px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;">
+            <input type="${t === 'SELECT' ? 'radio' : 'checkbox'}" name="apply-q-${i}" value="${esc(o)}" style="accent-color:var(--accent);flex-shrink:0;"> ${esc(o)}
+          </label>`).join('');
+      } else if (t === 'SHORT') {
+        field = `<input id="apply-q-${i}" type="text" placeholder="답변을 입력하세요" style="${AQ_INP}">`;
+      } else {
+        field = `<textarea id="apply-q-${i}" rows="3" placeholder="답변을 입력하세요" style="${AQ_INP}resize:vertical;"></textarea>`;
+      }
+      return `<div style="display:block;margin-bottom:12px;font-size:12.5px;font-weight:700;color:var(--text);">
+        Q${i + 1}. ${esc(q.q)} <span style="font-weight:400;color:var(--text3);">${q.required ? '(필수)' : '(선택)'}</span>${field}</div>`;
+    }).join('');
   }
   document.getElementById('apply-modal').classList.add('open');
 }
@@ -635,8 +712,14 @@ async function confirmApply() {
   let answers = null;
   if (questions && questions.length) {
     answers = questions.map((q, i) => {
-      const el = document.getElementById(`apply-q-${i}`);
-      const text = el ? el.value.trim() : '';
+      const t = q.type || 'SHORT';
+      let text;
+      if (t === 'SELECT' || t === 'MULTI') {
+        text = Array.from(document.querySelectorAll(`[name="apply-q-${i}"]:checked`)).map((el) => el.value).join(', ');
+      } else {
+        const el = document.getElementById(`apply-q-${i}`);
+        text = el ? el.value.trim() : '';
+      }
       return { text: text || null, imageUrl: null };
     });
     const missing = questions.findIndex((q, i) => q.required && !answers[i].text);
