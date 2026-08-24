@@ -878,7 +878,9 @@ function renderCalDetail(){
     + evs.map(function(e){
         var mems = (e.members||[]).map(function(n){
           var m = DATA.members.filter(function(x){return x.name===n})[0];
-          return '<div class="cd-mem"><span style="font-size:17px">'+esc(m?(m.emoji||'🧶'):'🧶')+'</span>'
+          return '<div class="cd-mem">'
+            + (m && m.photo ? '<img src="'+esc(m.photo)+'" alt="" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+                            : '<span style="font-size:17px">'+esc(m?(m.emoji||'🧶'):'🧶')+'</span>')
             + '<b>'+esc(n)+'</b>'+memLinks(m)+'</div>';
         }).join('');
         return '<div class="cd-ev">'
@@ -1049,6 +1051,23 @@ function fld(label,id,val,type,extra){
   if(type==='area') return '<div class="fld"><label>'+label+'</label><textarea id="'+id+'">'+esc(val||'')+'</textarea></div>';
   return '<div class="fld"><label>'+label+'</label><input id="'+id+'" type="'+(type||'text')+'" value="'+esc(val==null?'':val)+'" '+(extra||'')+'></div>';
 }
+/* 이미지 업로드 필드(현재 사진 미리보기 + 지우기) — 배너/멤버/공지/작품 4곳 공용 */
+function imgFld(label, key, val, round){
+  return '<div class="fld"><label>'+label+'</label><input type="file" id="'+key+'_file" accept="image/*">'
+    + '<input type="hidden" id="'+key+'_img" value="'+esc(val||'')+'">'
+    + '<div id="'+key+'_pv" style="display:'+(val?'flex':'none')+';align-items:center;gap:10px;margin-top:9px">'
+    + '<img id="'+key+'_pvimg" src="'+esc(val||'data:,')+'" alt="" style="width:'+(round?'46px':'74px')+';height:46px;border-radius:'+(round?'50%':'10px')+';object-fit:cover;border:2px solid var(--pink-l);background:var(--cream2);flex-shrink:0">'
+    + '<span style="font-size:12px;color:var(--ink-2);font-weight:700">등록된 사진</span>'
+    + '<button type="button" class="mini del" id="'+key+'_del">사진 지우기</button></div></div>';
+}
+function bindImgFld(key, maxDim, msg){
+  $('#'+key+'_file').onchange = function(){ fileToDataURL(this, function(u){
+    $('#'+key+'_img').value = u; $('#'+key+'_pvimg').src = u; $('#'+key+'_pv').style.display = 'flex'; toast(msg);
+  }, maxDim) };
+  $('#'+key+'_del').onclick = function(){
+    $('#'+key+'_img').value = ''; $('#'+key+'_file').value = ''; $('#'+key+'_pv').style.display = 'none'; toast('사진을 지웠어요');
+  };
+}
 function saveBar(txt){
   return '<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn btn-p" id="admSaveBtn" style="padding:12px 24px;font-size:14px">💾 '+(txt||'추가하기')+'</button>'
     + '<button class="btn btn-o" id="admResetBtn" style="padding:12px 24px;font-size:14px">↺ 입력 초기화</button></div>';
@@ -1084,7 +1103,7 @@ function admBanners(b){
   var list = DATA.club.banners;
   var v = editBn!=null ? list[editBn] : {maxWidth:1180, height:170, radius:24, showTag:true};
   b.innerHTML = '<div class="hint">소식 위에 걸리는 <b>광고형 사진 배너</b>예요. 이미지를 올리고 <b>가로 최대폭 · 높이</b>를 숫자로 정하면 그 <b>비율</b>이 PC·모바일에서 똑같이 유지됩니다. (권장 : 가로가 세로의 4~7배)</div>'
-    + '<div class="fld"><label>배너 이미지</label><input type="file" id="b_file" accept="image/*"><input type="hidden" id="b_img" value="'+esc(v.image||'')+'"></div>'
+    + imgFld('배너 이미지','b',v.image)
     + '<div class="grid2">'+fld('클릭 시 이동할 주소 (선택)','b_link',v.link)+fld('이미지 설명(alt)','b_alt',v.alt||'뜨개동 배너')+'</div>'
     + '<div class="grid3">'+fld('가로 최대폭 (px)','b_w',v.maxWidth==null?1180:v.maxWidth,'number','min="200" max="2000"')
     + fld('높이 (px, 0이면 자동)','b_h',v.height==null?170:v.height,'number','min="0" max="900"')
@@ -1097,7 +1116,7 @@ function admBanners(b){
         + '<div class="t">'+esc(x.alt||'배너')+'<div class="s">'+(x.maxWidth||1180)+' × '+(x.height||'자동')+'px'+(x.image?'':' · 샘플 이미지')+'</div></div>'
         + '<button class="mini" data-e="'+i+'">수정</button><button class="mini del" data-d="'+i+'">삭제</button></div>';
       }).join(''):'<div style="color:var(--ink-3);font-size:13px;font-weight:700;padding:10px">등록된 배너가 없어요</div>')+'</div>';
-  $('#b_file').onchange = function(){ fileToDataURL(this,function(u){ $('#b_img').value=u; toast('배너 이미지를 불러왔어요 🖼️') },1600) };
+  bindImgFld('b',1600,'배너 이미지를 불러왔어요 🖼️');
   $('#admSaveBtn').onclick = function(){
     var obj = { id:(editBn!=null?list[editBn].id:uid('b')), image:$('#b_img').value, link:$('#b_link').value,
       alt:$('#b_alt').value, maxWidth:+$('#b_w').value||1180, height:+$('#b_h').value||0,
@@ -1118,22 +1137,24 @@ function admMembers(b){
     + '<div class="grid2">'+fld('멤버명','m_name',m.name)+fld('역할 / 한 줄 태그','m_role',m.role)+'</div>'
     + fld('소개','m_bio',m.bio,'area')
     + '<div class="grid2">'+fld('대표 이모지 (사진 없을 때)','m_emoji',m.emoji)
-    + '<div class="fld"><label>프로필 사진 (선택)</label><input type="file" id="m_file" accept="image/*"><input type="hidden" id="m_photo" value="'+esc(m.photo||'')+'"></div></div>'
+    + imgFld('프로필 사진 (선택)','m',m.photo,true)+'</div>'
     + '<div class="grid2">'+fld('치지직 주소','m_chzzk',L.chzzk)+fld('SOOP(숲) 주소','m_soop',L.soop)+'</div>'
     + '<div class="grid2">'+fld('유튜브 주소','m_youtube',L.youtube)+fld('X(트위터) 주소','m_x',L.x)+'</div>'
     + fld('인스타그램 주소','m_insta',L.insta)
     + saveBar(editMem!=null?'수정 완료':'멤버 추가')
     + '<h3 style="margin:26px 0 10px;font-size:15px;font-weight:800">등록된 멤버 ('+DATA.members.length+')</h3>'
     + '<div class="adm-list">'+DATA.members.map(function(x,i){
-        return '<div class="adm-row"><span style="font-size:22px;width:40px;text-align:center">'+esc(x.emoji||'🧶')+'</span>'
+        return '<div class="adm-row">'
+        + (x.photo ? '<img src="'+esc(x.photo)+'" alt="" style="border-radius:50%">'
+                   : '<span style="font-size:22px;width:40px;text-align:center;flex-shrink:0">'+esc(x.emoji||'🧶')+'</span>')
         + '<div class="t">'+esc(x.name)+'<div class="s">'+esc(x.role||'')+'</div></div>'
         + '<button class="mini" data-e="'+i+'">수정</button><button class="mini del" data-d="'+i+'">삭제</button></div>';
       }).join('')+'</div>';
-  $('#m_file').onchange = function(){ fileToDataURL(this,function(u){ $('#m_photo').value=u; toast('사진을 불러왔어요 📷') },512) };
+  bindImgFld('m',512,'사진을 불러왔어요 📷');
   $('#admSaveBtn').onclick = function(){
     var name = $('#m_name').value.trim(); if(!name) return toast('멤버명을 입력해 주세요');
     var obj = { name:name, role:$('#m_role').value, bio:$('#m_bio').value, emoji:$('#m_emoji').value||'🧶',
-      photo:$('#m_photo').value, c1:m.c1||'#FFE3EC', c2:m.c2||'#F1E7FB',
+      photo:$('#m_img').value, c1:m.c1||'#FFE3EC', c2:m.c2||'#F1E7FB',
       links:{chzzk:$('#m_chzzk').value,soop:$('#m_soop').value,youtube:$('#m_youtube').value,x:$('#m_x').value,insta:$('#m_insta').value} };
     if(editMem!=null){ DATA.members[editMem]=obj; editMem=null } else { DATA.members.push(obj) }
     reRender(); renderAdmBody(); toast('멤버 정보를 저장했어요 🧶'); scheduleServerSave();
@@ -1148,7 +1169,7 @@ function admNotices(b){
   var n = editNt!=null ? DATA.notices[editNt] : {};
   b.innerHTML = '<div class="hint">공지는 <b>이미지 카드</b>로 한 줄에 보이고, ‘소식 전체 보기’에서 전부 확인할 수 있어요. 이미지를 올리지 않으면 뜨개 패턴 이미지가 자동으로 만들어집니다.</div>'
     + '<div class="grid2">'+fld('제목','n_title',n.title)+fld('날짜','n_date',n.date||todayStr(),'date')+'</div>'
-    + '<div class="fld"><label>공지 이미지</label><input type="file" id="n_file" accept="image/*"><input type="hidden" id="n_img" value="'+esc(n.image||'')+'"></div>'
+    + imgFld('공지 이미지','n',n.image)
     + fld('내용','n_body',n.body,'area')
     + '<div class="fld"><label><input type="checkbox" id="n_pin" style="width:auto;margin-right:7px"'+(n.pinned?' checked':'')+'>📌 중요 공지로 맨 앞에 고정</label></div>'
     + saveBar(editNt!=null?'수정 완료':'공지 추가')
@@ -1158,7 +1179,7 @@ function admNotices(b){
         + '<div class="t">'+(x.pinned?'📌 ':'')+esc(x.title)+'<div class="s">'+esc(fmtDate(x.date))+'</div></div>'
         + '<button class="mini" data-e="'+i+'">수정</button><button class="mini del" data-d="'+i+'">삭제</button></div>';
       }).join('')+'</div>';
-  $('#n_file').onchange = function(){ fileToDataURL(this,function(u){ $('#n_img').value=u; toast('이미지를 불러왔어요 🖼️') },1200) };
+  bindImgFld('n',1200,'이미지를 불러왔어요 🖼️');
   $('#admSaveBtn').onclick = function(){
     var t = $('#n_title').value.trim(); if(!t) return toast('제목을 입력해 주세요');
     var obj = { id:(editNt!=null?DATA.notices[editNt].id:uid('n')), title:t, date:$('#n_date').value,
@@ -1183,7 +1204,9 @@ function admEvents(b){
     + fld('시간','e_time',e.time||'21:00','time')
     + fld('설명','e_desc',e.desc,'area')
     + '<div class="fld"><label>참가 멤버</label><div class="mem-pick">'+DATA.members.map(function(m){
-        return '<label><input type="checkbox" class="e_mem" value="'+esc(m.name)+'"'+(sel.indexOf(m.name)>=0?' checked':'')+'>'+esc(m.emoji||'🧶')+' '+esc(m.name)+'</label>';
+        return '<label><input type="checkbox" class="e_mem" value="'+esc(m.name)+'"'+(sel.indexOf(m.name)>=0?' checked':'')+'>'
+        + (m.photo ? '<img src="'+esc(m.photo)+'" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:-4px">' : esc(m.emoji||'🧶'))
+        + ' '+esc(m.name)+'</label>';
       }).join('')+'</div></div>'
     + saveBar(editEv!=null?'수정 완료':'일정 추가')
     + '<h3 style="margin:26px 0 10px;font-size:15px;font-weight:800">등록된 일정 ('+DATA.events.length+')</h3>'
@@ -1214,7 +1237,7 @@ function admWorks(b){
     + '<div class="grid2">'+fld('작품명','w_title',w.title)
     + '<div class="fld"><label>만든 멤버</label><select id="w_author">'+DATA.members.map(function(m){return '<option'+(w.author===m.name?' selected':'')+'>'+esc(m.name)+'</option>'}).join('')+'</select></div></div>'
     + '<div class="grid2">'+fld('완성 날짜','w_date',w.date||todayStr(),'date')
-    + '<div class="fld"><label>작품 사진</label><input type="file" id="w_file" accept="image/*"><input type="hidden" id="w_img" value="'+esc(w.image||'')+'"></div></div>'
+    + imgFld('작품 사진','w',w.image)+'</div>'
     + fld('작품 설명','w_desc',w.desc,'area')
     + saveBar(editWk!=null?'수정 완료':'작품 추가')
     + '<h3 style="margin:26px 0 10px;font-size:15px;font-weight:800">등록된 작품 ('+DATA.works.length+')</h3>'
@@ -1223,7 +1246,7 @@ function admWorks(b){
         + '<div class="t">'+esc(x.title)+'<div class="s">'+esc(x.author||'')+' · '+esc(fmtDate(x.date))+'</div></div>'
         + '<button class="mini" data-e="'+i+'">수정</button><button class="mini del" data-d="'+i+'">삭제</button></div>';
       }).join('')+'</div>';
-  $('#w_file').onchange = function(){ fileToDataURL(this,function(u){ $('#w_img').value=u; toast('작품 사진을 불러왔어요 🧵') },1200) };
+  bindImgFld('w',1200,'작품 사진을 불러왔어요 🧵');
   $('#admSaveBtn').onclick = function(){
     var t=$('#w_title').value.trim(); if(!t) return toast('작품명을 입력해 주세요');
     var obj = { id:(editWk!=null?DATA.works[editWk].id:uid('w')), title:t, author:$('#w_author').value,
