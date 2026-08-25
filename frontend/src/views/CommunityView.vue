@@ -931,8 +931,10 @@ onMounted(async () => {
   font-size: 11.5px; color: var(--text3, #8A857C); text-align: center; }
 </style>
 <style>
-/* 커뮤니티(데스크톱)는 고정 프레임이라 전역 푸터를 감추고 중앙 컬럼 끝에 축약 푸터(.comfoot)를 둔다 */
+/* 커뮤니티(데스크톱)는 고정 프레임이라 전역 푸터를 감추고 중앙 컬럼 끝에 축약 푸터(.comfoot)를 둔다.
+   ⚠️.snuk-bottom 전체를 숨기면 안 됨 — 로그인/회원가입/마이페이지/신청 등 셸 모달이 전부 그 안에 있어
+   버튼을 눌러도 모달이 안 뜬다(2026-08-25). 푸터만 골라 숨긴다. */
 @media (min-width: 961px) {
-  .snuk-page:has(.com-inner) .snuk-bottom { display: none; }
+  .snuk-page:has(.com-inner) .snuk-bottom > footer { display: none; }
 }
 </style>
