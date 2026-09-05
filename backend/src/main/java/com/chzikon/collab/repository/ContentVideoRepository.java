@@ -7,6 +7,4 @@ import java.util.List;
 
 public interface ContentVideoRepository extends JpaRepository<ContentVideo, Long> {
     List<ContentVideo> findAllByOrderBySortOrderAscIdAsc();
-
-    List<ContentVideo> findByFeaturedTrueOrderBySortOrderAsc();
 }

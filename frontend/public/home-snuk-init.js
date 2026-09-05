@@ -18,13 +18,6 @@ function emptyCard(msg) {
   return `<div style="width:100%;border:1px dashed var(--border2);border-radius:12px;padding:36px 16px;text-align:center;color:var(--text3);font-size:13px;">${esc(msg)}</div>`;
 }
 
-function thumbHtml(img, i, emoji) {
-  if (img) {
-    return `<img src="${esc(img)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;" onerror="this.remove()">`;
-  }
-  return `<div class="card-thumb-placeholder">${emoji || '◆'}</div>`;
-}
-
 // ════════════════════════════════════════════
 // CARD WIDTH HELPER
 // ════════════════════════════════════════════
@@ -132,10 +125,6 @@ function renderContentSliders() {
   initSlider('mug-slider', mug.length
     ? mug.map((d, i) => makeContentCard(d, cardWidth(5, 1), i)).join('')
     : emptyCard('등록된 대회가 없습니다.'));
-  // 스트리머 컨텐츠/이벤트/구인구직 — 데이터 소스 없음(향후 오픈)
-  initSlider('str-slider', emptyCard('스트리머 컨텐츠는 준비 중입니다.'));
-  initSlider('event-slider', emptyCard('진행 중인 이벤트가 없습니다.'));
-  initSlider('job-slider', emptyCard('등록된 공고가 없습니다.'));
 }
 
 // ════════════════════════════════════════════
@@ -184,39 +173,6 @@ function renderContentsPage() {
 // ════════════════════════════════════════════
 // 홈 통합 빅그리드 — 캠페인 + 대회 큰 카드 (3열 슬라이드)
 // ════════════════════════════════════════════
-function makeBigCard(d, w, i) {
-  const canApply = canApplyOf(d);
-  const badgeCls = badgeClsOf(d);
-  const kindLabel = d.kind === 'tournament' ? '대회' : '컨텐츠';
-  const slots = !isPreparing(d) && d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
-  const sub = isPreparing(d) ? '' : [slots, d.eventDate].filter(Boolean).join(' · ');
-  return `<div class="content-card big-card" style="width:${w};min-width:${w};cursor:pointer;" onclick="${cardClickOf(d)}">
-    <div class="card-thumb" style="background:${bgOf(i)};position:relative;">
-      ${thumbHtml(d.img, i, d.kind === 'tournament' ? '🏆' : '🎮')}
-      <div class="big-card-grad"></div>
-      <div class="big-card-top">
-        <span class="badge ${badgeCls}">${esc(d.statusLabel)}</span>
-        <span class="big-kind">${kindLabel}</span>
-      </div>
-      <div class="big-card-caption">
-        <div class="big-title">${esc(d.title)}</div>
-        ${sub ? `<div class="big-sub">${esc(sub)}</div>` : ''}
-      </div>
-    </div>
-    <div class="big-card-foot">
-      <div class="card-desc">${esc(d.desc)}</div>
-      ${canApply ? `<button class="btn-apply" onclick="event.stopPropagation();openApply('${d.kind}',${d.id})">신청하기</button>`
-        : d.kind === 'tournament' && d.resultText ? `<button class="btn btn-outline" style="padding:6px 12px;font-size:11px;flex-shrink:0;" onclick="event.stopPropagation();showResult(${d.id})">결과 보기</button>`
-        : `<span style="font-size:11px;color:var(--text3);flex-shrink:0;">${esc(d.statusLabel)}</span>`}
-    </div>
-  </div>`;
-}
-
-function initBigContents() {
-  // 홈: 큰 피처드 카드 + 옆 작은 부가 카드 (항목 3/5) + 대회 그리드
-  initHomeFeature();
-  fillBigTrack('big-tour-slider', D().mugContents || [], '예정된 대회가 없습니다. 새 대회 소식을 기다려주세요!');
-}
 
 // ── 자동 슬라이드 타이머 공용(멱등 init 대비 키별 1개 유지, 호버 시 일시정지)
 const _autoTimers = {};
@@ -224,149 +180,10 @@ function setAutoLoop(key, fn, ms) {
   if (_autoTimers[key]) clearInterval(_autoTimers[key]);
   _autoTimers[key] = setInterval(fn, ms);
 }
-function hoverPaused(el) {
-  try { return !!(el && el.closest('section') && el.closest('section').matches(':hover')); } catch { return false; }
-}
-
-// ── 홈 피처드 레이아웃: 큰 칸 1 + 작은 부가 카드
-// 큰 칸 = 어드민이 체크(featured)한 컨텐츠. 미선택이면 모집중 우선 상위 5개 자동 순환.
-let _featureIdx = 0;
-function makeFeatureMainCard(d, i, dotsHtml) {
-  const canApply = canApplyOf(d);
-  const badgeCls = badgeClsOf(d);
-  const slots = !isPreparing(d) && d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
-  const sub = isPreparing(d) ? '' : [slots, d.eventDate].filter(Boolean).join(' · ');
-  const click = cardClickOf(d);
-  return `<div class="feature-main-card" onclick="${click}" style="background:${bgOf(i)};">
-    ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : `<div class="feature-main-emoji">🎮</div>`}
-    <div class="feature-main-grad"></div>
-    <div class="feature-main-top">
-      <span class="badge ${badgeCls}">${esc(d.statusLabel)}</span>
-      <span class="big-kind">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>
-    </div>
-    <div class="feature-main-caption">
-      <div class="feature-main-title">${esc(d.title)}</div>
-      ${d.desc ? `<div class="feature-main-desc">${esc(d.desc)}</div>` : ''}
-      <div class="feature-main-foot">
-        ${sub ? `<span class="feature-main-sub">${esc(sub)}</span>` : '<span></span>'}
-        ${canApply ? `<button class="btn-apply" onclick="event.stopPropagation();openApply('${d.kind}',${d.id})">신청하기</button>` : ''}
-      </div>
-      ${dotsHtml || ''}
-    </div>
-  </div>`;
-}
-
-function makeFeatureSideCard(d, i) {
-  const badgeCls = badgeClsOf(d);
-  const click = cardClickOf(d);
-  return `<div class="feature-side-card" onclick="${click}">
-    <div class="feature-side-thumb" style="background:${bgOf(i + 2)};">
-      ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : ''}
-      <span class="badge ${badgeCls}" style="position:absolute;top:8px;left:8px;">${esc(d.statusLabel)}</span>
-      <span class="big-kind" style="position:absolute;top:8px;right:8px;">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>
-    </div>
-    <div class="feature-side-body">
-      <div class="feature-side-title">${esc(d.title)}</div>
-      <div class="feature-side-sub">${!isPreparing(d) && d.max > 0 ? `모집 ${d.filled}/${d.max}명` : esc(d.statusLabel)}</div>
-    </div>
-  </div>`;
-}
-
-// 컨텐츠+대회 통합 섹션 — 큰 칸=스눅 공식(관리자 등록) 컨텐츠 전용, 나머지(대회·스트리머 컨텐츠)는 작은 카드
-// 홈 "모집 중인 컨텐츠" — 데모 시안 카드 그리드(피처드 우선, 모집중 우선 정렬)
-function initHomeFeature() {
-  const grid = document.getElementById('home-feature-main');
-  if (!grid) return;
-  if (_autoTimers.homeFeature) { clearInterval(_autoTimers.homeFeature); _autoTimers.homeFeature = null; }
-  const openFirst = (arr) => [...arr].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
-  const all = openFirst([...(D().snukContents || []), ...(D().mugContents || [])]);
-  const featured = D().snukFeatured || D().mugFeatured;
-  const list = featured
-    ? [featured, ...all.filter((x) => !(x.kind === featured.kind && x.id === featured.id))]
-    : all;
-  grid.innerHTML = list.length
-    ? list.slice(0, 6).map((d, i) => makeContentCard(d, null, i)).join('')
-    : emptyCard('진행 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!');
-}
 
 // ── 라이브 배너 (히어로 아래, 어드민 on/off — 항목 13/18)
-function initLiveBanner() {
-  const sec = document.getElementById('live-banner');
-  if (!sec) return;
-  const ss = (D() && D().siteSettings) || {};
-  const url = (ss.LIVE_BANNER_URL || '').trim();
-  const on = ss.LIVE_BANNER_ENABLED === '1' && url && url !== '-';
-  sec.style.display = on ? '' : 'none';
-  const wrap = document.getElementById('live-embed-wrap');
-  if (!on) { if (wrap) wrap.style.display = 'none'; return; }
-  const titleEl = document.getElementById('live-banner-title');
-  const title = (ss.LIVE_BANNER_TITLE || '').trim();
-  if (titleEl) titleEl.textContent = (title && title !== '-') ? title : '지금 방송 중';
-  // 방송중이면 배너 밑에 치지직 플레이어+채팅 임베드 (오프라인이면 배너만)
-  const ch = (ss.LIVE_CHANNEL_ID || '').trim();
-  if (!wrap || !ch || ch === '-') { if (wrap) wrap.style.display = 'none'; return; }
-  fetch('/api/live/status').then((r) => r.json()).then((s) => {
-    if (!s.live) { wrap.style.display = 'none'; return; }
-    wrap.style.display = '';
-    const pl = document.getElementById('live-embed-player');
-    if (pl && !pl.src.includes(ch)) pl.src = `https://chzzk.naver.com/live/${ch}`;
-    fitLivePlayerCrop();
-    if (!window.__liveCropBound) {
-      window.__liveCropBound = true;
-      window.addEventListener('resize', fitLivePlayerCrop);
-    }
-    // 어드민 제목 미설정 시 실제 방송 제목 표시
-    if (titleEl && !(title && title !== '-') && s.liveTitle) titleEl.textContent = s.liveTitle;
-  }).catch(() => { wrap.style.display = 'none'; });
-}
-// 크롭 스케일: 컨테이너 폭에 맞춰 치지직 페이지(1620 로드)의 영상 영역(x240,y60,1026 폭)만 보이게
-function fitLivePlayerCrop() {
-  const crop = document.getElementById('live-embed-player-crop');
-  const pl = document.getElementById('live-embed-player');
-  if (!crop || !pl || !crop.clientWidth) return;
-  const s = crop.clientWidth / 1026;
-  pl.style.transform = `scale(${s}) translate(-240px, -60px)`;
-}
-
-function openLiveBanner() {
-  const ss = (D() && D().siteSettings) || {};
-  const url = (ss.LIVE_BANNER_URL || '').trim();
-  if (url && url !== '-') window.open(url, '_blank');
-}
 
 // ── SNUK 뉴스 (홈 섹션 — 항목 11)
-function initNews() {
-  const grid = document.getElementById('news-grid');
-  if (!grid) return;
-  const news = D().news || [];
-  if (!news.length) {
-    grid.innerHTML = emptyCard('아직 등록된 기사가 없습니다.');
-    return;
-  }
-  grid.innerHTML = news.slice(0, 4).map((n, i) => `
-    <div class="news-card" onclick="window.__snukNav('/news/${n.id}')">
-      <div class="news-card-thumb" style="background:${bgOf(i + 1)};">
-        ${n.thumb ? `<img src="${esc(n.thumb)}" alt="" onerror="this.remove()">` : '<div class="news-card-emoji">📰</div>'}
-      </div>
-      <div class="news-card-body">
-        <div class="news-card-title">${esc(n.title)}</div>
-        ${n.excerpt ? `<div class="news-card-excerpt">${esc(n.excerpt)}</div>` : ''}
-        <div class="news-card-meta">${esc(n.author)} · ${esc(n.date)}</div>
-      </div>
-    </div>`).join('');
-}
-
-function fillBigTrack(trackId, items, emptyMsg) {
-  const track = document.getElementById(trackId);
-  if (!track) return;
-  if (!items.length) {
-    track.innerHTML = emptyCard(emptyMsg);
-    return;
-  }
-  const sorted = [...items].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1));
-  const w = cardWidth(3, 1);
-  track.innerHTML = sorted.map((d, i) => makeBigCard(d, w, i)).join('');
-}
 
 // ── FEATURED 카드 (SNUK 컨텐츠/챔피언십 상단)
 function renderFeatured(elId, d, tagText) {
@@ -1055,145 +872,6 @@ function buyGoods(id) {
 }
 
 // ════════════════════════════════════════════
-// 굿즈 베스트 10 (홈 전용 — 5개×2슬라이드)
-// 실 굿즈 0개 = 오픈 준비중 → 홈 섹션 통째로 숨김. 1개라도 등록되면 자동 노출.
-// ════════════════════════════════════════════
-let goodsBestPage = 0;
-
-function goodsBestTotalPages() { return window._goodsBestPages || 1; }
-
-function initGoodsBest() {
-  const track = document.getElementById('goods-best-track');
-  if (!track) return;
-  const items = (D().goods || []).slice(0, 10);
-  const section = document.getElementById('goods-best');
-  if (!items.length) {
-    // 준비중 게이트: 홈에서 노출 예정이던 섹션만 숨김(비노출 페이지의 none 은 건드리지 않음)
-    if (section && section.style.display !== 'none') {
-      section.style.display = 'none';
-      section.dataset.goodsGate = 'hidden';
-    }
-    window._goodsBestPages = 1;
-    return;
-  }
-  // 데이터 로드 전 선실행에서 숨겼던 경우 복원
-  if (section && section.dataset.goodsGate === 'hidden') {
-    section.style.display = '';
-    delete section.dataset.goodsGate;
-  }
-  const perPage = window.innerWidth <= 768 ? 3 : 5;
-  const gap = 12;
-  const w = `calc((100% - ${(perPage - 1) * gap}px) / ${perPage})`;
-  const pages = [];
-  for (let i = 0; i < items.length; i += perPage) pages.push(items.slice(i, i + perPage));
-
-  track.innerHTML = pages.map((page, pi) => `<div class="goods-best-page" style="gap:${gap}px;">
-    ${page.map((g, gi) => {
-      const rank = pi * perPage + gi + 1;
-      return `<div class="goods-card" style="width:${w};min-width:${w};" onclick="${g.purchasable ? `buyGoods(${g.id})` : `window.__snukNav('/goods')`}">
-        <div class="goods-thumb" style="background:${bgOf(rank)};">
-          <div class="goods-rank${rank <= 3 ? ' top3' : ''}">${rank}</div>
-          ${g.img ? `<img src="${esc(g.img)}" alt="${esc(g.name)}" onerror="this.remove()">` : ''}
-        </div>
-        <div class="goods-body">
-          <div class="goods-name">${esc(g.name)}</div>
-          <div class="goods-streamer">${esc(g.streamer)}</div>
-          <div class="goods-price">₩${esc(g.price)}</div>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`).join('');
-
-  window._goodsBestPages = pages.length;
-  goodsBestPage = 0;
-  track.style.transform = 'translateX(0)';
-  renderGoodsBestDots();
-  // 굿즈 자동 슬라이드(항목 2) — 4.5초, 호버 시 정지, 끝나면 처음으로
-  setAutoLoop('goodsBest', () => {
-    const el = document.getElementById('goods-best-track');
-    if (!el) return;
-    if (hoverPaused(el)) return;
-    goGoodsBest((goodsBestPage + 1) % goodsBestTotalPages());
-  }, 4500);
-}
-
-function renderGoodsBestDots() {
-  const dots = document.getElementById('goods-best-dots');
-  if (!dots) return;
-  dots.innerHTML = Array.from({ length: goodsBestTotalPages() }, (_, i) =>
-    `<div onclick="goGoodsBest(${i})" style="width:${i === goodsBestPage ? '18px' : '6px'};height:6px;border-radius:3px;background:${i === goodsBestPage ? 'var(--text)' : 'var(--border2)'};cursor:pointer;transition:all .3s;"></div>`).join('');
-}
-
-function slideGoodsBest(dir) { goGoodsBest(goodsBestPage + dir); }
-function goGoodsBest(n) {
-  const track = document.getElementById('goods-best-track');
-  if (!track) return;
-  goodsBestPage = Math.max(0, Math.min(goodsBestTotalPages() - 1, n));
-  track.style.transform = `translateX(-${goodsBestPage * 100}%)`;
-  renderGoodsBestDots();
-}
-
-// ════════════════════════════════════════════
-// 스트리머 드래그 스트립 (홈 전용 — 푸터 위)
-// ════════════════════════════════════════════
-function initStreamerStrip() {
-  const box = document.getElementById('streamer-strip-scroll');
-  if (!box) return;
-  const real = D().streamers || [];
-  if (!real.length) {
-    box.innerHTML = emptyCard('아직 등록된 파트너 스트리머가 없습니다.');
-    return;
-  }
-  const items = real.map((s) => ({ id: s.id, name: s.name, img: s.img, platform: s.platform, followers: s.followers, live: s.live, dummy: false }));
-  box.innerHTML = items.map((s) => {
-    const avatar = s.img
-      ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" draggable="false" onerror="this.parentElement.textContent='${esc(s.name.slice(0, 1))}';">`
-      : `<span style="font-size:24px;font-weight:700;color:${platColor[s.platform] || 'var(--text2)'};">${esc(s.initial || s.name.slice(0, 1))}</span>`;
-    const liveRing = s.live ? 'border:2px solid #ff4040;box-shadow:0 0 10px rgba(255,64,64,.5);' : `border:2px solid ${platColor[s.platform] || '#555'}55;`;
-    return `<div class="strip-card" onclick="${s.dummy ? `showToast('파트너 스트리머를 기다리고 있어요!')` : `window.__snukNav('/streamers/${s.id}')`}" style="position:relative;">
-      ${s.live ? '<span class="strip-live-chip">LIVE</span>' : ''}
-      <div class="strip-avatar" style="${liveRing}">${avatar}</div>
-      <div class="strip-name">${esc(s.name)}</div>
-      <div class="strip-sub" style="color:${platColor[s.platform] || 'var(--text3)'};">${s.live ? '방송 중' : s.followers != null ? `팔로워 ${Number(s.followers).toLocaleString('ko-KR')}` : (platLabel[s.platform] || '')}</div>
-    </div>`;
-  }).join('');
-  bindStripDrag(box);
-  // 자동 스크롤(항목 6) — 호버/드래그 중엔 정지, 끝에 닿으면 처음으로
-  setAutoLoop('streamerStrip', () => {
-    const el = document.getElementById('streamer-strip-scroll');
-    if (!el) return;
-    if (el.classList.contains('dragging') || el.matches(':hover')) return;
-    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 2) el.scrollLeft = 0;
-    else el.scrollLeft += 1;
-  }, 30);
-}
-
-function bindStripDrag(box) {
-  if (box.dataset.dragBound) return;
-  box.dataset.dragBound = '1';
-  let down = false, moved = false, startX = 0, scrollStart = 0;
-  box.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'mouse') return; // 터치는 네이티브 스크롤 사용
-    down = true; moved = false; startX = e.clientX; scrollStart = box.scrollLeft;
-    box.classList.add('dragging');
-  });
-  box.addEventListener('pointermove', (e) => {
-    if (!down) return;
-    const dx = e.clientX - startX;
-    if (Math.abs(dx) > 6) moved = true;
-    box.scrollLeft = scrollStart - dx;
-  });
-  const up = () => { down = false; box.classList.remove('dragging'); };
-  box.addEventListener('pointerup', up);
-  box.addEventListener('pointerleave', up);
-  box.addEventListener('pointercancel', up);
-  // 드래그였다면 카드 클릭 무시
-  box.addEventListener('click', (e) => {
-    if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
-  }, true);
-}
-
-// ════════════════════════════════════════════
 // 협력사 (실 클라이언트 로고 — 카드 그리드, 흑백→호버 컬러)
 // ════════════════════════════════════════════
 function initPartners() {
@@ -1218,107 +896,10 @@ function initPartners() {
 // ════════════════════════════════════════════
 // 챔피언십: 대진표(결과 기반) + 참여 스트리머 로스터(실 참가자)
 // ════════════════════════════════════════════
-function bracketEmptyCard() {
-  const mug = D().mugFeatured;
-  if (mug && mug.resultText) {
-    return `<div style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#ffb300;margin-bottom:12px;">RESULT — ${esc(mug.title)}</div>
-      <div style="font-size:14px;color:var(--text);line-height:1.9;white-space:pre-wrap;">${esc(mug.resultText)}</div>
-    </div>`;
-  }
-  return `<div style="width:100%;">${emptyCard('경기 일정이 확정되면 대진표가 공개됩니다.')}</div>`;
-}
 
-function initBracket() {
-  // 경기(대진) 데이터 모델이 아직 없음 — 강수 탭(16강 등) UI 는 대진 데이터가 생길 때까지 통째로 숨김.
-  // (박격포대회처럼 토너먼트 형식이 아닌 대회에선 "몇강"이 무의미)
-  const pcWrap = document.getElementById('desktop-bracket-wrap');
-  if (pcWrap) pcWrap.style.display = 'none';
-  const mbCont = document.getElementById('mb-match-container');
-  const mbWrap = mbCont && mbCont.parentElement ? mbCont.parentElement.parentElement : null;
-  if (mbWrap) mbWrap.style.display = 'none';
-}
-function switchPcTab(_k, btn) { document.querySelectorAll('.pc-bt').forEach((t) => t.classList.remove('active')); btn.classList.add('active'); }
-function switchMbTab(_k, btn) { document.querySelectorAll('.mb-tab').forEach((t) => t.classList.remove('active')); btn.classList.add('active'); }
-function slidePcMatch() {}
-function slideMbMatch() {}
-function goPcMatch() {}
-function goMbMatch() {}
-
-// ── 참여 스트리머 로스터
-const ROSTER_PER_PAGE = 8;
-let rosterPage = 0;
 const platColor = { chz: '#00c73c', soop: '#34c7ff', yt: '#ff4040', cime: '#7c5cff' };
 const platShort = { chz: '치', soop: '숲', yt: 'YT', cime: '씨' };
 const platLabel = { chz: '치지직', soop: '숲', yt: '유튜브', cime: '씨미' };
-
-function rosterTotalPages() { return Math.max(1, Math.ceil((D().roster || []).length / ROSTER_PER_PAGE)); }
-
-function initRoster() {
-  const track = document.getElementById('roster-track');
-  const dots = document.getElementById('roster-dots');
-  if (!track) return;
-  const roster = D().roster || [];
-
-  const headerLabel = document.getElementById('roster-count-label');
-  if (headerLabel) headerLabel.textContent = `${D().rosterTournamentTitle || ''} · ${roster.length}명`;
-
-  if (!roster.length) {
-    track.style.flexWrap = 'nowrap';
-    track.innerHTML = `<div style="width:100%;">${emptyCard('승인된 참가자가 아직 없습니다.')}</div>`;
-    if (dots) dots.innerHTML = '';
-    const lbl = document.getElementById('roster-page-label');
-    if (lbl) lbl.textContent = '';
-    return;
-  }
-
-  // 전원 노출 그리드(페이징 없음) — 프사·이름 가독성 우선
-  const navWrap = track.parentElement ? track.parentElement.parentElement : null;
-  if (navWrap) navWrap.querySelectorAll('button[onclick^="slideRoster"]').forEach((b) => { b.style.display = 'none'; });
-  track.style.flexWrap = 'wrap';
-  track.style.transform = 'none';
-  track.style.justifyContent = 'flex-start';
-  track.innerHTML = roster.map((s) => {
-    const avatar = s.img
-      ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" onerror="this.parentElement.style.background='var(--bg3)';this.remove()">`
-      : `<span style="font-size:16px;font-weight:700;color:${platColor[s.platform] || 'var(--text2)'};width:100%;height:100%;display:flex;align-items:center;justify-content:center;">${esc(s.name.slice(0, 1))}</span>`;
-    const inner = `
-      <div class="roster-card" style="border-color:var(--border);position:relative;">
-        <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);background:rgba(52,199,120,.14);border:1px solid rgba(52,199,120,.4);border-radius:20px;padding:1px 6px;font-size:8px;font-weight:700;color:#34c878;white-space:nowrap;z-index:2;">참가확정</div>
-        <div class="roster-avatar" style="width:64px;height:64px;border:2px solid ${platColor[s.platform] || '#555'}55;margin-top:10px;">
-          ${avatar}
-          <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:${platColor[s.platform] || '#555'};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;border:2px solid var(--bg2);">${platShort[s.platform] || '?'}</div>
-        </div>
-        <div style="font-size:12px;font-weight:700;color:var(--text);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;margin-top:6px;">${esc(s.name)}</div>
-        <div style="font-size:10px;color:${platColor[s.platform] || 'var(--text3)'};font-weight:600;text-align:center;margin-bottom:6px;">${platLabel[s.platform] || ''}</div>
-      </div>`;
-    return s.streamUrl
-      ? `<a href="${esc(s.streamUrl)}" target="_blank" rel="noopener" style="text-decoration:none;flex-shrink:0;width:112px;min-width:112px;">${inner}</a>`
-      : `<div style="flex-shrink:0;width:112px;min-width:112px;">${inner}</div>`;
-  }).join('');
-
-  if (dots) dots.innerHTML = '';
-  const pageLbl = document.getElementById('roster-page-label');
-  if (pageLbl) pageLbl.textContent = '';
-}
-
-function renderRosterPage() {
-  const track = document.getElementById('roster-track');
-  if (!track || !track.children[0]) return;
-  const totalCards = (D().roster || []).length;
-  if (!totalCards) return;
-  const cardW = track.scrollWidth / totalCards;
-  const moveW = cardW > 0 ? cardW : (track.parentElement?.offsetWidth || 600) / 8;
-  track.style.transform = `translateX(-${rosterPage * ROSTER_PER_PAGE * moveW}px)`;
-  for (let i = 0; i < rosterTotalPages(); i++) {
-    const d = document.getElementById(`rdot-${i}`);
-    if (d) { d.style.width = i === rosterPage ? '18px' : '6px'; d.style.background = i === rosterPage ? 'var(--accent)' : 'var(--border2)'; }
-  }
-  const lbl = document.getElementById('roster-page-label');
-  if (lbl) lbl.textContent = `${rosterPage + 1} / ${rosterTotalPages()}`;
-}
-function slideRoster(dir) { rosterPage = Math.max(0, Math.min(rosterTotalPages() - 1, rosterPage + dir)); renderRosterPage(); }
-function goRosterPage(n) { rosterPage = n; renderRosterPage(); }
 
 // ── 스트리머 채널 섹션 (실 스트리머 등급 회원)
 let streamerChanPos = 0;
@@ -1410,80 +991,6 @@ function slide(id, dir) {
 }
 
 // ════════════════════════════════════════════
-// CHZZK LIVE (공식 채널 — config 주입)
-// ════════════════════════════════════════════
-let chatSimInterval = null;
-
-function chzzkId() { return D().chzzkChannelId || ''; }
-
-function openChzzkSite() {
-  const id = chzzkId();
-  window.open(id ? `https://chzzk.naver.com/live/${id}` : 'https://chzzk.naver.com', '_blank');
-}
-
-function loadChzzk() {
-  const id = chzzkId();
-  if (!id) { showToast('공식 채널 라이브는 준비 중입니다'); return; }
-  const ph = document.getElementById('chzzk-placeholder'), ct = document.getElementById('chzzk-iframe-container');
-  const ov = document.getElementById('chzzk-overlay'), lb = document.getElementById('chzzk-channel-label');
-  if (!ph || !ct) return;
-  ct.innerHTML = `<iframe src="https://chzzk.naver.com/live/${id}" style="width:100%;aspect-ratio:16/9;border:none;display:block;" allowfullscreen allow="autoplay;fullscreen"></iframe>`;
-  ph.style.display = 'none'; ct.style.display = 'block'; if (ov) ov.style.display = 'block';
-  if (lb) lb.textContent = 'SNUK 공식채널';
-  const cb = document.getElementById('chat-channel-badge'); if (cb) { cb.textContent = 'SNUK'; cb.style.display = 'inline-block'; }
-  const cc = document.getElementById('chzzk-chat-container');
-  if (cc) cc.innerHTML = `<iframe src="https://chzzk.naver.com/chat/${id}" style="width:100%;height:100%;min-height:240px;border:none;display:block;"></iframe>`;
-  toggleChatEmbed();
-  showToast('SNUK 공식 채널 라이브 로드 중...');
-}
-
-function toggleChatEmbed() {
-  const ev = document.getElementById('chat-embed-view'), sv = document.getElementById('chat-sim-view');
-  if (!ev || !sv) return;
-  ev.style.display = 'flex'; sv.style.display = 'none';
-  const tb = document.getElementById('chat-toggle-btn'), mb = document.getElementById('chat-mode-btn');
-  if (tb) tb.style.cssText = 'background:var(--accent);color:#fff;border-color:var(--accent);';
-  if (mb) mb.style.cssText = 'background:var(--bg3);color:var(--text2);border-color:var(--border);';
-  stopChatSim();
-}
-function toggleChatMode() {
-  const ev = document.getElementById('chat-embed-view'), sv = document.getElementById('chat-sim-view');
-  if (!ev || !sv) return;
-  ev.style.display = 'none'; sv.style.display = 'flex';
-  const tb = document.getElementById('chat-toggle-btn'), mb = document.getElementById('chat-mode-btn');
-  if (mb) mb.style.cssText = 'background:var(--accent);color:#fff;border-color:var(--accent);';
-  if (tb) tb.style.cssText = 'background:var(--bg3);color:var(--text2);border-color:var(--border);';
-}
-function startChatSim() {}
-function stopChatSim() { if (chatSimInterval) { clearInterval(chatSimInterval); chatSimInterval = null; } }
-
-function addChatMessage(u, text) {
-  const box = document.getElementById('chat-messages');
-  if (!box) return;
-  const wrap = document.createElement('div');
-  wrap.className = 'chat-msg';
-  wrap.innerHTML = `<div class="chat-avatar" style="background:${u.color}22;color:${u.color};">${esc(u.name.slice(0, 1))}</div><div style="flex:1;min-width:0;"><span class="chat-name" style="color:${u.color};">${esc(u.name)}</span><span class="chat-text">${esc(text)}</span></div>`;
-  box.appendChild(wrap);
-  while (box.children.length > 60) box.removeChild(box.firstChild);
-  box.scrollTop = box.scrollHeight;
-}
-function myChatName() {
-  return (window.__snukUser && window.__snukUser.nickname) || '나';
-}
-function sendChat() {
-  const i = document.getElementById('chat-input');
-  const t = (i.value || '').trim();
-  if (!t) return;
-  if (!window.__snukLoggedIn) { showToast('로그인 후 채팅에 참여할 수 있습니다'); openLogin(); return; }
-  addChatMessage({ name: myChatName(), color: 'var(--accent)' }, t);
-  i.value = '';
-}
-function quickChat(t) {
-  if (!window.__snukLoggedIn) { showToast('로그인 후 채팅에 참여할 수 있습니다'); openLogin(); return; }
-  addChatMessage({ name: myChatName(), color: 'var(--accent)' }, t);
-}
-
-// ════════════════════════════════════════════
 // FILTERS
 // ════════════════════════════════════════════
 function filterMug(s, btn) {
@@ -1491,15 +998,6 @@ function filterMug(s, btn) {
   const all = D().mugContents || [];
   const f = s === 'all' ? all : all.filter((d) => d.status === s);
   initSlider('mug-slider', f.length ? f.map((d, i) => makeContentCard(d, cardWidth(6), i)).join('') : emptyCard('해당 상태의 대회가 없습니다.'));
-}
-function filterEvt(s, btn) {
-  document.querySelectorAll('#evt-tabs .tab').forEach((t) => t.classList.remove('active')); btn.classList.add('active');
-}
-function filterStr(s, btn) {
-  document.querySelectorAll('#str-tabs .tab').forEach((t) => t.classList.remove('active')); btn.classList.add('active');
-}
-function filterJobs(s, btn) {
-  document.querySelectorAll('#job-tabs .tab').forEach((t) => t.classList.remove('active')); btn.classList.add('active');
 }
 
 // ════════════════════════════════════════════
@@ -1680,72 +1178,6 @@ async function submitSpotlight() {
   }
 }
 
-function initSpotlight() {
-  const cards = document.getElementById('spotlight-cards');
-  if (!cards) return;
-  const spotlights = D().spotlights || [];
-  const section = document.getElementById('spotlight-section');
-
-  if (!spotlights.length) {
-    // 활성 스포트라이트 없으면 홈 섹션 통째로 숨김(비노출 페이지의 none 은 유지)
-    if (section && section.style.display !== 'none') {
-      section.style.display = 'none';
-      section.dataset.spotGate = 'hidden';
-    }
-    return;
-  }
-  // 데이터 로드 전 선실행에서 숨겼던 경우 복원
-  if (section && section.dataset.spotGate === 'hidden') {
-    section.style.display = '';
-    delete section.dataset.spotGate;
-  }
-
-  const pc = { chz: '#00c73c', soop: '#34c7ff', yt: '#ff4040' };
-  const pn = { chz: '치지직', soop: '숲', yt: '유튜브' };
-
-  // 치지직 방송이면 라이브 배너와 같은 방식으로 방송 화면을 크롭 임베드 (그 외 플랫폼은 프사 이미지)
-  const chzChannel = (s) => {
-    if (s.platform !== 'chz') return null;
-    const m = /chzzk\.naver\.com\/live\/([0-9a-f]{32})/.exec(s.url || '');
-    return m ? m[1] : null;
-  };
-  cards.innerHTML = '<div class="spotlight-grid">' + spotlights.slice(0, 4).map((s) => {
-    const ch = chzChannel(s);
-    return `
-    <div class="spotlight-card" onclick="window.open('${esc(s.url)}','_blank')">
-      <div class="spotlight-screen">
-        ${ch ? `<div class="spot-embed-crop"><iframe class="spot-embed" title="${esc(s.name)} 방송"
-            src="https://chzzk.naver.com/live/${ch}" allow="autoplay; encrypted-media" scrolling="no"></iframe></div>`
-          : s.img ? `<img src="${esc(s.img)}" alt="${esc(s.name)}" onerror="this.remove()">` : ''}
-        <div class="spotlight-screen-overlay"></div>
-        <div class="spotlight-live">LIVE</div>
-      </div>
-      <div class="spotlight-bottom">
-        <div class="spotlight-meta">
-          <div class="spotlight-name">${esc(s.name)}</div>
-          <div class="spotlight-plat" style="color:${pc[s.platform] || '#aaa'};">${pn[s.platform] || ''}</div>
-        </div>
-        <div class="spotlight-sub">${esc(s.when ? `${s.when} · ${s.sub}` : s.sub)}</div>
-      </div>
-    </div>`;
-  }).join('') + '</div>';
-  fitSpotlightCrops();
-  if (!window.__spotCropBound) {
-    window.__spotCropBound = true;
-    window.addEventListener('resize', fitSpotlightCrops);
-  }
-}
-
-// 스포트라이트 임베드 크롭 — 라이브 배너와 동일 좌표(1620 로드, x240,y60,1026 폭)
-function fitSpotlightCrops() {
-  document.querySelectorAll('.spot-embed-crop').forEach((crop) => {
-    const f = crop.querySelector('.spot-embed');
-    if (!f || !crop.clientWidth) return;
-    const s = crop.clientWidth / 1026;
-    f.style.transform = `scale(${s}) translate(-240px, -60px)`;
-  });
-}
-
 function openSpotlight() {
   if (!window.__snukLoggedIn) { showToast('로그인 후 등록할 수 있습니다'); openLogin(); return; }
   // 포인트 비용 안내(항목 9) — 하루 첫 로그인 적립 포인트로 등록
@@ -1805,7 +1237,6 @@ function bindOverlayClose() {
     m.addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
   });
 }
-function setStars() {}
 
 let toastTimer;
 function showToast(msg) {
@@ -1846,14 +1277,10 @@ window.addEventListener('resize', function () {
   clearTimeout(_resizeTimer);
   _resizeTimer = setTimeout(function () {
     renderContentSliders();
-    initBigContents();
-    initNews();
     initGameTrial();
     initGameVideos();
     if (window._rerenderGoods) window._rerenderGoods();
-    initGoodsBest();
     initPartners();
-    initRoster();
     streamerChanPos = 0;
     initStreamerChannels();
     Object.keys(sliderPos).forEach((k) => { sliderPos[k] = 0; const t = document.getElementById(k === 'game-slider' ? 'game-grid' : k); if (t) t.style.transform = 'translateX(0)'; });
@@ -2332,35 +1759,20 @@ function initDemoHome() {
 // INIT (페이지 마운트마다 SnukSections/SnukShell 이 호출 — 멱등)
 // ════════════════════════════════════════════
 function __snukInit() {
-  const chatInp = document.getElementById('chat-input');
-  if (chatInp && !chatInp.dataset.bound) {
-    chatInp.dataset.bound = '1';
-    chatInp.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
-  }
   bindOverlayClose();
   initDemoHome();
   renderContentSliders();
   renderContentsPage();
-  initBigContents();
-  initLiveBanner();
-  initNews();
-  renderFeatured('snuk-featured', D().snukFeatured, 'FEATURED');
   renderFeatured('mug-featured', D().mugFeatured, 'SIGNATURE CONTENT');
   initGameTrial();
   initGameVideos();
   initVideos();
   if (window._rerenderGoods) window._rerenderGoods();
-  initGoodsBest();
-  initStreamerStrip();
   initPartners();
-  initBracket();
-  initRoster();
   initStreamerChannels();
-  initSpotlight();
   initStreamerPost();
   renderNotices();
   applySiteImages();
-  initHeroStats();
   setActiveNav(location.pathname);
 }
 
@@ -2396,18 +1808,6 @@ function applyMenuVisibility(ss) {
   });
 }
 
-// 히어로 실데이터 스탯 (파트너 스트리머 / 모집중 컨텐츠 / 대회)
-function initHeroStats() {
-  const el = document.getElementById('hero-stats');
-  if (!el) return;
-  const d = D() || {};
-  const streamers = (d.streamers || []).length;
-  const openContents = (d.snukContents || []).filter((c) => c.status === 'open').length;
-  const activeTours = (d.mugContents || []).filter((t) => t.status === 'open' || t.status === 'ongoing').length;
-  const stat = (n, label) => `<div class="hero-stat"><strong>${n}</strong><span>${label}</span></div>`;
-  el.innerHTML = stat(streamers, '파트너 스트리머') + stat(openContents, '모집중 컨텐츠') + stat(activeTours, '진행 · 예정 대회');
-}
-
 // 어드민 "설정" 탭에서 바꾼 히어로/배너 이미지·문구 적용 ('-'=미설정 → 마크업 기본값 유지, 'none'=이미지 제거)
 function applySiteImages() {
   const ss = (D() && D().siteSettings) || {};
@@ -2429,10 +1829,6 @@ function applySiteImages() {
     el.style.display = '';
     el.textContent = text;
   };
-  applyImg('#hero .hero-banner-card > img', ss.HERO_IMAGE_URL);
-  // 메인 히어로 글씨 on/off — HERO_TEXT_ENABLED='0' 이면 배너 위 문구·버튼·스탯 전부 숨김
-  const heroContent = document.querySelector('#hero .hero-banner-content');
-  if (heroContent) heroContent.style.display = ss.HERO_TEXT_ENABLED === '0' ? 'none' : '';
   // 페이지 배너: 이미지 + 제목 + 문구 (키=BANNER_{PAGE}_{URL|TITLE|SUB}, V12 시드)
   const BANNER_SECTIONS = {
     CONTENTS: '#snuk-contents .page-banner',

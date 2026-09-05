@@ -17,8 +17,6 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
     List<Campaign> findByStatusOrderBySortOrderAscIdDesc(CampaignStatus status);
 
-    List<Campaign> findByFeaturedTrueAndStatusOrderBySortOrderAsc(CampaignStatus status);
-
     /**
      * FCFS 슬롯 차감용 비관적 쓰기 락(ADR-007). 마지막 슬롯 동시 클릭 시 초과배정 방지.
      */

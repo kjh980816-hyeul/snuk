@@ -187,12 +187,4 @@ public class Campaign {
         this.filledSlots += 1;
         this.updatedAt = LocalDateTime.now();
     }
-
-    /** 배정 취소 시 슬롯 환원. */
-    public void releaseOneSlot() {
-        if (this.filledSlots > 0) {
-            this.filledSlots -= 1;
-            this.updatedAt = LocalDateTime.now();
-        }
-    }
 }

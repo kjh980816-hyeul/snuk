@@ -63,12 +63,4 @@ public class JwtTokenProvider {
     public boolean isRefreshToken(Claims claims) {
         return "refresh".equals(claims.get("type", String.class));
     }
-
-    public long getAccessValiditySeconds() {
-        return accessValiditySeconds;
-    }
-
-    public long getRefreshValiditySeconds() {
-        return refreshValiditySeconds;
-    }
 }

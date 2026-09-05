@@ -12,7 +12,5 @@ public interface RoleRequestRepository extends JpaRepository<RoleRequest, Long> 
 
     boolean existsByMemberIdAndStatus(Long memberId, RoleRequest.Status status);
 
-    List<RoleRequest> findByStatusOrderByCreatedAtAsc(RoleRequest.Status status);
-
     List<RoleRequest> findAllByOrderByCreatedAtDesc();
 }

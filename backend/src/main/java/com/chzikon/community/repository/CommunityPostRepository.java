@@ -13,14 +13,6 @@ import java.util.List;
 
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, Long> {
 
-    /** 전체 게시판 검색. q 는 소문자 %패턴% 또는 null. */
-    @Query("""
-            select p from CommunityPost p
-            where p.hidden = false
-              and (:q is null or lower(p.title) like :q or lower(p.content) like :q)
-            """)
-    Page<CommunityPost> search(@Param("q") String q, Pageable pageable);
-
     /** 특정 게시판(하위 게시판 포함) 검색. */
     @Query("""
             select p from CommunityPost p

@@ -503,24 +503,9 @@ async function saveBannerText(page: string) {
   await loadSettings()
   alert('저장되었습니다.')
 }
-// ----- 메인 라이브 배너(히어로 아래, 항목 13/18) -----
-const liveBannerEnabled = ref(false)
-const liveBannerUrl = ref('')
-const liveBannerTitle = ref('')
-async function saveLiveBanner() {
-  // 값을 먼저 스냅샷 — saveSetting 안의 loadSettings 가 입력값을 서버 값으로 되돌리기 때문.
-  const enabled = liveBannerEnabled.value ? '1' : '0'
-  const url = liveBannerUrl.value.trim() || '-'
-  const title = liveBannerTitle.value.trim() || '-'
-  await adminApi.updateSetting('LIVE_BANNER_ENABLED', enabled)
-  await adminApi.updateSetting('LIVE_BANNER_URL', url)
-  await adminApi.updateSetting('LIVE_BANNER_TITLE', title)
-  await loadSettings()
-  alert('저장되었습니다. 메인 히어로 아래에 반영돼요.')
-}
 const SITE_KEYS = [
-  'LIVE_CHANNEL_ID', 'LIVE_BANNER_ENABLED', 'LIVE_BANNER_URL', 'LIVE_BANNER_TITLE',
-  'HERO_TEXT_ENABLED', 'POINT_DAILY_AMOUNT', 'SPOTLIGHT_POINT_COST',
+  'LIVE_CHANNEL_ID',
+  'POINT_DAILY_AMOUNT', 'SPOTLIGHT_POINT_COST',
   ...SITE_IMAGES.map((s) => s.key),
   ...BANNER_TEXTS.flatMap((b) => [`BANNER_${b.page}_TITLE`, `BANNER_${b.page}_SUB`]),
 ]
@@ -579,14 +564,6 @@ async function saveMenus() {
   await adminApi.updateSetting('MENU_CUSTOM', json)
   await loadSettings()
   alert('저장되었습니다. 사이트 새로고침 시 반영돼요.')
-}
-
-// 메인 히어로 글씨 on/off (HERO_TEXT_ENABLED)
-const heroTextEnabled = ref(true)
-async function saveHeroText() {
-  await adminApi.updateSetting('HERO_TEXT_ENABLED', heroTextEnabled.value ? '1' : '0')
-  await loadSettings()
-  alert('저장되었습니다.')
 }
 
 // 광고 슬롯 — 홈 상단 AD 배너(이미지+링크). 노출 중인 것만 공개 API(/api/ads)로 나가고 6초 슬라이드.
@@ -696,10 +673,6 @@ function settingValue(key: string): string {
 async function loadSettings() {
   settings.value = await adminApi.settings()
   liveChannelInput.value = settingValue('LIVE_CHANNEL_ID')
-  liveBannerEnabled.value = settingValue('LIVE_BANNER_ENABLED') === '1'
-  liveBannerUrl.value = settingValue('LIVE_BANNER_URL')
-  liveBannerTitle.value = settingValue('LIVE_BANNER_TITLE')
-  heroTextEnabled.value = settingValue('HERO_TEXT_ENABLED') !== '0'
   pointDailyInput.value = settingValue('POINT_DAILY_AMOUNT')
   spotlightCostInput.value = settingValue('SPOTLIGHT_POINT_COST')
   loadBannerTextInputs()
@@ -1826,26 +1799,6 @@ function onTab(t: Tab) {
             <button class="btn sm" @click="saveLiveChannel">저장</button>
           </div>
         </label>
-        <div class="live-banner-box">
-          <h5 style="margin:14px 0 8px;">메인 라이브 배너 (히어로 바로 아래)</h5>
-          <label class="chk" style="margin-bottom:8px;">
-            <input type="checkbox" v-model="liveBannerEnabled" /> 배너 켜기 (끄면 메인에서 완전히 사라져요)
-          </label>
-          <label>방송 주소 (누구 방송을 띄울지 — 치지직/숲/유튜브 URL)
-            <input v-model="liveBannerUrl" placeholder="https://chzzk.naver.com/live/..." />
-          </label>
-          <label>배너 제목 (비우면 "지금 방송 중")
-            <input v-model="liveBannerTitle" placeholder="예) 씨미 님 스눅컵 연습 방송 🔴" />
-          </label>
-          <button class="btn sm" style="margin-top:8px;" @click="saveLiveBanner">라이브 배너 저장</button>
-        </div>
-        <div class="live-banner-box">
-          <h5 style="margin:14px 0 8px;">메인 히어로 글씨</h5>
-          <label class="chk" style="margin-bottom:8px;">
-            <input type="checkbox" v-model="heroTextEnabled" /> 히어로 배너 위 글씨·버튼·통계 표시 (끄면 이미지만 보여요)
-          </label>
-          <button class="btn sm" @click="saveHeroText">저장</button>
-        </div>
         <div class="site-images">
           <div v-for="si in SITE_IMAGES" :key="si.key" class="site-img">
             <span class="site-img-label">{{ si.label }}</span>

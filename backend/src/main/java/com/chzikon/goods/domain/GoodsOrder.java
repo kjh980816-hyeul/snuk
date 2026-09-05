@@ -126,9 +126,4 @@ public class GoodsOrder {
         this.status = OrderStatus.FAILED;
         this.updatedAt = LocalDateTime.now();
     }
-
-    public void markCancelled() {
-        this.status = OrderStatus.CANCELLED;
-        this.updatedAt = LocalDateTime.now();
-    }
 }

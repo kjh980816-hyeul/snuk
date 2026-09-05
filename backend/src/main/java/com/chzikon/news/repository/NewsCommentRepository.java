@@ -11,6 +11,4 @@ public interface NewsCommentRepository extends JpaRepository<NewsComment, Long> 
     List<NewsComment> findByPostIdOrderByCreatedAtAsc(Long postId);
 
     Optional<NewsComment> findByIdAndPostId(Long id, Long postId);
-
-    long countByPostId(Long postId);
 }
