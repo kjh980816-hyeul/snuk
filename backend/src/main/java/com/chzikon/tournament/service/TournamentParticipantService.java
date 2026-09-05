@@ -53,6 +53,9 @@ public class TournamentParticipantService {
 
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        if (tournament.isPreparing()) {
+            throw new BusinessException(ErrorCode.TOURNAMENT_PREPARING);
+        }
         if (!tournament.isOpenForApply()) {
             throw new BusinessException(ErrorCode.TOURNAMENT_NOT_OPEN);
         }

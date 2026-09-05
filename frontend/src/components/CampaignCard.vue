@@ -4,7 +4,7 @@ import type { Campaign } from '@/api/types'
 defineProps<{ campaign: Campaign }>()
 const emit = defineEmits<{ apply: [c: Campaign] }>()
 
-const statusKo: Record<string, string> = { SCHEDULED: '예정', OPEN: '모집중', CLOSED: '마감' }
+const statusKo: Record<string, string> = { PREPARING: '준비중', SCHEDULED: '오픈예정', OPEN: '모집중', ONGOING: '진행중', CLOSED: '마감' }
 </script>
 
 <template>
@@ -19,7 +19,7 @@ const statusKo: Record<string, string> = { SCHEDULED: '예정', OPEN: '모집중
       <p class="desc">{{ campaign.description }}</p>
       <p class="date" v-if="campaign.eventDate">{{ campaign.eventDate }}</p>
       <div class="card-acts">
-        <button class="btn sm" :disabled="campaign.status !== 'OPEN'" @click="emit('apply', campaign)">
+        <button class="btn sm" :disabled="!(campaign.applyOpen ?? campaign.status === 'OPEN')" @click="emit('apply', campaign)">
           신청하기 &gt;
         </button>
         <RouterLink :to="`/campaigns/${campaign.id}/reviews`" class="btn ghost sm">후기</RouterLink>

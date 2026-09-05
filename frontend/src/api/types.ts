@@ -1,5 +1,6 @@
 export type Role = 'GUEST' | 'VIEWER' | 'STREAMER' | 'REPORTER' | 'ADMIN'
-export type CampaignStatus = 'SCHEDULED' | 'OPEN' | 'ONGOING' | 'CLOSED'
+/** PREPARING=준비중(내용만 공개·신청 불가) / SCHEDULED=오픈예정 / OPEN=모집중 / ONGOING=진행중 / CLOSED=종료 */
+export type CampaignStatus = 'PREPARING' | 'SCHEDULED' | 'OPEN' | 'ONGOING' | 'CLOSED'
 export type DistributionType = 'FCFS' | 'APPROVAL'
 export type KeyMode = 'QUANTITY' | 'UNIQUE_KEY'
 
@@ -31,6 +32,10 @@ export interface Campaign {
   filledSlots: number
   featured: boolean
   ownerMemberId: number | null
+  /** 서버 판정 — 지금 신청 가능(OPEN) */
+  applyOpen: boolean
+  /** 서버 판정 — 준비중(내용만 공개) */
+  preparing: boolean
 }
 
 export interface CollabGame {
@@ -80,7 +85,8 @@ export interface MyApplication {
 }
 
 // ----- 대회 -----
-export type TournamentStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED' | 'DONE'
+/** PREPARING=준비중(내용만 공개·신청 불가) / SCHEDULED=오픈예정 / OPEN=모집중 / CLOSED=모집 마감·진행 / DONE=종료 */
+export type TournamentStatus = 'PREPARING' | 'SCHEDULED' | 'OPEN' | 'CLOSED' | 'DONE'
 
 /** 질문 유형 — 단답/장문/객관식(하나 선택)/체크박스(복수 선택). 미지정(구버전)은 SHORT 취급. */
 export type ApplyQuestionType = 'SHORT' | 'LONG' | 'SELECT' | 'MULTI'
@@ -107,6 +113,10 @@ export interface Tournament {
   featured: boolean
   sortOrder: number
   ownerMemberId: number | null
+  /** 서버 판정 — 지금 참가 신청 가능(OPEN) */
+  applyOpen: boolean
+  /** 서버 판정 — 준비중(내용만 공개) */
+  preparing: boolean
 }
 
 export interface MyParticipation {

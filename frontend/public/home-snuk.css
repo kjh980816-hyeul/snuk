@@ -173,6 +173,7 @@
 .badge.open::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.2s infinite;}
 .badge.ongoing{background:rgba(255,165,0,.13);color:var(--yellow);border:1px solid rgba(255,165,0,.35);}
 .badge.closed{background:rgba(14,14,18,.72);color:#c3c3cc;border:1px solid rgba(160,160,168,.4);}
+.badge.preparing{background:rgba(129,99,255,.16);color:#c9b8ff;border:1px solid rgba(129,99,255,.45);}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── BTN ── */
@@ -969,6 +970,9 @@
 .badge.ongoing{background:rgba(232,169,63,.14);color:var(--yellow);border:1px solid rgba(232,169,63,.35);}
 .badge.closed{background:var(--bg3);color:var(--text3);border:1px solid var(--border2);}
 .snuk-page[data-theme="light"] .badge.closed{background:var(--bg3);color:var(--text3);}
+/* 준비중 — 보라 틴트(브랜드), 모집중(초록)·진행중(노랑)·종료(회색)와 구분 */
+.badge.preparing{background:rgba(129,99,255,.14);color:var(--accent3);border:1px solid rgba(129,99,255,.4);}
+.snuk-page[data-theme="light"] .badge.preparing{background:#EEEAFD;color:#3A1E96;border-color:#D6CCFA;}
 
 /* ── 모바일 상단바: 데모 .mobtop(버거 좌 · 브랜드 중앙 · 로그인 우)
    display 는 위 기본/미디어쿼리 규칙 유지(여기서 건드리면 1024 이하 표시가 깨짐) ── */
@@ -1004,6 +1008,8 @@ footer{border-top:1px solid var(--border);}
 .t-go{background:rgba(43,194,106,.14);color:var(--green);}
 .t-warn{background:rgba(232,169,63,.15);color:var(--yellow);}
 .t-neu{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
+.t-prep{background:rgba(129,99,255,.14);color:var(--accent3);border:1px solid rgba(129,99,255,.35);}
+.snuk-page[data-theme="light"] .t-prep{background:#EEEAFD;color:#3A1E96;border-color:#D6CCFA;}
 .ctitle{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.01em;line-height:1.45;margin:0;}
 .cintro{font-size:12.5px;color:var(--text2);line-height:1.6;margin:0;display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;overflow:hidden;min-height:40px;}

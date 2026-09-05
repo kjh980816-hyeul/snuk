@@ -27,6 +27,7 @@ public enum ErrorCode {
     FOLLOWER_THRESHOLD_NOT_MET(HttpStatus.FORBIDDEN, "M004", "팔로워 임계값을 충족하지 않습니다."),
     NO_AVAILABLE_KEY(HttpStatus.CONFLICT, "M005", "배정 가능한 키가 없습니다."),
     KEY_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "M006", "이미 배정된 키입니다."),
+    CAMPAIGN_PREPARING(HttpStatus.CONFLICT, "M007", "준비 중인 컨텐츠입니다. 모집이 시작되면 신청할 수 있어요."),
 
     // 후기 (REV)
     REVIEW_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "R001", "참가자만 후기를 작성할 수 있습니다."),
@@ -46,6 +47,7 @@ public enum ErrorCode {
     TOURNAMENT_NOT_OPEN(HttpStatus.CONFLICT, "T001", "참가 신청 가능한 상태가 아닙니다."),
     TOURNAMENT_FULL(HttpStatus.CONFLICT, "T002", "참가 정원이 모두 찼습니다."),
     ALREADY_JOINED(HttpStatus.CONFLICT, "T003", "이미 참가 신청한 대회입니다."),
+    TOURNAMENT_PREPARING(HttpStatus.CONFLICT, "T004", "준비 중인 대회입니다. 모집이 시작되면 참가 신청할 수 있어요."),
 
     // 설정 (ADM)
     SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "설정값을 찾을 수 없습니다."),

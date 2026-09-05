@@ -140,6 +140,11 @@ public class Tournament {
         return this.status == TournamentStatus.OPEN;
     }
 
+    /** 준비중 — 내용만 공개, 참가 정보·신청 불가. */
+    public boolean isPreparing() {
+        return this.status == TournamentStatus.PREPARING;
+    }
+
     public boolean hasFreeSlot() {
         return this.filledSlots < this.capacity;
     }

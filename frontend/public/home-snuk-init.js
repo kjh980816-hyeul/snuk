@@ -45,14 +45,49 @@ function ddayOf(eventDate) {
   const d = Math.ceil((new Date(`${eventDate}T00:00:00`).getTime() - Date.now()) / 86400000);
   return Number.isFinite(d) ? d : null;
 }
+// ── 상태 공용 헬퍼 (서버 판정값 applyOpen/preparing 기준. status 문자열은 표시 분기용)
+function isPreparing(d) { return !!(d && (d.preparing || d.status === 'preparing')); }
+function canApplyOf(d) { return !!(d && (d.applyOpen != null ? d.applyOpen : d.status === 'open')); }
+function badgeClsOf(d) {
+  return isPreparing(d) ? 'preparing' : d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
+}
+function tagClsOf(d) {
+  return isPreparing(d) ? 't-prep' : d.status === 'open' ? 't-go' : d.status === 'ongoing' ? 't-warn' : 't-neu';
+}
+// 카드 클릭 액션: 대회=상세 페이지 / 모집중=신청 모달 / 준비중=내용만 보기 모달 / 그 외=컨텐츠 목록
+function cardClickOf(d) {
+  if (d.kind === 'tournament') return `__snukNav('/championship/${d.id}')`;
+  if (canApplyOf(d)) return `openApply('${d.kind}',${d.id})`;
+  if (isPreparing(d)) return `openPreview('${d.kind}',${d.id})`;
+  return `window.__snukNav('/campaigns')`;
+}
+// 준비중 컨텐츠 — 내용(이미지·제목·소개)만 보여주는 읽기 전용 모달. 모집 정보·신청 버튼 없음.
+function openPreview(kind, id) {
+  const list = kind === 'tournament' ? (D().mugContents || []) : (D().snukContents || []);
+  let item = list.find((x) => x.id === id);
+  if (!item && kind === 'campaign') {
+    const g = (D().games || []).find((x) => x.campaignId === id);
+    if (g) item = { id, title: g.name, desc: g.desc, img: g.img, statusLabel: '준비중', preparing: true };
+  }
+  if (!item) return;
+  openDynamicModal(`
+    <div class="modal-title">${esc(item.title)}</div>
+    <div class="modal-sub"><span class="badge preparing">${esc(item.statusLabel || '준비중')}</span>
+      <span style="margin-left:8px;">모집이 시작되면 신청할 수 있어요</span></div>
+    ${item.img ? `<div style="border-radius:12px;overflow:hidden;margin:12px 0;background:var(--bg3);"><img src="${esc(item.img)}" alt="" style="display:block;width:100%;max-height:340px;object-fit:cover;" onerror="this.parentNode.remove()"></div>` : ''}
+    ${item.desc ? `<p style="font-size:14px;line-height:1.75;color:var(--text2);white-space:pre-wrap;margin:6px 0 14px;">${esc(item.desc)}</p>` : '<p style="font-size:13px;color:var(--text3);margin:6px 0 14px;">소개가 아직 준비 중입니다.</p>'}
+    <button class="btn sm wide" style="width:100%;" onclick="document.getElementById('snuk-dyn-modal').classList.remove('open')">닫기</button>`, 560);
+}
+
 function makeContentCard(d, w, i) {
-  const canApply = d.status === 'open';
-  const stTag = `<span class="tag ${d.status === 'open' ? 't-go' : d.status === 'ongoing' ? 't-warn' : 't-neu'}">${esc(d.statusLabel)}</span>`;
+  const canApply = canApplyOf(d);
+  const prep = isPreparing(d);
+  const stTag = `<span class="tag ${tagClsOf(d)}">${esc(d.statusLabel)}</span>`;
   const kindTag = `<span class="tag t-neu">${d.kind === 'tournament' ? '대회' : d.trial ? '체험단' : '컨텐츠'}</span>`;
   const dd = canApply ? ddayOf(d.eventDate) : null;
-  const click = d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')`
-    : canApply ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
-  const spec = [
+  const click = cardClickOf(d);
+  // 준비중은 모집 정보(인원·진행일)를 숨기고 내용만
+  const spec = prep ? '' : [
     d.max > 0 ? `<dt>모집 인원</dt><dd>${d.filled}/${d.max}명</dd>` : '',
     d.eventDate ? `<dt>진행일</dt><dd>${esc(d.eventDate)}</dd>` : '',
   ].join('');
@@ -61,6 +96,8 @@ function makeContentCard(d, w, i) {
     : `<span class="bava">S</span><span>SNUK</span><span class="tag t-pri">공식</span>`;
   const btn = canApply
     ? `<button class="btn-w" onclick="event.stopPropagation();openApply('${d.kind}',${d.id})">신청하기</button>`
+    : prep
+      ? `<button class="btn-w ghost" onclick="event.stopPropagation();${click}">내용 보기</button>`
     : d.kind === 'tournament' && d.resultText
       ? `<button class="btn-w ghost" onclick="event.stopPropagation();showResult(${d.id})">결과 보기</button>`
       : `<button class="btn-w ghost">자세히 보기</button>`;
@@ -106,6 +143,7 @@ function renderContentSliders() {
 // ════════════════════════════════════════════
 const CP_TABS = [
   ['open', '모집 중', (d) => d.status === 'open' || d.status === 'upcoming'],
+  ['preparing', '준비 중', (d) => isPreparing(d)],
   ['ongoing', '진행 중', (d) => d.status === 'ongoing'],
   ['closed', '종료', (d) => d.status === 'closed'],
 ];
@@ -137,7 +175,7 @@ function renderContentsPage() {
   } else if (cpState.sort === 'hot') {
     items = [...items].sort((a, b) => (b.filled || 0) - (a.filled || 0));
   }
-  const emptyMsg = { open: '모집 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!', ongoing: '진행 중인 컨텐츠가 없습니다.', closed: '종료된 컨텐츠가 없습니다.' };
+  const emptyMsg = { open: '모집 중인 컨텐츠가 없습니다. 곧 새로운 컨텐츠로 찾아올게요!', preparing: '준비 중인 컨텐츠가 없습니다.', ongoing: '진행 중인 컨텐츠가 없습니다.', closed: '종료된 컨텐츠가 없습니다.' };
   grid.innerHTML = items.length
     ? items.map((d, i) => makeContentCard(d, '', i)).join('')
     : emptyCard(emptyMsg[cpState.tab]);
@@ -147,12 +185,12 @@ function renderContentsPage() {
 // 홈 통합 빅그리드 — 캠페인 + 대회 큰 카드 (3열 슬라이드)
 // ════════════════════════════════════════════
 function makeBigCard(d, w, i) {
-  const canApply = d.status === 'open';
-  const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
+  const canApply = canApplyOf(d);
+  const badgeCls = badgeClsOf(d);
   const kindLabel = d.kind === 'tournament' ? '대회' : '컨텐츠';
-  const slots = d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
-  const sub = [slots, d.eventDate].filter(Boolean).join(' · ');
-  return `<div class="content-card big-card" style="width:${w};min-width:${w};cursor:pointer;" ${d.kind === 'tournament' ? `onclick="__snukNav('/championship/${d.id}')"` : canApply ? `onclick="openApply('${d.kind}',${d.id})"` : `onclick="window.__snukNav('/campaigns')"`}>
+  const slots = !isPreparing(d) && d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
+  const sub = isPreparing(d) ? '' : [slots, d.eventDate].filter(Boolean).join(' · ');
+  return `<div class="content-card big-card" style="width:${w};min-width:${w};cursor:pointer;" onclick="${cardClickOf(d)}">
     <div class="card-thumb" style="background:${bgOf(i)};position:relative;">
       ${thumbHtml(d.img, i, d.kind === 'tournament' ? '🏆' : '🎮')}
       <div class="big-card-grad"></div>
@@ -194,12 +232,11 @@ function hoverPaused(el) {
 // 큰 칸 = 어드민이 체크(featured)한 컨텐츠. 미선택이면 모집중 우선 상위 5개 자동 순환.
 let _featureIdx = 0;
 function makeFeatureMainCard(d, i, dotsHtml) {
-  const canApply = d.status === 'open';
-  const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
-  const slots = d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
-  const sub = [slots, d.eventDate].filter(Boolean).join(' · ');
-  const click = d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')`
-    : canApply ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
+  const canApply = canApplyOf(d);
+  const badgeCls = badgeClsOf(d);
+  const slots = !isPreparing(d) && d.max > 0 ? `모집 ${d.filled}/${d.max}명` : '';
+  const sub = isPreparing(d) ? '' : [slots, d.eventDate].filter(Boolean).join(' · ');
+  const click = cardClickOf(d);
   return `<div class="feature-main-card" onclick="${click}" style="background:${bgOf(i)};">
     ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : `<div class="feature-main-emoji">🎮</div>`}
     <div class="feature-main-grad"></div>
@@ -220,9 +257,8 @@ function makeFeatureMainCard(d, i, dotsHtml) {
 }
 
 function makeFeatureSideCard(d, i) {
-  const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
-  const click = d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')`
-    : d.status === 'open' ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
+  const badgeCls = badgeClsOf(d);
+  const click = cardClickOf(d);
   return `<div class="feature-side-card" onclick="${click}">
     <div class="feature-side-thumb" style="background:${bgOf(i + 2)};">
       ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : ''}
@@ -231,7 +267,7 @@ function makeFeatureSideCard(d, i) {
     </div>
     <div class="feature-side-body">
       <div class="feature-side-title">${esc(d.title)}</div>
-      <div class="feature-side-sub">${d.max > 0 ? `모집 ${d.filled}/${d.max}명` : esc(d.statusLabel)}</div>
+      <div class="feature-side-sub">${!isPreparing(d) && d.max > 0 ? `모집 ${d.filled}/${d.max}명` : esc(d.statusLabel)}</div>
     </div>
   </div>`;
 }
@@ -337,10 +373,10 @@ function renderFeatured(elId, d, tagText) {
   const el = document.getElementById(elId);
   if (!el) return;
   if (!d) { el.style.display = 'none'; return; }
-  const canApply = d.status === 'open';
-  const badgeCls = d.status === 'open' ? 'open' : d.status === 'ongoing' ? 'ongoing' : 'closed';
+  const canApply = canApplyOf(d);
+  const badgeCls = badgeClsOf(d);
   el.style.display = '';
-  el.setAttribute('onclick', d.kind === 'tournament' ? `__snukNav('/championship/${d.id}')` : canApply ? `openApply('${d.kind}',${d.id})` : '');
+  el.setAttribute('onclick', d.kind === 'tournament' || canApply || isPreparing(d) ? cardClickOf(d) : '');
   el.innerHTML = `
     <div class="featured-thumb" style="background:linear-gradient(135deg,#1a1040,#2d1060);position:relative;">
       ${d.img ? `<img src="${esc(d.img)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;" onerror="this.remove()">` : '<div style="font-size:56px;opacity:.5;">🎮</div>'}
@@ -351,8 +387,8 @@ function renderFeatured(elId, d, tagText) {
       <h3 class="featured-title">${esc(d.title)}</h3>
       <p class="featured-desc">${esc(d.desc)}</p>
       <div class="featured-stats">
-        ${d.max > 0 ? `<div class="featured-stat"><strong>${d.filled}/${d.max}명</strong>모집 현황</div>` : ''}
-        ${d.eventDate ? `<div class="featured-stat"><strong>${esc(d.eventDate)}</strong>진행일</div>` : ''}
+        ${!isPreparing(d) && d.max > 0 ? `<div class="featured-stat"><strong>${d.filled}/${d.max}명</strong>모집 현황</div>` : ''}
+        ${!isPreparing(d) && d.eventDate ? `<div class="featured-stat"><strong>${esc(d.eventDate)}</strong>진행일</div>` : ''}
         <div class="featured-stat"><strong>${esc(d.statusLabel)}</strong>현재 상태</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -495,7 +531,7 @@ function openStreamerPost(kind) {
   const rows = mine.map((x) => `
     <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
       <span style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(x.title)}</span>
-      <span class="badge ${x.status === 'open' ? 'open' : 'closed'}">${esc(x.statusLabel)}</span>
+      <span class="badge ${badgeClsOf(x)}">${esc(x.statusLabel)}</span>
       ${isT ? `<button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#4cc38a;" onclick="spParticipants(${x.id},'${esc(x.title).replace(/'/g, '&#39;')}')">참가자</button>` : ''}
       <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="spEdit('${kind}',${x.id})">수정</button>
       <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#e5484d;" onclick="spDelete('${kind}',${x.id})">삭제</button>
@@ -514,7 +550,7 @@ function openStreamerPost(kind) {
       <input id="spc-date" type="date" style="${SP_INP}flex:1;" title="진행일">
       <input id="spc-cap" type="number" min="0" style="${SP_INP}flex:1;" placeholder="${isT ? '정원(명)' : '모집 인원'}">
       <select id="spc-status" style="${SP_INP}flex:1;">
-        <option value="OPEN">모집중</option><option value="SCHEDULED">오픈예정</option><option value="ONGOING">진행중 (모집 마감)</option><option value="CLOSED">종료</option>
+        <option value="PREPARING">준비중 (내용만 공개·신청 불가)</option><option value="SCHEDULED">오픈예정</option><option value="OPEN">모집중</option><option value="ONGOING">진행중 (모집 마감)</option><option value="CLOSED">종료</option>
       </select>
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
@@ -543,7 +579,7 @@ async function spEdit(kind, id) {
     const sel = document.getElementById('spc-status');
     // 대회 enum(CLOSED=모집 마감·진행, DONE=종료)을 공용 셀렉트(ONGOING/CLOSED) 표기로 변환
     const shown = kind === 'tournament' ? ({ CLOSED: 'ONGOING', DONE: 'CLOSED' }[d.status] || d.status) : d.status;
-    sel.value = ['OPEN', 'SCHEDULED', 'ONGOING', 'CLOSED'].includes(shown) ? shown : 'CLOSED';
+    sel.value = ['PREPARING', 'OPEN', 'SCHEDULED', 'ONGOING', 'CLOSED'].includes(shown) ? shown : 'CLOSED';
     const img = d.promoImageUrl || d.bannerImageUrl;
     const prev = document.getElementById('spc-img-prev');
     if (img) { prev.src = img; prev.style.display = ''; }
@@ -771,12 +807,15 @@ function initGameTrial() {
       </div>`).join('');
     const full = g.max > 0 && g.members >= g.max;
     const canApply = g.applyOpen && !full && g.campaignId != null;
+    const prep = !!g.preparing;
+    const stLabel = canApply ? '모집중' : prep ? '준비중' : '마감';
+    const stCls = canApply ? 'badge open' : prep ? 'badge preparing' : 'badge closed';
     return `<div class="game-card" style="width:${cardWidth(3, 1)};min-width:${cardWidth(3, 1)};">
       <div class="game-thumb" style="position:relative;background:${bgOf(i)};">
         ${g.img ? `<img src="${esc(g.img)}" alt="${esc(g.name)}" onerror="this.remove()">` : `<div style="font-size:64px;opacity:.4;">${esc(g.name.slice(0, 1))}</div>`}
         <div class="game-thumb-grad"></div>
         <div style="position:absolute;top:12px;left:12px;z-index:1;">
-          <span class="${canApply ? 'badge open' : 'badge closed'}">${canApply ? '모집중' : '마감'}</span>
+          <span class="${stCls}">${stLabel}</span>
         </div>
         <div class="game-thumb-caption">
           <div class="game-name">${esc(g.name)}</div>
@@ -786,10 +825,10 @@ function initGameTrial() {
       <div class="game-body">
         <div class="game-desc">${esc(g.desc)}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:0;">
-          <span style="font-size:11px;color:var(--text3);">${g.max > 0 ? `신청 ${g.members}/${g.max}` : ''}</span>
+          <span style="font-size:11px;color:var(--text3);">${!prep && g.max > 0 ? `신청 ${g.members}/${g.max}` : prep ? '모집 시작 전' : ''}</span>
           <div style="display:flex;gap:6px;">
             ${g.gameLinkUrl ? `<a href="${esc(g.gameLinkUrl)}" target="_blank" rel="noopener"><button class="btn btn-outline" style="padding:7px 12px;font-size:11px;">게임 링크 ↗</button></a>` : ''}
-            <button class="btn-apply" ${canApply ? `onclick="openGame(${i})"` : 'style="background:var(--bg4);color:var(--text3);cursor:default;"'}>${canApply ? '신청하기' : '마감'}</button>
+            <button class="btn-apply" ${canApply ? `onclick="openGame(${i})"` : 'style="background:var(--bg4);color:var(--text3);cursor:default;"'}>${canApply ? '신청하기' : stLabel}</button>
           </div>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:auto;">
@@ -2088,9 +2127,9 @@ function dhJobSpec(d) {
   return `<dl class="spec">${rows}</dl>`;
 }
 function dhJobCard(d, i) {
-  const click = d.kind === 'tournament' ? `window.__snukNav('/championship/${d.id}')`
-    : d.status === 'open' ? `openApply('${d.kind}',${d.id})` : `window.__snukNav('/campaigns')`;
-  const dd = dhDdayTag(dhDday(d.applyEnd));
+  const click = cardClickOf(d);
+  const prep = isPreparing(d);
+  const dd = prep ? `<span class="dwrap"><span class="dday">준비중</span></span>` : dhDdayTag(dhDday(d.applyEnd));
   const byline = d.adminMade === false
     ? `${dhAva('스')}<span style="min-width:0"><span class="dh-row" style="gap:5px">
         <span style="font-weight:700;font-size:13px">스트리머 컨텐츠</span></span>
@@ -2104,12 +2143,12 @@ function dhJobCard(d, i) {
       ${d.img ? `<img src="${esc(d.img)}" alt="" onerror="this.remove()">` : ''}${dd}
     </span>
     <div class="cbody">
-      <div class="dh-row" style="gap:6px;margin-bottom:7px"><span class="tag t-neu">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span></div>
+      <div class="dh-row" style="gap:6px;margin-bottom:7px"><span class="tag t-neu">${d.kind === 'tournament' ? '대회' : '컨텐츠'}</span>${prep ? `<span class="tag t-prep">준비중</span>` : ''}</div>
       <p style="font-size:15px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px">${esc(d.title)}</p>
       <p class="cintro">${esc(d.desc)}</p>
-      <div class="specfull">${dhJobSpec(d)}</div>
+      ${prep ? `<p class="micro dim" style="margin:4px 0 8px">모집이 시작되면 신청할 수 있어요</p>` : `<div class="specfull">${dhJobSpec(d)}</div>`}
       <div class="byline">${byline}</div>
-      <button class="btn sm wide" style="margin-top:10px" onclick="event.stopPropagation();${click}">자세히 보기</button>
+      <button class="btn sm wide" style="margin-top:10px" onclick="event.stopPropagation();${click}">${prep ? '내용 보기' : '자세히 보기'}</button>
     </div>
   </div>`;
 }
@@ -2133,31 +2172,33 @@ function dhJobs() {
 // 데모 homeTrialCard 그대로
 function dhTrialCard(g, i) {
   const left = Math.max(0, (g.max || 0) - (g.members || 0));
-  const n = dhDday(g.applyEnd);
-  const click = g.campaignId ? `openApply('campaign',${g.campaignId})` : `window.__snukNav('/games')`;
+  const prep = !!g.preparing;
+  const n = prep ? null : dhDday(g.applyEnd);
+  const click = prep && g.campaignId ? `openPreview('campaign',${g.campaignId})`
+    : g.campaignId && g.applyOpen ? `openApply('campaign',${g.campaignId})` : `window.__snukNav('/games')`;
   return `<div class="card ov contcard clickcard" onclick="${click}">
     <span class="thumb" style="background:${bgOf(i + 3)};">
-      ${g.img ? `<img src="${esc(g.img)}" alt="" onerror="this.remove()">` : ''}${dhDdayTag(n)}
+      ${g.img ? `<img src="${esc(g.img)}" alt="" onerror="this.remove()">` : ''}${prep ? `<span class="dwrap"><span class="dday">준비중</span></span>` : dhDdayTag(n)}
     </span>
     <div class="cbody">
       <div class="dh-row" style="gap:7px;margin-bottom:8px">
         <span class="tag t-neu">게임</span>
-        <span class="tag ${g.pick === '선착순' ? 't-warn' : 't-pri'}">${esc(g.pick || '선정')}</span>
+        ${prep ? `<span class="tag t-prep">준비중</span>` : `<span class="tag ${g.pick === '선착순' ? 't-warn' : 't-pri'}">${esc(g.pick || '선정')}</span>`}
       </div>
       <p style="font-size:15px;font-weight:700;letter-spacing:-.02em;margin-bottom:10px">${esc(g.name)}</p>
-      <div class="qtybar">
+      ${prep ? `<p class="micro dim" style="margin:0 0 6px">모집이 시작되면 신청할 수 있어요</p>` : `<div class="qtybar">
         <span class="qb"><span class="ql">지원 수량</span><span class="qv">${g.max || 0}</span></span>
         <span class="qb"><span class="ql">남은 수량</span><span class="qv"${left ? ' style="color:var(--green)"' : ''}>${left}</span></span>
         <span class="qb"><span class="ql">지원 수</span><span class="qv">${g.members || 0}</span></span>
         <span class="qb"><span class="ql">모집 마감</span><span class="qv" style="font-size:13px">${n == null ? '—' : n < 0 ? '마감' : `D-${n}`}</span></span>
-      </div>
-      ${g.applyEnd ? `<p class="micro dim" style="margin-top:6px">마감일 ${esc(dhFmtDate(g.applyEnd))}</p>` : ''}
+      </div>`}
+      ${!prep && g.applyEnd ? `<p class="micro dim" style="margin-top:6px">마감일 ${esc(dhFmtDate(g.applyEnd))}</p>` : ''}
       <div class="byline"><span class="plogo">${esc((g.publisher || 'S').slice(0, 1))}</span>
         <span><span style="display:block;font-weight:700;font-size:13px">${esc(g.publisher || 'SNUK')}</span>
         <span class="micro dim">협력사</span></span></div>
       ${g.applyOpen && g.campaignId
         ? `<button class="btn pri sm wide" style="margin-top:10px" onclick="event.stopPropagation();openApply('campaign',${g.campaignId})">신청하기</button>`
-        : `<button class="btn sm wide" style="margin-top:10px" onclick="event.stopPropagation();${click}">자세히 보기</button>`}
+        : `<button class="btn sm wide" style="margin-top:10px" onclick="event.stopPropagation();${click}">${prep ? '내용 보기' : '자세히 보기'}</button>`}
     </div>
   </div>`;
 }

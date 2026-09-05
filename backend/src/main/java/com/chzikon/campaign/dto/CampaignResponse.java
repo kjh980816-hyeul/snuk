@@ -22,7 +22,11 @@ public record CampaignResponse(
         int filledSlots,
         boolean featured,
         Long ownerMemberId,
-        java.util.List<com.chzikon.tournament.dto.ApplyFormJson.ApplyQuestion> applyQuestions
+        java.util.List<com.chzikon.tournament.dto.ApplyFormJson.ApplyQuestion> applyQuestions,
+        /** 서버 판정: 지금 신청 가능한가(OPEN). 프론트 버튼 노출은 이 값 기준. */
+        boolean applyOpen,
+        /** 서버 판정: 준비중(내용만 공개, 모집 정보·신청 숨김). */
+        boolean preparing
 ) {
     public static CampaignResponse from(Campaign c) {
         return new CampaignResponse(
@@ -30,6 +34,7 @@ public record CampaignResponse(
                 c.getEventDate(), c.getApplyStart(), c.getApplyEnd(),
                 c.getStatus().name(), c.getDistributionType().name(), c.getKeyMode().name(),
                 c.getTotalSlots(), c.getFilledSlots(), c.isFeatured(), c.getOwnerMemberId(),
-                com.chzikon.tournament.dto.ApplyFormJson.questionsFromJson(c.getApplyQuestions()));
+                com.chzikon.tournament.dto.ApplyFormJson.questionsFromJson(c.getApplyQuestions()),
+                c.isOpenForApply(), c.isPreparing());
     }
 }

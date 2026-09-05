@@ -19,9 +19,13 @@ export interface SnukCard {
   desc: string
   max: number
   filled: number
-  /** open=모집중 / upcoming=오픈예정 / ongoing=모집 마감·진행중 / closed=종료 */
-  status: 'open' | 'upcoming' | 'ongoing' | 'closed'
+  /** preparing=준비중(내용만 공개) / open=모집중 / upcoming=오픈예정 / ongoing=모집 마감·진행중 / closed=종료 */
+  status: 'preparing' | 'open' | 'upcoming' | 'ongoing' | 'closed'
   statusLabel: string
+  /** 서버 판정 — 지금 신청 가능(카드 버튼·클릭 액션은 이 값 기준) */
+  applyOpen: boolean
+  /** 서버 판정 — 준비중이면 모집 인원·기간·D-day 등 모집 정보를 숨기고 내용만 보여준다 */
+  preparing: boolean
   img: string | null
   eventDate: string | null
   /** 신청 기간(데모 카드 스펙 줄) */
@@ -48,7 +52,10 @@ export interface SnukGame {
   gameLinkUrl: string | null
   members: number
   max: number
+  /** 서버 판정 — 연결 캠페인이 OPEN */
   applyOpen: boolean
+  /** 서버 판정 — 연결 캠페인이 준비중(내용만 공개, 수량·마감·신청 숨김) */
+  preparing: boolean
   /** 연결 캠페인의 모집 마감일(YYYY-MM-DD, 없으면 null) */
   applyEnd: string | null
   /** 선발 방식 — 데모 체험단 카드의 두 번째 태그 */
@@ -115,13 +122,16 @@ function dateOf(iso: string | null): string {
 }
 
 function campaignCard(c: Campaign): SnukCard {
-  const status = c.status === 'OPEN' ? 'open' : c.status === 'SCHEDULED' ? 'upcoming'
-    : c.status === 'ONGOING' ? 'ongoing' : 'closed'
+  const status = c.status === 'PREPARING' ? 'preparing' : c.status === 'OPEN' ? 'open'
+    : c.status === 'SCHEDULED' ? 'upcoming' : c.status === 'ONGOING' ? 'ongoing' : 'closed'
   return {
     id: c.id, kind: 'campaign', title: c.title, desc: c.description ?? c.gameName ?? '',
     max: c.totalSlots, filled: c.filledSlots, status,
-    statusLabel: c.status === 'OPEN' ? '모집중' : c.status === 'SCHEDULED' ? '오픈예정'
-      : c.status === 'ONGOING' ? '진행중' : '종료',
+    statusLabel: c.status === 'PREPARING' ? '준비중' : c.status === 'OPEN' ? '모집중'
+      : c.status === 'SCHEDULED' ? '오픈예정' : c.status === 'ONGOING' ? '진행중' : '종료',
+    // 서버 판정값(응답에 없는 구버전 캐시 대비 status 폴백)
+    applyOpen: c.applyOpen ?? c.status === 'OPEN',
+    preparing: c.preparing ?? c.status === 'PREPARING',
     img: c.promoImageUrl, eventDate: c.eventDate,
     applyStart: c.applyStart ? c.applyStart.slice(0, 10) : null,
     applyEnd: c.applyEnd ? c.applyEnd.slice(0, 10) : null,
@@ -133,13 +143,15 @@ function campaignCard(c: Campaign): SnukCard {
 
 function tournamentCard(t: Tournament): SnukCard {
   // 대회: CLOSED=모집 마감(대회 진행 전·중) → 진행중, DONE=종료
-  const status = t.status === 'OPEN' ? 'open' : t.status === 'SCHEDULED' ? 'upcoming'
-    : t.status === 'CLOSED' ? 'ongoing' : 'closed'
+  const status = t.status === 'PREPARING' ? 'preparing' : t.status === 'OPEN' ? 'open'
+    : t.status === 'SCHEDULED' ? 'upcoming' : t.status === 'CLOSED' ? 'ongoing' : 'closed'
   return {
     id: t.id, kind: 'tournament', title: t.title, desc: t.description ?? t.gameName ?? '',
     max: t.capacity, filled: t.filledSlots, status,
-    statusLabel: t.status === 'OPEN' ? '모집중' : t.status === 'SCHEDULED' ? '오픈예정'
-      : t.status === 'DONE' ? '종료' : '진행중',
+    statusLabel: t.status === 'PREPARING' ? '준비중' : t.status === 'OPEN' ? '모집중'
+      : t.status === 'SCHEDULED' ? '오픈예정' : t.status === 'DONE' ? '종료' : '진행중',
+    applyOpen: t.applyOpen ?? t.status === 'OPEN',
+    preparing: t.preparing ?? t.status === 'PREPARING',
     img: t.bannerImageUrl, eventDate: t.eventDate,
     applyStart: t.applyStart ? t.applyStart.slice(0, 10) : null,
     applyEnd: t.applyEnd ? t.applyEnd.slice(0, 10) : null,
@@ -199,7 +211,8 @@ export async function loadSnukData(): Promise<SnukData> {
       gameLinkUrl: g.gameLinkUrl,
       members: linked?.filledSlots ?? 0,
       max: linked?.totalSlots ?? 0,
-      applyOpen: linked?.status === 'OPEN',
+      applyOpen: linked ? (linked.applyOpen ?? linked.status === 'OPEN') : false,
+      preparing: linked ? (linked.preparing ?? linked.status === 'PREPARING') : false,
       applyEnd: linked?.applyEnd ? linked.applyEnd.slice(0, 10) : null,
       pick: linked?.distributionType === 'FCFS' ? '선착순' : '선정',
       reviewsCount: reviews.length,

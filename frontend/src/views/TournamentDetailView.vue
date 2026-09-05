@@ -19,12 +19,15 @@ const posterExpanded = ref(false)
 
 const statusLabel = computed(() => {
   const s = tour.value?.status
-  return s === 'OPEN' ? '모집중' : s === 'SCHEDULED' ? '오픈예정' : s === 'DONE' ? '종료' : '모집마감'
+  return s === 'PREPARING' ? '준비중' : s === 'OPEN' ? '모집중' : s === 'SCHEDULED' ? '오픈예정' : s === 'DONE' ? '종료' : '모집마감'
 })
 const statusCls = computed(() => {
   const s = tour.value?.status
-  return s === 'OPEN' ? 'open' : s === 'SCHEDULED' ? 'ongoing' : 'closed'
+  return s === 'PREPARING' ? 'preparing' : s === 'OPEN' ? 'open' : s === 'SCHEDULED' ? 'ongoing' : 'closed'
 })
+/** 준비중(서버 판정) — 내용만 공개, 참가 현황·일정·신청 숨김 */
+const preparing = computed(() => !!(tour.value && (tour.value.preparing ?? tour.value.status === 'PREPARING')))
+const applyOpen = computed(() => !!(tour.value && (tour.value.applyOpen ?? tour.value.status === 'OPEN')))
 const platLabel: Record<string, string> = { CHZZK: '치지직', SOOP: '숲', CIME: '씨미' }
 
 async function load() {
@@ -134,13 +137,14 @@ watch(() => route.params.id, load)
             </div>
             <h1>{{ tour.title }}</h1>
             <p v-if="tour.description" class="desc">{{ tour.description }}</p>
-            <div class="stats">
+            <div v-if="preparing" class="prep-note">모집이 시작되면 참가 신청할 수 있어요. 일정·정원은 확정 후 공개됩니다.</div>
+            <div v-else class="stats">
               <div class="stat"><strong>{{ tour.filledSlots }}/{{ tour.capacity }}명</strong><span>참가 현황</span></div>
               <div v-if="tour.eventDate" class="stat"><strong>{{ tour.eventDate }}</strong><span>대회일</span></div>
               <div class="stat"><strong>{{ statusLabel }}</strong><span>상태</span></div>
             </div>
             <div class="acts">
-              <button v-if="tour.status === 'OPEN'" class="apply" :disabled="applying" @click="startApply">
+              <button v-if="applyOpen" class="apply" :disabled="applying" @click="startApply">
                 {{ applying ? '신청 중…' : applyFormOpen ? '답변 제출하고 신청하기' : '참가 신청하기' }}
               </button>
               <span v-if="applyMsg" class="apply-msg">{{ applyMsg }}</span>
@@ -226,6 +230,8 @@ watch(() => route.params.id, load)
 .badge.open { background: rgba(52, 199, 120, 0.14); color: var(--green); border: 1px solid rgba(52, 199, 120, 0.4); }
 .badge.ongoing { background: rgba(212, 212, 212, 0.12); color: var(--text2); border: 1px solid var(--border2); }
 .badge.closed { background: rgba(255, 255, 255, 0.06); color: var(--text3); border: 1px solid var(--border); }
+.badge.preparing { background: rgba(129, 99, 255, 0.14); color: var(--accent3, #b9a6ff); border: 1px solid rgba(129, 99, 255, 0.4); }
+.prep-note { margin-top: 18px; padding: 12px 16px; border-radius: var(--radius); background: var(--bg2); border: 1px dashed var(--border2); font-size: 13px; color: var(--text2); }
 .game { font-size: 13px; color: var(--text2); font-weight: 600; }
 .desc { font-size: 14px; color: var(--text2); line-height: 1.8; white-space: pre-line; }
 .stats { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }

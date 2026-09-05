@@ -53,6 +53,9 @@ public class CampaignApplicationService {
         // 슬롯/상태 경쟁 자원은 락을 잡고 재확인 (ADR-007)
         Campaign campaign = campaignRepository.findByIdForUpdate(campaignId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        if (campaign.isPreparing()) {
+            throw new BusinessException(ErrorCode.CAMPAIGN_PREPARING);
+        }
         if (!campaign.isOpenForApply()) {
             throw new BusinessException(ErrorCode.CAMPAIGN_NOT_OPEN);
         }

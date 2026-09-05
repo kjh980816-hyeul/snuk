@@ -190,7 +190,14 @@ public class LocalDataSeeder implements ApplicationRunner {
                 .eventDate(LocalDate.now().minusDays(10))
                 .status(CampaignStatus.CLOSED).distributionType(DistributionType.FCFS)
                 .keyMode(KeyMode.QUANTITY).totalSlots(15).featured(false).sortOrder(2).build());
-        log.info("[seed] campaign 3건 삽입");
+        campaignRepository.save(Campaign.builder()
+                .title("[준비중] 겨울 시즌 협동 서바이벌")
+                .description("준비 중인 컨텐츠 예시(PREPARING 상태 노출 확인용). 내용만 보이고 신청은 아직 열리지 않습니다.")
+                .gameName("프로스트 라인")
+                .promoImageUrl("https://placehold.co/800x600/1b2a41/9fc5e8?text=Preparing")
+                .status(CampaignStatus.PREPARING).distributionType(DistributionType.APPROVAL)
+                .keyMode(KeyMode.QUANTITY).totalSlots(0).featured(false).sortOrder(3).build());
+        log.info("[seed] campaign 4건 삽입");
     }
 
     private void seedTournaments() {
@@ -222,7 +229,14 @@ public class LocalDataSeeder implements ApplicationRunner {
                 .capacity(8).status(TournamentStatus.DONE)
                 .resultText("우승: 팀 알파 / 준우승: 팀 브라보 / MVP: 스트리머A")
                 .featured(false).sortOrder(2).build());
-        log.info("[seed] tournament 3건 삽입");
+        tournamentRepository.save(Tournament.builder()
+                .title("[준비중] SNUK 컵 시즌2")
+                .description("준비 중인 대회 예시(PREPARING 상태 노출 확인용). 일정·정원 확정 전입니다.")
+                .gameName("네온 서바이벌")
+                .bannerImageUrl("https://placehold.co/1200x400/1b2a41/9fc5e8?text=SNUK+CUP+S2+Preparing")
+                .capacity(0).status(TournamentStatus.PREPARING)
+                .featured(false).sortOrder(3).build());
+        log.info("[seed] tournament 4건 삽입");
     }
 
     private void seedNotices() {

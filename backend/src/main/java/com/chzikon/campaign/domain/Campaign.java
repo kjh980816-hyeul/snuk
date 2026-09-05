@@ -153,6 +153,11 @@ public class Campaign {
         return this.status == CampaignStatus.OPEN;
     }
 
+    /** 준비중 — 내용만 공개, 모집 정보·신청 불가. */
+    public boolean isPreparing() {
+        return this.status == CampaignStatus.PREPARING;
+    }
+
     public boolean hasFreeSlot() {
         return this.filledSlots < this.totalSlots;
     }
