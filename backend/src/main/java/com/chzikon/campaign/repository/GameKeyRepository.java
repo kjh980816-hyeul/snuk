@@ -33,4 +33,7 @@ public interface GameKeyRepository extends JpaRepository<GameKey, Long> {
                                          Pageable pageable);
 
     Optional<GameKey> findByIdAndCampaignId(Long id, Long campaignId);
+
+    /** 캠페인 삭제 캐스케이드(배정 키가 없을 때만 서비스에서 호출). */
+    void deleteByCampaignId(Long campaignId);
 }

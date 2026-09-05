@@ -60,6 +60,12 @@ public class CollabGame {
         this.updatedAt = now;
     }
 
+    /** 연결 캠페인이 삭제될 때 링크만 해제(게임 자체는 유지). */
+    public void unlinkCampaign() {
+        this.campaignId = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void update(String name, String description, String thumbnailUrl,
                        String gameLinkUrl, String reviewLinkUrl, Long campaignId, Integer sortOrder) {
         if (name != null) this.name = name;

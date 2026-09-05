@@ -1655,7 +1655,17 @@ function dhTrialCard(g, i) {
 function dhTrials() {
   const row = document.getElementById('dh-trialrow');
   if (!row) return;
-  const games = [...(D().games || [])].sort((a, b) => (a.applyOpen ? 0 : 1) - (b.applyOpen ? 0 : 1));
+  // 노출 순서: 모집중 → 준비중 → 그 외(마감/미연결). 같은 캠페인·같은 이름은 1장만(중복 등록 방어).
+  // (4칸 제한이라 중복 게임이 칸을 다 먹으면 새 모집중 체험단이 밀려 안 보이던 문제)
+  const rank = (g) => (g.applyOpen ? 0 : g.preparing ? 1 : 2);
+  const seen = new Set();
+  const games = [...(D().games || [])]
+    .sort((a, b) => rank(a) - rank(b))
+    .filter((g) => {
+      const k = g.campaignId != null ? `c${g.campaignId}` : `n${(g.name || '').trim()}`;
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    });
   row.innerHTML = games.length
     ? games.slice(0, 4).map(dhTrialCard).join('')
     : dhEmpty('모집 중인 체험단이 없습니다.');

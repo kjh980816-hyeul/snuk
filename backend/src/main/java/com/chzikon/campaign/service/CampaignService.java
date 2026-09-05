@@ -5,7 +5,12 @@ import com.chzikon.campaign.domain.Campaign;
 import com.chzikon.campaign.domain.CampaignStatus;
 import com.chzikon.campaign.dto.CampaignCreateRequest;
 import com.chzikon.campaign.dto.CampaignUpdateRequest;
+import com.chzikon.campaign.domain.CampaignApplication;
+import com.chzikon.campaign.domain.GameKey;
+import com.chzikon.campaign.repository.CampaignApplicationRepository;
 import com.chzikon.campaign.repository.CampaignRepository;
+import com.chzikon.campaign.repository.GameKeyRepository;
+import com.chzikon.collab.repository.CollabGameRepository;
 import com.chzikon.global.error.BusinessException;
 import com.chzikon.global.error.ErrorCode;
 import com.chzikon.member.domain.Member;
@@ -26,6 +31,9 @@ public class CampaignService {
     private final AdminLogService adminLogService;
     private final MemberService memberService;
     private final NotificationService notificationService;
+    private final GameKeyRepository gameKeyRepository;
+    private final CampaignApplicationRepository applicationRepository;
+    private final CollabGameRepository collabGameRepository;
 
     @Transactional(readOnly = true)
     public List<Campaign> findAll() {
@@ -61,8 +69,27 @@ public class CampaignService {
     @Transactional
     public void delete(Long id, Long actorId) {
         Campaign campaign = getById(id);
-        campaignRepository.delete(campaign);
+        cascadeDelete(campaign);
         adminLogService.record(actorId, "CAMPAIGN_DELETE", "campaign", id, "title=" + campaign.getTitle());
+    }
+
+    /**
+     * 컨텐츠 삭제 캐스케이드.
+     * - 키가 이미 배정됐거나(ASSIGNED) 승인된 신청이 있으면 실제 가치가 나간 상태 → 409(M009)로 막고 '종료' 처리 안내.
+     * - 그 외엔 미배정 키·대기/거절 신청을 함께 지우고, 연결된 게임체험단 게임은 링크만 해제(게임 유지).
+     *   (기존엔 FK 때문에 키가 1개라도 있으면 500 — 2026-08-07 검증 잔여 버그)
+     */
+    private void cascadeDelete(Campaign campaign) {
+        Long id = campaign.getId();
+        boolean hasAssigned = gameKeyRepository.countByCampaignIdAndStatus(id, GameKey.Status.ASSIGNED) > 0
+                || applicationRepository.countByCampaignIdAndStatus(id, CampaignApplication.Status.APPROVED) > 0;
+        if (hasAssigned) {
+            throw new BusinessException(ErrorCode.CAMPAIGN_HAS_ASSIGNMENTS);
+        }
+        gameKeyRepository.deleteByCampaignId(id);
+        applicationRepository.deleteByCampaignId(id);
+        collabGameRepository.findByCampaignId(id).forEach(g -> g.unlinkCampaign());
+        campaignRepository.delete(campaign);
     }
 
     // ---------- 스트리머 본인 컨텐츠(항목 1) — STREAMER+ 등록, 본인 것만 수정/삭제 ----------
@@ -119,7 +146,7 @@ public class CampaignService {
     @Transactional
     public void deleteOwned(Long id, Long memberId) {
         Campaign campaign = requireOwnedOrAdmin(id, memberId);
-        campaignRepository.delete(campaign);
+        cascadeDelete(campaign);
         adminLogService.record(memberId, "CAMPAIGN_DELETE", "campaign", id, "title=" + campaign.getTitle());
     }
 

@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface CollabGameRepository extends JpaRepository<CollabGame, Long> {
     List<CollabGame> findAllByOrderBySortOrderAscIdAsc();
+
+    List<CollabGame> findByCampaignId(Long campaignId);
 }

@@ -41,6 +41,12 @@ public class AdminCampaignController {
         return ResponseEntity.ok(CampaignResponse.from(campaignService.update(id, req, principal.memberId())));
     }
 
+    /** 어드민 단건 조회 — 없는 ID 는 404(과거엔 매핑 부재로 500). */
+    @GetMapping("/campaigns/{id}")
+    public ResponseEntity<CampaignResponse> detail(@PathVariable Long id) {
+        return ResponseEntity.ok(CampaignResponse.from(campaignService.getById(id)));
+    }
+
     @DeleteMapping("/campaigns/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id,
                                        @AuthenticationPrincipal MemberPrincipal principal) {

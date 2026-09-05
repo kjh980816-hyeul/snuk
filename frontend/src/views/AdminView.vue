@@ -107,14 +107,23 @@ async function saveCampaign() {
   await loadCampaigns()
 }
 async function removeCampaign(c: Campaign) {
-  if (!confirm(`'${c.title}' 컨텐츠를 삭제할까요?`)) return
-  await adminApi.deleteCampaign(c.id)
+  if (!confirm(`'${c.title}' 컨텐츠를 삭제할까요?
+미배정 키·대기 중 신청도 함께 삭제됩니다.`)) return
+  try {
+    await adminApi.deleteCampaign(c.id)
+  } catch (e: any) {
+    // 409 M009: 키가 배정된(승인된) 신청자가 있음 → 삭제 대신 종료 안내
+    alert(e?.response?.data?.message ?? '삭제에 실패했습니다.')
+    return
+  }
   if (selected.value?.id === c.id) selected.value = null
-  await loadCampaigns()
+  await Promise.all([loadCampaigns(), loadCollab()])
 }
 async function selectCampaign(c: Campaign) {
   selected.value = c
-  applications.value = await adminApi.applications(c.id)
+  keyResult.value = null
+  rawKeys.value = ''
+  ;[applications.value, keys.value] = await Promise.all([adminApi.applications(c.id), adminApi.listKeys(c.id)])
 }
 // 키/신청자 유틸 — 컨텐츠 패널·게임체험단 패널 공용(campaignId 명시)
 async function submitKeys(campaignId: number) {
@@ -126,6 +135,7 @@ async function submitKeys(campaignId: number) {
   await loadCampaigns()
   const fresh = campaigns.value.find((c) => c.id === campaignId)
   if (fresh && gmCampaign.value?.id === campaignId) gmCampaign.value = { ...fresh }
+  if (fresh && selected.value?.id === campaignId) selected.value = fresh
 }
 async function delKey(campaignId: number, keyId: number) {
   await adminApi.deleteKey(campaignId, keyId)
@@ -139,7 +149,7 @@ async function approveApp(id: number, campaignId: number) {
   await adminApi.approve(id)
   applications.value = await adminApi.applications(campaignId)
   await loadCampaigns()
-  if (gmCampaign.value?.id === campaignId) keys.value = await adminApi.listKeys(campaignId)
+  if (gmCampaign.value?.id === campaignId || selected.value?.id === campaignId) keys.value = await adminApi.listKeys(campaignId)
 }
 async function rejectApp(id: number, campaignId: number) {
   await adminApi.reject(id)
@@ -1035,7 +1045,7 @@ function onTab(t: Tab) {
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn orange sm" @click="tourEditing = null; newCampaign()">+ 새 컨텐츠 (스눅 공식)</button>
         <button class="btn orange sm" @click="editing = null; newTournament()">+ 새 대회</button>
-        <span class="hint" style="margin:0">여기서 등록한 컨텐츠가 메인 큰 카드 후보예요. 게임체험단(키 배포)은 게임체험단 탭에서.</span>
+        <span class="hint" style="margin:0">여기서 등록한 컨텐츠가 메인 큰 카드 후보예요. 게임 키는 "참가자" 버튼 → 패널에서 등록하거나, 게임체험단 탭에서도 관리돼요.</span>
       </div>
       <div class="hint" style="margin:8px 0 0">
         스트리머가 직접 올린 컨텐츠·대회는 <b>준비중(승인 대기)</b>으로 올라오고, 여기서 <b>승인</b>해야 모집중으로 바뀌어요.
@@ -1063,9 +1073,27 @@ function onTab(t: Tab) {
         </tbody>
       </table>
 
-      <!-- 컨텐츠 참가자(신청자) — 대회 참가자와 동일 양식 -->
+      <!-- 컨텐츠 참가자(신청자) + 게임 키 — 대회 참가자와 동일 양식 -->
       <div v-if="selected" class="manage">
         <h4>‘{{ selected.title }}’ 참가자</h4>
+        <div class="keys" style="margin:0 0 14px">
+          <h5>게임 키 (붙여넣기 일괄 등록 — 등록 시 고유키 배포로 자동 전환, 모집 인원 = 키 수량)</h5>
+          <textarea v-model="rawKeys" placeholder="한 줄에 키 하나씩 붙여넣기 (키가 없는 컨텐츠는 비워두세요)"></textarea>
+          <button class="btn sm" @click="submitKeys(selected!.id)">등록</button>
+          <p v-if="keyResult" class="result">{{ keyResult }}</p>
+          <table class="grid" v-if="keys.length">
+            <thead><tr><th>키(마스킹)</th><th>상태</th><th>배정대상</th><th></th></tr></thead>
+            <tbody>
+              <tr v-for="k in keys" :key="k.id">
+                <td>{{ k.maskedKey }}</td><td>{{ lbl(k.status) }}</td><td>{{ k.assignedMemberId ?? '-' }}</td>
+                <td class="acts">
+                  <button v-if="k.status === 'AVAILABLE'" class="danger" @click="delKey(selected!.id, k.id)">삭제</button>
+                  <button v-if="k.status === 'ASSIGNED'" @click="revokeKey(selected!.id, k.id)">무효화</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <table class="grid">
           <thead><tr><th>회원</th><th>팔로워(스냅샷)</th><th>상태</th><th>답변</th><th></th></tr></thead>
           <tbody>

@@ -13,6 +13,7 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "C003", "로그인이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "C004", "권한이 없습니다."),
     CONFLICT(HttpStatus.CONFLICT, "C005", "요청이 현재 상태와 충돌합니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "C006", "지원하지 않는 요청 방식입니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C500", "서버 오류가 발생했습니다."),
 
     // 인증/권한 (AUTH)
@@ -28,6 +29,7 @@ public enum ErrorCode {
     NO_AVAILABLE_KEY(HttpStatus.CONFLICT, "M005", "배정 가능한 키가 없습니다."),
     KEY_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "M006", "이미 배정된 키입니다."),
     CAMPAIGN_PREPARING(HttpStatus.CONFLICT, "M007", "준비 중인 컨텐츠입니다. 모집이 시작되면 신청할 수 있어요."),
+    CAMPAIGN_HAS_ASSIGNMENTS(HttpStatus.CONFLICT, "M009", "이미 키가 배정된(승인된) 신청자가 있는 컨텐츠는 삭제할 수 없습니다. 상태를 '종료'로 바꿔 주세요."),
     CONTENT_NEEDS_APPROVAL(HttpStatus.FORBIDDEN, "M008", "스트리머 등록 컨텐츠는 관리자 승인 후 모집이 열립니다. 준비중으로 등록되고, 승인되면 모집중으로 바뀌어요."),
 
     // 후기 (REV)
