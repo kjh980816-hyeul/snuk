@@ -6,7 +6,8 @@ import type {
   NotificationItem, ParticipantPublic, Review, RoleRequestMine, RouletteItem, SongRequestItem, Spotlight,
   SpotlightPlatform, StreamerCommandItem, StreamerLive, StreamerNotice, StreamerPost,
   StreamerProfile, StreamerPublic, StreamerScheduleItem, Tournament, WikiSection,
-} from './types'
+  AdSlot,
+} from '@/api/types'
 
 // ----- auth -----
 export const authApi = {
@@ -217,6 +218,11 @@ export const resourceApi = {
 }
 
 // ----- 공지 (public) -----
+export const adApi = {
+  /** 지금 노출 중인 광고 슬롯(공개) */
+  list: () => api.get<AdSlot[]>('/api/ads').then((r) => r.data),
+}
+
 export const noticeApi = {
   list: (limit = 5) => api.get<Notice[]>('/api/notices', { params: { limit } }).then((r) => r.data),
 }

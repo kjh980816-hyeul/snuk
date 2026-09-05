@@ -54,6 +54,7 @@ public class SecurityConfig {
                                 "/api/tournaments", "/api/tournaments/*",
                                 "/api/tournaments/*/participants",
                                 "/api/notices", "/api/notices/*",
+                                "/api/ads",
                                 "/api/spotlights/active",
                                 "/api/streamers", "/api/streamers/*", "/api/streamers/*/posts",
                                 "/api/streamers/*/notices", "/api/streamers/*/schedules", "/api/streamers/*/wiki",

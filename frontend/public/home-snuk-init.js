@@ -1890,11 +1890,22 @@ const AD_BG = ['linear-gradient(120deg,#E0714A,#C9924A)', 'linear-gradient(120de
   'linear-gradient(120deg,#0E7A55,#2BC26A)', 'linear-gradient(120deg,#2E4C8F,#3F82C4)'];
 const isSet = (v) => { const s = String(v ?? '').trim(); return !!s && s !== '-' && s !== 'none'; };
 let _dhAd = 0;
+// 슬라이드 = { img, link } — 어드민 "광고 슬롯"(이미지+링크, 노출 중인 것만)이 있으면 그것만,
+// 하나도 없으면 예전처럼 사이트 이미지(히어로/페이지 배너)를 돌린다(링크 없음 → 컨텐츠 페이지).
 function dhAdSlides() {
+  const ads = (D().ads || []).filter((a) => a && a.img);
+  if (ads.length) return ads.map((a) => ({ img: a.img, link: a.link || null, title: a.title || '' }));
   const ss = D().siteSettings || {};
   const keys = ['HERO_IMAGE_URL', 'BANNER_CONTENTS_URL', 'BANNER_GAMES_URL', 'BANNER_CHAMPIONSHIP_URL',
     'BANNER_STREAMERS_URL', 'BANNER_LIVE_URL', 'BANNER_VIDEOS_URL'];
-  return keys.filter((k) => isSet(ss[k])).map((k) => ss[k].trim());
+  return keys.filter((k) => isSet(ss[k])).map((k) => ({ img: ss[k].trim(), link: null, title: '' }));
+}
+// 광고 클릭: 외부 https → 새 탭, 내부 경로 → SPA 이동, 링크 없음 → 컨텐츠 페이지
+function dhAdGo(slide) {
+  const link = slide && slide.link;
+  if (!link) { window.__snukNav('/campaigns'); return; }
+  if (/^https?:\/\//i.test(link)) { window.open(link, '_blank', 'noopener'); return; }
+  window.__snukNav(link);
 }
 function dhBoard() {
   const el = document.getElementById('dh-board');
@@ -1903,13 +1914,13 @@ function dhBoard() {
   const n = Math.max(1, slides.length);
   if (_dhAd >= n) _dhAd = 0;
   el.innerHTML = `<span class="boardimg">
-      ${slides.length ? `<img src="${esc(slides[_dhAd])}" alt="" onerror="this.remove()">` : ''}
+      ${slides.length ? `<img src="${esc(slides[_dhAd].img)}" alt="${esc(slides[_dhAd].title || '')}" onerror="this.remove()">` : ''}
       ${n > 1 ? `<span class="dots boarddots">${slides.map((_, i) =>
         `<button class="dot${i === _dhAd ? ' on' : ''}" onclick="event.stopPropagation();dhPickAd(${i})"></button>`).join('')}</span>` : ''}
     </span>
     <span class="adlabel">AD</span>`;
   el.style.background = slides.length ? '' : AD_BG[_dhAd % AD_BG.length];
-  el.onclick = () => window.__snukNav('/campaigns');
+  el.onclick = () => dhAdGo(dhAdSlides()[_dhAd]);
   el.style.cursor = 'pointer';
   if (n > 1) setAutoLoop('dhAd', () => { _dhAd = (_dhAd + 1) % n; dhPaintAd(); }, 6000);
 }
@@ -1920,7 +1931,7 @@ function dhPaintAd() {
   const slides = dhAdSlides();
   if (!slides.length) return;
   const img = el.querySelector('img');
-  if (img) img.src = slides[_dhAd];
+  if (img) { img.src = slides[_dhAd].img; img.alt = slides[_dhAd].title || ''; }
   el.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === _dhAd));
 }
 function dhPickAd(i) { _dhAd = i; dhPaintAd(); }

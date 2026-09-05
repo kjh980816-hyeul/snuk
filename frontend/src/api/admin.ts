@@ -2,7 +2,8 @@ import api from './client'
 import type {
   Campaign, CollabGame, ClientLogo, CommunityBoard, CommunityPostSummary, CommunityReport,
   ContentVideo, Goods, Notice, OrderView, Spotlight, Tournament,
-} from './types'
+  AdSlot,
+} from '@/api/types'
 
 /** 어드민 API (ADMIN 토큰 필요). */
 export const adminApi = {
@@ -78,6 +79,11 @@ export const adminApi = {
     }).then((r) => r.data)
   },
 
+  // ads (광고 슬롯)
+  listAds: () => api.get<AdSlot[]>('/api/admin/ads').then((r) => r.data),
+  createAd: (body: Partial<AdSlot>) => api.post<AdSlot>('/api/admin/ads', body).then((r) => r.data),
+  updateAd: (id: number, body: Partial<AdSlot>) => api.put<AdSlot>(`/api/admin/ads/${id}`, body).then((r) => r.data),
+  deleteAd: (id: number) => api.delete(`/api/admin/ads/${id}`),
   // notices
   createNotice: (body: { title: string; content: string; pinned: boolean }) =>
     api.post<Notice>('/api/admin/notices', body).then((r) => r.data),

@@ -38,6 +38,20 @@ export interface Campaign {
   preparing: boolean
 }
 
+/** 홈 상단 광고 슬롯(이미지+링크). live=지금 노출 중(서버 판정) */
+export interface AdSlot {
+  id: number
+  title: string | null
+  imageUrl: string
+  linkUrl: string | null
+  active: boolean
+  sortOrder: number
+  startAt: string | null
+  endAt: string | null
+  live: boolean
+  createdAt: string
+}
+
 export interface CollabGame {
   id: number
   name: string

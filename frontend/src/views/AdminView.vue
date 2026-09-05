@@ -6,6 +6,7 @@ import api from '@/api/client'
 import type {
   ApplyQuestion, Campaign, CollabGame, CommunityBoard, CommunityPostSummary, CommunityReport, ContentVideo, ClientLogo,
   Goods, Notice, OrderView, Spotlight, Tournament,
+  AdSlot,
 } from '@/api/types'
 import ApplyFormBuilder from '@/components/ApplyFormBuilder.vue'
 
@@ -34,7 +35,7 @@ const alertInterceptor = api.interceptors.response.use(
 onBeforeUnmount(() => api.interceptors.response.eject(alertInterceptor))
 
 // 탭 구성은 메인 사이트 사이드바 순서/명칭 기준 (컨텐츠·대회 통합 탭 + 게임체험단·영상·굿즈샵·협력사)
-type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'community' | 'members' | 'grants' | 'settings' | 'crew' | 'logs'
+type Tab = 'campaigns' | 'games' | 'videos' | 'clients' | 'goods' | 'notices' | 'warnings' | 'reports' | 'resources' | 'community' | 'members' | 'grants' | 'settings' | 'ads' | 'crew' | 'logs'
 const tab = ref<Tab>('campaigns')
 
 // ----- 권한 신청 (V23) -----
@@ -588,6 +589,42 @@ async function saveHeroText() {
   alert('저장되었습니다.')
 }
 
+// 광고 슬롯 — 홈 상단 AD 배너(이미지+링크). 노출 중인 것만 공개 API(/api/ads)로 나가고 6초 슬라이드.
+const ads = ref<AdSlot[]>([])
+const adEditing = ref<Partial<AdSlot> | null>(null)
+const adsLoaded = ref(false)
+async function loadAds() {
+  ads.value = await adminApi.listAds()
+  adsLoaded.value = true
+}
+function newAd() {
+  adEditing.value = { title: '', imageUrl: '', linkUrl: '', active: true, sortOrder: ads.value.length, startAt: null, endAt: null }
+}
+function editAd(a: AdSlot) {
+  adEditing.value = { ...a, startAt: a.startAt ? a.startAt.slice(0, 16) : null, endAt: a.endAt ? a.endAt.slice(0, 16) : null }
+}
+async function saveAd() {
+  const b = adEditing.value
+  if (!b) return
+  if (!b.imageUrl) { alert('광고 이미지를 올려주세요.'); return }
+  const body = { ...b, startAt: b.startAt || null, endAt: b.endAt || null, linkUrl: b.linkUrl?.trim() || null }
+  if (b.id) await adminApi.updateAd(b.id, body)
+  else await adminApi.createAd(body)
+  adEditing.value = null
+  await loadAds()
+  alert('저장되었습니다. 홈 상단 AD 배너에 바로 반영돼요.')
+}
+async function toggleAd(a: AdSlot) {
+  await adminApi.updateAd(a.id, { ...a, active: !a.active })
+  await loadAds()
+}
+async function removeAd(a: AdSlot) {
+  if (!confirm(`"${a.title || '광고'}" 슬롯을 삭제할까요?`)) return
+  await adminApi.deleteAd(a.id)
+  await loadAds()
+}
+const adPeriod = (a: AdSlot) => (a.startAt || a.endAt) ? `${a.startAt ? a.startAt.slice(0, 16).replace('T', ' ') : ''} ~ ${a.endAt ? a.endAt.slice(0, 16).replace('T', ' ') : ''}` : '상시'
+
 // 크루 페이지 — nginx /crew/<name>/ 정적 서빙(SPA 밖). 목록만 CREW_PAGES(JSON [{name,path}]) 로 관리(08-18 뜨개동).
 type CrewPage = { name: string; path: string }
 const crewPages = ref<CrewPage[]>([])
@@ -978,6 +1015,7 @@ function onTab(t: Tab) {
   if (t === 'grants') loadRoleRequests()
   if (t === 'settings') loadSettings()
   if (t === 'crew') loadCrewPages()
+  if (t === 'ads') loadAds()
   if (t === 'logs') loadLogs()
 }
 </script>
@@ -1013,6 +1051,7 @@ function onTab(t: Tab) {
       <button :class="{ on: tab === 'clients' }" @click="onTab('clients')">협력사</button>
       <p class="adm-glabel">사이트</p>
       <button :class="{ on: tab === 'settings' }" @click="onTab('settings')">설정</button>
+      <button :class="{ on: tab === 'ads' }" @click="onTab('ads')">광고 슬롯</button>
       <button :class="{ on: tab === 'crew' }" @click="onTab('crew')">크루 페이지</button>
       <button :class="{ on: tab === 'logs' }" @click="onTab('logs')">감사로그</button>
     </nav>
@@ -1896,6 +1935,62 @@ function onTab(t: Tab) {
     </section>
 
     <!-- 크루 페이지 — 정적 HTML(/crew/<이름>/) 목록 · 열기 · 사이드바 메뉴 추가 -->
+    <!-- 광고 슬롯 -->
+    <section v-else-if="tab === 'ads'">
+      <h4>광고 슬롯</h4>
+      <div class="form-card site-card">
+        <p class="hint" style="margin:0 0 12px;">
+          홈 맨 위 <b>AD 배너</b>에 나가는 광고예요. 이미지와 클릭 시 이동할 링크를 넣고 <b>노출</b>을 켜면 바로 나갑니다(여러 개면 6초마다 번갈아 표시).<br>
+          기간을 비우면 상시 노출, 넣으면 그 기간에만 나가요. 광고 슬롯이 하나도 없을 때만 예전처럼 사이트 이미지(히어로·페이지 배너)가 대신 돌아갑니다.<br>
+          이미지는 가로로 긴 배너(예: 1600×400)가 잘 맞아요. 링크는 <code>https://</code> 외부 주소 또는 <code>/campaigns</code> 같은 사이트 내부 경로.
+        </p>
+        <table class="grid">
+          <thead><tr><th>이미지</th><th>제목</th><th>링크</th><th>노출</th><th>기간</th><th>순서</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="a in ads" :key="a.id">
+              <td><img :src="a.imageUrl" class="thumb" alt="" style="width:120px;height:36px;object-fit:cover;" /></td>
+              <td>{{ a.title || '-' }}</td>
+              <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a v-if="a.linkUrl" :href="a.linkUrl" target="_blank" rel="noopener">{{ a.linkUrl }}</a><span v-else>-</span></td>
+              <td><b v-if="a.live" style="color:var(--a-accent-ink)">노출 중</b><span v-else-if="a.active">대기(기간 밖)</span><span v-else>꺼짐</span></td>
+              <td>{{ adPeriod(a) }}</td>
+              <td>{{ a.sortOrder }}</td>
+              <td class="acts">
+                <button @click="toggleAd(a)">{{ a.active ? '끄기' : '켜기' }}</button>
+                <button @click="editAd(a)">수정</button>
+                <button class="danger" @click="removeAd(a)">삭제</button>
+              </td>
+            </tr>
+            <tr v-if="adsLoaded && !ads.length"><td colspan="7" class="empty">등록된 광고 슬롯이 없습니다. 지금은 사이트 이미지가 AD 자리에 돌아가고 있어요.</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:10px;"><button class="btn orange sm" @click="newAd">+ 광고 추가</button></div>
+      </div>
+      <div v-if="adEditing" class="form-card editor-page" style="margin-top:14px;">
+        <h4 style="margin-top:0;">{{ adEditing.id ? '광고 수정' : '새 광고' }}</h4>
+        <label>제목(관리용)<input v-model="adEditing.title" placeholder="예) 9월 신작 프로모션" /></label>
+        <label>광고 이미지 *
+          <div class="img-row">
+            <img v-if="adEditing.imageUrl" :src="adEditing.imageUrl" class="thumb" alt="" style="width:240px;height:72px;object-fit:cover;" />
+            <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" @change="pickImage($event, adEditing, 'imageUrl')" />
+            <span v-if="imgUploading">업로드 중…</span>
+          </div>
+        </label>
+        <label>클릭 시 이동 링크<input v-model="adEditing.linkUrl" placeholder="https://광고주-사이트.com 또는 /campaigns (비우면 컨텐츠 페이지)" /></label>
+        <div class="row3">
+          <label>노출<select v-model="adEditing.active"><option :value="true">켜짐</option><option :value="false">꺼짐</option></select></label>
+          <label>순서(작을수록 먼저)<input type="number" v-model.number="adEditing.sortOrder" /></label>
+        </div>
+        <div class="row3">
+          <label>노출 시작(선택)<input type="datetime-local" v-model="adEditing.startAt" /></label>
+          <label>노출 종료(선택)<input type="datetime-local" v-model="adEditing.endAt" /></label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn sm" @click="saveAd">저장</button>
+          <button class="btn ghost sm" @click="adEditing = null">취소</button>
+        </div>
+      </div>
+    </section>
+
     <section v-else-if="tab === 'crew'">
       <h4>크루 페이지</h4>
       <div class="form-card site-card">

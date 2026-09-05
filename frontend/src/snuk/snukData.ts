@@ -3,10 +3,11 @@
  * 시안 더미 배열과 동일한 필드 계약을 유지하되, 실 데이터의 id/액션 정보를 추가한다.
  * 실패한 소스는 빈 배열로 두고 나머지는 정상 노출(부분 실패 허용).
  */
-import { campaignApi, collabApi, communityApi, goodsApi, liveApi, newsApi, noticeApi, resourceApi, siteSettingsApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
+import { adApi, campaignApi, collabApi, communityApi, goodsApi, liveApi, newsApi, noticeApi, resourceApi, siteSettingsApi, spotlightApi, streamerApi, tournamentApi } from '@/api'
 import type {
   ApplyQuestion, Campaign, CollabGame, CommunityPostSummary, ContentVideo, FreeResource, Goods, News, Notice,
   ParticipantPublic, Review, Spotlight, StreamerLive, StreamerPublic, Tournament,
+  AdSlot,
 } from '@/api/types'
 import { GOODS_READY, OFFICIAL_CHZZK_CHANNEL_ID } from '@/config'
 
@@ -97,6 +98,8 @@ export interface SnukData {
   chzzkChannelId: string
   /** 어드민 "설정" 탭에서 관리하는 공개 설정 (배너/히어로 이미지 등, '-'=미설정) */
   siteSettings: Record<string, string>
+  /** 홈 상단 AD 배너 슬라이드 — 광고 슬롯(어드민 등록, 노출 중인 것만). 비어 있으면 렌더러가 사이트 이미지로 폴백 */
+  ads: Array<{ id: number; title: string; img: string; link: string | null }>
   /** 방송도우미 무료소스 (홈 "방송도우미 인기 소스" 줄) */
   resources: Array<{ id: number; title: string; desc: string; img: string | null; url: string | null; date: string }>
   /** 체험단 후기 (홈 "체험단 후기" 카드) */
@@ -175,7 +178,7 @@ async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
 
 /** 전 페이지 공용 데이터 로드(공개 API만 — 로그인 불필요). */
 export async function loadSnukData(): Promise<SnukData> {
-  const [campaigns, tournaments, videos, goods, clients, games, notices, spotlights, streamers, siteSettings, news, liveStreamers, resources, allReviews] = await Promise.all([
+  const [campaigns, tournaments, videos, goods, clients, games, notices, spotlights, streamers, siteSettings, news, liveStreamers, resources, allReviews, ads] = await Promise.all([
     safe<Campaign[]>(campaignApi.list(), []),
     safe<Tournament[]>(tournamentApi.list(), []),
     safe<ContentVideo[]>(collabApi.videos(), []),
@@ -190,6 +193,7 @@ export async function loadSnukData(): Promise<SnukData> {
     safe<StreamerLive[]>(liveApi.streamers(), []),
     safe<FreeResource[]>(resourceApi.list(), []),
     safe<Review[]>(collabApi.allReviews(), []),
+    safe<AdSlot[]>(adApi.list(), []),
   ])
   const liveById = new Map(liveStreamers.map((l) => [l.memberId, l]))
 
@@ -306,6 +310,7 @@ export async function loadSnukData(): Promise<SnukData> {
         ? siteSettings.LIVE_CHANNEL_ID
         : OFFICIAL_CHZZK_CHANNEL_ID,
     siteSettings,
+    ads: ads.map((a) => ({ id: a.id, title: a.title ?? '', img: a.imageUrl, link: a.linkUrl })),
     resources: resources.map((r) => ({
       id: r.id, title: r.title, desc: r.description ?? '',
       img: r.imageUrl, url: r.fileUrl, date: dateOf(r.createdAt),
