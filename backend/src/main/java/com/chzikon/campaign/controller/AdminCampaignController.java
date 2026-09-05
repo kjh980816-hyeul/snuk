@@ -48,6 +48,13 @@ public class AdminCampaignController {
         return ResponseEntity.noContent().build();
     }
 
+    /** 스트리머 등록 컨텐츠 승인 → 모집중. */
+    @PostMapping("/campaigns/{id}/approve")
+    public ResponseEntity<CampaignResponse> approveCampaign(@PathVariable Long id,
+                                                            @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(CampaignResponse.from(campaignService.approve(id, principal.memberId())));
+    }
+
     // ----- 게임 키 -----
     @PostMapping("/campaigns/{id}/keys")
     public ResponseEntity<KeyRegisterResult> registerKeys(@PathVariable Long id,

@@ -6,7 +6,9 @@ import com.chzikon.global.error.ErrorCode;
 import com.chzikon.member.domain.Member;
 import com.chzikon.member.domain.Role;
 import com.chzikon.member.service.MemberService;
+import com.chzikon.notification.service.NotificationService;
 import com.chzikon.tournament.domain.Tournament;
+import com.chzikon.tournament.domain.TournamentStatus;
 import com.chzikon.tournament.dto.TournamentCreateRequest;
 import com.chzikon.tournament.dto.TournamentUpdateRequest;
 import com.chzikon.tournament.repository.TournamentRepository;
@@ -23,6 +25,7 @@ public class TournamentService {
     private final TournamentRepository tournamentRepository;
     private final AdminLogService adminLogService;
     private final MemberService memberService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<Tournament> findAll() {
@@ -74,9 +77,29 @@ public class TournamentService {
         }
         Tournament saved = tournamentRepository.save(req.toEntity());
         saved.assignOwner(memberId);
+        // 스트리머 등록분은 관리자 승인제: 무조건 준비중으로 시작
+        if (member.getRole() != Role.ADMIN) saved.forcePreparing();
         adminLogService.record(memberId, "TOURNAMENT_CREATE_BY_STREAMER", "tournament", saved.getId(),
-                "title=" + saved.getTitle());
+                "title=" + saved.getTitle() + " status=" + saved.getStatus());
         return saved;
+    }
+
+    /** 관리자 승인 — 스트리머 등록 대회를 모집중으로 전환 + 주최자에게 알림. */
+    @Transactional
+    public Tournament approve(Long id, Long adminId) {
+        Tournament tournament = getById(id);
+        if (tournament.getStatus() == TournamentStatus.OPEN) {
+            throw new BusinessException(ErrorCode.CONFLICT, "이미 모집중인 대회입니다.");
+        }
+        tournament.approveRecruit();
+        adminLogService.record(adminId, "TOURNAMENT_APPROVE", "tournament", id, "title=" + tournament.getTitle());
+        if (tournament.getOwnerMemberId() != null) {
+            notificationService.notify(tournament.getOwnerMemberId(), "CONTENT_APPROVED",
+                    "대회가 승인됐어요 🎉",
+                    "'" + tournament.getTitle() + "' 참가 모집이 시작됐습니다.",
+                    "/championship/" + id);
+        }
+        return tournament;
     }
 
     @Transactional
@@ -84,6 +107,10 @@ public class TournamentService {
         Tournament tournament = getById(id);
         Member member = requireOwnerOrAdmin(tournament, memberId);
         boolean isAdmin = member.getRole() == Role.ADMIN;
+        if (!isAdmin && req.status() != null && Tournament.isAdminOnlyStatus(req.status())
+                && req.status() != tournament.getStatus()) {
+            throw new BusinessException(ErrorCode.CONTENT_NEEDS_APPROVAL);
+        }
         tournament.update(req.title(), req.description(), req.gameName(), req.bannerImageUrl(), req.detailImageUrl(),
                 req.eventDate(), req.applyStart(), req.applyEnd(),
                 req.capacity(), req.status(), req.resultText(),

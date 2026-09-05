@@ -223,6 +223,10 @@ interface UnifiedRow {
   status: string
   slots: string
   featured: boolean
+  /** 스트리머 등록분(ownerMemberId) — 스눅 공식은 null */
+  owner: number | null
+  /** 스트리머 등록 + 준비중 = 관리자 승인 대기 */
+  pending: boolean
   campaign?: Campaign
   tournament?: Tournament
 }
@@ -233,12 +237,23 @@ const unifiedRows = computed<UnifiedRow[]>(() => [
     .map((c): UnifiedRow => ({
       type: 'campaign', id: c.id, img: c.promoImageUrl, title: c.title, status: c.status,
       slots: `${c.filledSlots}/${c.totalSlots}`, featured: c.featured, campaign: c,
+      owner: c.ownerMemberId, pending: c.ownerMemberId != null && c.status === 'PREPARING',
     })),
   ...tournaments.value.map((t): UnifiedRow => ({
     type: 'tournament', id: t.id, img: t.bannerImageUrl, title: t.title, status: t.status,
     slots: `${t.filledSlots}/${t.capacity}`, featured: t.featured, tournament: t,
+    owner: t.ownerMemberId, pending: t.ownerMemberId != null && t.status === 'PREPARING',
   })),
 ])
+const pendingCount = computed(() => unifiedRows.value.filter((r) => r.pending).length)
+/** 스트리머 등록분 승인 → 모집중 전환(서버가 등록자에게 알림). 스눅 공식은 상태 셀렉트로 직접. */
+async function approveRow(r: UnifiedRow) {
+  if (!confirm(`"${r.title}" 을(를) 승인할까요?\n모집중으로 바뀌고 등록한 스트리머에게 알림이 갑니다.`)) return
+  if (r.type === 'campaign') await adminApi.approveCampaign(r.id)
+  else await adminApi.approveTournament(r.id)
+  await Promise.all([loadCampaigns(), loadTournaments()])
+  alert('승인됐습니다 — 모집중으로 전환됐어요.')
+}
 function manageRow(r: UnifiedRow) {
   if (r.type === 'campaign' && r.campaign) { tourSelected.value = null; selectCampaign(r.campaign) }
   else if (r.tournament) { selected.value = null; selectTournament(r.tournament) }
@@ -1010,16 +1025,23 @@ function onTab(t: Tab) {
         <button class="btn orange sm" @click="editing = null; newTournament()">+ 새 대회</button>
         <span class="hint" style="margin:0">여기서 등록한 컨텐츠가 메인 큰 카드 후보예요. 게임체험단(키 배포)은 게임체험단 탭에서.</span>
       </div>
+      <div class="hint" style="margin:8px 0 0">
+        스트리머가 직접 올린 컨텐츠·대회는 <b>준비중(승인 대기)</b>으로 올라오고, 여기서 <b>승인</b>해야 모집중으로 바뀌어요.
+        <b v-if="pendingCount" style="color:var(--a-accent-ink)">현재 승인 대기 {{ pendingCount }}건</b>
+      </div>
       <table class="grid">
         <thead><tr><th>이미지</th><th>구분</th><th>제목</th><th>상태</th><th>모집</th><th>대표</th><th></th></tr></thead>
         <tbody>
           <tr v-for="r in unifiedRows" :key="r.type + r.id"
               :class="{ sel: (r.type === 'campaign' && selected?.id === r.id) || (r.type === 'tournament' && tourSelected?.id === r.id) }">
             <td><img v-if="r.img" :src="r.img" class="thumb" alt="" /><span v-else class="no-img">－</span></td>
-            <td>{{ r.type === 'tournament' ? '대회' : '컨텐츠' }}</td>
-            <td>{{ r.title }}</td><td>{{ lbl(r.status) }}</td><td>{{ r.slots }}</td>
+            <td>{{ r.type === 'tournament' ? '대회' : '컨텐츠' }}<span v-if="r.owner" class="hint" style="margin:0 0 0 4px">· 스트리머</span></td>
+            <td>{{ r.title }}</td>
+            <td><b v-if="r.pending" style="color:var(--a-accent-ink)">승인 대기</b><template v-else>{{ lbl(r.status) }}</template></td>
+            <td>{{ r.slots }}</td>
             <td>{{ r.featured ? '★' : '' }}</td>
             <td class="acts">
+              <button v-if="r.pending" class="primary" @click="approveRow(r)">승인 (모집 오픈)</button>
               <button @click="manageRow(r)">참가자</button>
               <button @click="editRow(r)">수정</button>
               <button class="danger" @click="removeRow(r)">삭제</button>

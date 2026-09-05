@@ -28,6 +28,7 @@ public enum ErrorCode {
     NO_AVAILABLE_KEY(HttpStatus.CONFLICT, "M005", "배정 가능한 키가 없습니다."),
     KEY_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "M006", "이미 배정된 키입니다."),
     CAMPAIGN_PREPARING(HttpStatus.CONFLICT, "M007", "준비 중인 컨텐츠입니다. 모집이 시작되면 신청할 수 있어요."),
+    CONTENT_NEEDS_APPROVAL(HttpStatus.FORBIDDEN, "M008", "스트리머 등록 컨텐츠는 관리자 승인 후 모집이 열립니다. 준비중으로 등록되고, 승인되면 모집중으로 바뀌어요."),
 
     // 후기 (REV)
     REVIEW_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "R001", "참가자만 후기를 작성할 수 있습니다."),

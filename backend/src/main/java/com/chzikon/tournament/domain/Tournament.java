@@ -145,6 +145,21 @@ public class Tournament {
         return this.status == TournamentStatus.PREPARING;
     }
 
+    /** 스트리머 등록분은 관리자 승인 전까지 준비중으로 강제. */
+    public void forcePreparing() {
+        this.status = TournamentStatus.PREPARING;
+    }
+
+    /** 관리자 승인 → 모집중 전환. */
+    public void approveRecruit() {
+        this.status = TournamentStatus.OPEN;
+    }
+
+    /** 스트리머(비관리자)가 스스로 열 수 없는 상태 — 승인 전용. */
+    public static boolean isAdminOnlyStatus(TournamentStatus s) {
+        return s == TournamentStatus.OPEN || s == TournamentStatus.SCHEDULED;
+    }
+
     public boolean hasFreeSlot() {
         return this.filledSlots < this.capacity;
     }

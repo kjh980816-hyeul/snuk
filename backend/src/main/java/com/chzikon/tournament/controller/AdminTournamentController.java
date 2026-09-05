@@ -44,6 +44,13 @@ public class AdminTournamentController {
         return ResponseEntity.noContent().build();
     }
 
+    /** 스트리머 등록 대회 승인 → 모집중. */
+    @PostMapping("/tournaments/{id}/approve")
+    public ResponseEntity<TournamentResponse> approveTournament(@PathVariable Long id,
+                                                                @AuthenticationPrincipal MemberPrincipal principal) {
+        return ResponseEntity.ok(TournamentResponse.from(tournamentService.approve(id, principal.memberId())));
+    }
+
     // ----- 참가 신청 승인/거절 -----
     @GetMapping("/tournaments/{id}/participants")
     public ResponseEntity<List<ParticipantAdminView>> participants(@PathVariable Long id) {

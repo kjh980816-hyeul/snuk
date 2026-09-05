@@ -158,6 +158,23 @@ public class Campaign {
         return this.status == CampaignStatus.PREPARING;
     }
 
+    /** 스트리머 등록분은 관리자 승인 전까지 준비중으로 강제. */
+    public void forcePreparing() {
+        this.status = CampaignStatus.PREPARING;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 관리자 승인 → 모집중 전환. */
+    public void approveRecruit() {
+        this.status = CampaignStatus.OPEN;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 스트리머(비관리자)가 스스로 열 수 없는 상태 — 승인 전용. */
+    public static boolean isAdminOnlyStatus(CampaignStatus s) {
+        return s == CampaignStatus.OPEN || s == CampaignStatus.SCHEDULED;
+    }
+
     public boolean hasFreeSlot() {
         return this.filledSlots < this.totalSlots;
     }

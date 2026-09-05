@@ -531,7 +531,7 @@ function openStreamerPost(kind) {
   const rows = mine.map((x) => `
     <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
       <span style="flex:1;min-width:0;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(x.title)}</span>
-      <span class="badge ${badgeClsOf(x)}">${esc(x.statusLabel)}</span>
+      <span class="badge ${badgeClsOf(x)}">${isPreparing(x) && x.ownerId && !spIsAdmin() ? '승인 대기' : esc(x.statusLabel)}</span>
       ${isT ? `<button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#4cc38a;" onclick="spParticipants(${x.id},'${esc(x.title).replace(/'/g, '&#39;')}')">참가자</button>` : ''}
       <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;" onclick="spEdit('${kind}',${x.id})">수정</button>
       <button class="btn btn-outline" style="font-size:11px;padding:5px 10px;color:#e5484d;" onclick="spDelete('${kind}',${x.id})">삭제</button>
@@ -549,10 +549,9 @@ function openStreamerPost(kind) {
     <div style="display:flex;gap:8px;">
       <input id="spc-date" type="date" style="${SP_INP}flex:1;" title="진행일">
       <input id="spc-cap" type="number" min="0" style="${SP_INP}flex:1;" placeholder="${isT ? '정원(명)' : '모집 인원'}">
-      <select id="spc-status" style="${SP_INP}flex:1;">
-        <option value="PREPARING">준비중 (내용만 공개·신청 불가)</option><option value="SCHEDULED">오픈예정</option><option value="OPEN">모집중</option><option value="ONGOING">진행중 (모집 마감)</option><option value="CLOSED">종료</option>
-      </select>
+      ${spStatusSelect('PREPARING')}
     </div>
+    ${spIsAdmin() ? '' : `<div style="font-size:11.5px;line-height:1.6;color:var(--text3);margin:-6px 0 10px;">등록하면 <b>준비중</b>(내용만 공개)으로 올라가고, 관리자가 승인하면 <b>모집중</b>으로 바뀌어 신청을 받을 수 있어요.</div>`}
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
       <input id="spc-img" type="file" accept="image/*" style="font-size:12px;flex:1;color:var(--text2);">
       <img id="spc-img-prev" alt="" style="display:none;width:56px;height:36px;object-fit:cover;border-radius:6px;">
@@ -560,6 +559,19 @@ function openStreamerPost(kind) {
     <button id="spc-submit" class="btn-apply" style="width:100%;padding:13px;font-size:15px;" onclick="spSubmit('${kind}')">등록하기</button>`, null, true);
   _spQs = [];
   spQbRender();
+}
+
+// 스트리머 등록분은 승인제 — 비관리자는 모집중/오픈예정을 직접 고를 수 없다(서버도 M008로 차단). 이미 승인된 상태는 그대로 유지 가능.
+function spIsAdmin() { return (window.__snukMe || {}).role === 'ADMIN'; }
+function spStatusSelect(current) {
+  const opts = spIsAdmin()
+    ? [['PREPARING', '준비중'], ['SCHEDULED', '오픈예정'], ['OPEN', '모집중'], ['ONGOING', '진행중 (모집 마감)'], ['CLOSED', '종료']]
+    : [['PREPARING', '준비중 (관리자 승인 대기)'], ['ONGOING', '진행중 (모집 마감)'], ['CLOSED', '종료']];
+  if (!spIsAdmin() && (current === 'OPEN' || current === 'SCHEDULED')) {
+    opts.splice(1, 0, [current, current === 'OPEN' ? '모집중 (승인됨)' : '오픈예정 (승인됨)']);
+  }
+  return `<select id="spc-status" style="${SP_INP}flex:1;">${opts.map(([v, l]) =>
+    `<option value="${v}"${v === current ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
 }
 
 async function spEdit(kind, id) {
@@ -579,7 +591,7 @@ async function spEdit(kind, id) {
     const sel = document.getElementById('spc-status');
     // 대회 enum(CLOSED=모집 마감·진행, DONE=종료)을 공용 셀렉트(ONGOING/CLOSED) 표기로 변환
     const shown = kind === 'tournament' ? ({ CLOSED: 'ONGOING', DONE: 'CLOSED' }[d.status] || d.status) : d.status;
-    sel.value = ['PREPARING', 'OPEN', 'SCHEDULED', 'ONGOING', 'CLOSED'].includes(shown) ? shown : 'CLOSED';
+    sel.outerHTML = spStatusSelect(['PREPARING', 'OPEN', 'SCHEDULED', 'ONGOING', 'CLOSED'].includes(shown) ? shown : 'CLOSED');
     const img = d.promoImageUrl || d.bannerImageUrl;
     const prev = document.getElementById('spc-img-prev');
     if (img) { prev.src = img; prev.style.display = ''; }
@@ -686,7 +698,7 @@ async function spSubmit(kind) {
           featured: _spRaw ? _spRaw.featured : false, sortOrder: _spRaw ? _spRaw.sortOrder : 0 };
     if (_spEditId) await A().updateContent(kind, _spEditId, body);
     else await A().createContent(kind, body);
-    showToast(_spEditId ? '✅ 수정됐습니다' : '✅ 등록됐습니다!');
+    showToast(_spEditId ? '✅ 수정됐습니다' : spIsAdmin() ? '✅ 등록됐습니다!' : '✅ 등록됐어요 — 관리자 승인 후 모집이 시작됩니다');
     document.getElementById('snuk-dyn-modal').classList.remove('open');
   } catch (e) {
     showToast(A().errorMessage ? A().errorMessage(e) : '저장에 실패했습니다');

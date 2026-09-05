@@ -12,6 +12,8 @@ export const adminApi = {
   updateCampaign: (id: number, body: Partial<Campaign>) =>
     api.put<Campaign>(`/api/admin/campaigns/${id}`, body).then((r) => r.data),
   deleteCampaign: (id: number) => api.delete(`/api/admin/campaigns/${id}`),
+  /** 스트리머 등록 컨텐츠 승인 → 모집중(등록자 알림) */
+  approveCampaign: (id: number) => api.post<Campaign>(`/api/admin/campaigns/${id}/approve`).then((r) => r.data),
 
   // keys
   registerKeys: (id: number, rawKeys: string) =>
@@ -50,6 +52,8 @@ export const adminApi = {
   updateTournament: (id: number, body: Partial<Tournament>) =>
     api.put<Tournament>(`/api/admin/tournaments/${id}`, body).then((r) => r.data),
   deleteTournament: (id: number) => api.delete(`/api/admin/tournaments/${id}`),
+  /** 스트리머 등록 대회 승인 → 모집중(주최자 알림) */
+  approveTournament: (id: number) => api.post<Tournament>(`/api/admin/tournaments/${id}/approve`).then((r) => r.data),
   participants: (id: number) =>
     api.get<Array<{ participantId: number; memberId: number; nickname: string; profileImageUrl: string | null; status: string; followerSnapshot: number; answers: Array<{ text: string | null; imageUrl: string | null }> }>>(
       `/api/admin/tournaments/${id}/participants`,
